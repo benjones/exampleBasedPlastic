@@ -16,6 +16,12 @@ extern "C" {
 using std::cout;
 using std::endl;
 
+#ifdef __clang__
+using std::unordered_map;
+#else
+using std::tr1::unordered_map
+#endif
+
 //#define TIMING
 //#define OUTPUT
 
@@ -498,7 +504,7 @@ struct hashSlInt3 {
   }
 };
 
-typedef std::tr1::unordered_map<SlInt3, SlInt2, hashSlInt3, eqSlInt3> TriToTetMap;
+typedef unordered_map<SlInt3, SlInt2, hashSlInt3, eqSlInt3> TriToTetMap;
 
 inline void updateTriToTetMap(TriToTetMap &triToTetMap, int n, int x, int y, int z) {
   SlInt3 tri(x, y, z);

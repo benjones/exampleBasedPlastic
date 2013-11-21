@@ -1,8 +1,15 @@
 #ifndef FEM_H
 #define FEM_H
 
+//use the c++11 versions if available
+#ifdef __clang__
+#include <unordered_map>
+#include <unordered_set>
+#else
 #include <tr1/unordered_map>
 #include <tr1/unordered_set>
+#endif
+
 #define HASH_MAP std::tr1::unordered_map
 #define HASH_SET std::tr1::unordered_set
 

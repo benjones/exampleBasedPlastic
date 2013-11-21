@@ -1,7 +1,7 @@
 #-----------------------------------------
 #Basic Stuff -----------------------------
-CC          = g++
-cc          = gcc
+CC          = `which c++` #g++
+cc          = `which c++` #gcc
 
 #-----------------------------------------
 #Optimization ----------------------------
@@ -16,8 +16,8 @@ OBJECTS = collisions.o fem.o grip.o main.o globalMatrix.o obstacle.o
 
 #-----------------------------------------
 
-LIBS = -lm -L/usr/local/lib -L../../Library/Common -lslcommon 	../../Misc/eltopo-old/eltopo3d/libeltopo_release.a -llapack -lblas
-INCS = -I/usr/local/include -I../../Library/Common -I../../Misc/eltopo-old/eltopo3d -I../../Misc/eltopo-old/common
+LIBS = -lm -L/usr/local/lib -L./Common -lslcommon ./eltopo/eltopo3d/libeltopo_release.a -llapack -lblas
+INCS = -I/usr/local/include -I./Common -I./eltopo/eltopo3d -I./eltopo/common
 
 CCOPTS = $(OPT) $(DEBUG) $(INCS) -pg
 LDOPTS = $(OPT) $(DEBUG) $(INCS) -pg
@@ -35,7 +35,7 @@ clean:
 #-----------------------------------------
 
 fracture: $(OBJECTS)
-	g++ $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
+	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
 
 #-----------------------------------------
 

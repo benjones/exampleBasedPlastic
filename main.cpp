@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
 	unsigned int frame = 0;
 	double timeSinceLastFrame = 100;
 	char framestring[80];
-	sprintf(framestring, "foo-%%02i.%%04i.obj");
+	sprintf(framestring, "frames/foo-%%02i.%%04i.obj");
 	double friction = 0.5;
 	double time = 0;
 
