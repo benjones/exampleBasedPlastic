@@ -572,7 +572,7 @@ void FemObject::collide(double dt) {
 
 
 // code to dump frame data
-	timeSinceLastFrame+=dt;
+timeSinceLastFrame+=dt;
 	if (timeSinceLastFrame > framerate) {
 		timeSinceLastFrame = 0;
 		char fname[80];
@@ -606,4 +606,5 @@ void FemObject::collide(double dt) {
 
 	time += dt;
 #endif
+
 

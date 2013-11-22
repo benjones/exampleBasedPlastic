@@ -48,7 +48,12 @@ int main(int argc, char *argv[]) {
 #ifdef TIMING
 			if (frame > 0)
 				{
-					std::cout<<totalTime/frame<<" "<<computeForcesTime/frame<<" "<<" "<<computeMatrixTime/frame<<" "<<solveTime/frame<<" "<<collisionTime/frame<<std::endl;
+					std::cout<<
+					  //simulator.totalTime/frame<<" "<<
+					  simulator.computeForcesTime/frame<<" "<<
+					  " "<<simulator.computeMatrixTime/frame<<
+					  " "<<simulator.solveTime/frame<<
+					  " "<<simulator.collisionTime/frame<<std::endl;
 				}
 #endif
 		}

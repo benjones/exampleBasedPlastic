@@ -770,7 +770,7 @@ inline unsigned int midinantAxis(const SlVector3 &v) {
     if (s!= 1) m = 1; else m = 2;
   }else if (d==1) {
     if (s!= 0) m = 0; else m = 2;
-  }else if (d==2) {
+  }else{ // if (d==2) { //clang whines about this 
     if (s!= 0) m = 0; else m = 1;
   }
   return m;
