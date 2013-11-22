@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 		
-		simulator.handleSelfCollisions(dt);
+		//simulator.handleSelfCollisions(dt);
 		simulator.updatePositions(dt);
 	}
 }
