@@ -1,7 +1,7 @@
 #include <iostream>
 #include "fem.H"
 #include <sys/time.h>
-#include <dynamicsurface.h>
+//#include <dynamicsurface.h> //punt on collisions
 
 void FemSimulator::initCollisions() {
 	unsigned int nv=0,totalcv=0,totalv=0,totalt=0;
@@ -77,9 +77,9 @@ void FemSimulator::initCollisions() {
 	}
 
 	//std::cout<<totalv<<std::endl;
-	collisionSurface = new DynamicSurface(vertex_positions, triangles, masses, 1e-4, 0.0, true, false); //added friction coefficient
+	//collisionSurface = new DynamicSurface(vertex_positions, triangles, masses, 1e-4, 0.0, true, false); //added friction coefficient
 	//collisionSurface->m_mesh.update_connectivity(totalv);  //done automatically in the new version
-	collisionSurface->m_velocities.resize(totalv);
+	//collisionSurface->m_velocities.resize(totalv);
 
 	nCollisionSurfaceVertices = totalv;
 
@@ -87,6 +87,9 @@ void FemSimulator::initCollisions() {
 	delete [] used;
 }
 
+
+//punt on this
+#if 0
 void FemSimulator::handleSelfCollisions(double dt) {
 	timeval startTime, endTime;
 	gettimeofday(&startTime, NULL);
@@ -103,7 +106,8 @@ void FemSimulator::handleSelfCollisions(double dt) {
 							   x[2] + v[2]*dt));
 	}
 	double actualDT; //not sure we need to use this for anything
-	collisionSurface->integrate(dt, actualDT);
+
+	//collisionSurface->integrate(dt, actualDT);
 
 	for (unsigned int i=0; i<nCollisionSurfaceVertices; i++) {
 		Vec3d &x = collisionSurface->pm_positions[i];
@@ -117,3 +121,4 @@ void FemSimulator::handleSelfCollisions(double dt) {
 	collisionTime += (endTime.tv_sec - startTime.tv_sec) +
 		(endTime.tv_usec-startTime.tv_usec)*1.0e-6;
 }
+#endif

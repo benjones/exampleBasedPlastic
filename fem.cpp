@@ -16,11 +16,11 @@ extern "C" {
 using std::cout;
 using std::endl;
 
-#ifdef __clang__
+//#ifdef __clang__
 using std::unordered_map;
-#else
-using std::tr1::unordered_map
-#endif
+//#else
+//using std::tr1::unordered_map
+//#endif
 
 //#define TIMING
 //#define OUTPUT

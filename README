@@ -1,0 +1,12 @@
+To build:
+
+cd bullet-2.82-r2704/build
+ccmake .. 
+Set "Use double precision" to ON
+'c' to configure
+'g' to generate makefiles
+make  to build bullet
+cd ../../
+make
+./fracture inputFiles/squareFlagpole.json  #should run the simulator with decoupled/noninteracting FEM object and bullet block and dump obj files to frames/foo*obj
+
