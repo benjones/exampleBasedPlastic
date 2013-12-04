@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 		o.pos[i][2] += 1;
 	}
 	
-	simulator.initCollisions();
+	//simulator.initCollisions();
 
 	while (time < 5) {
 		time += dt;

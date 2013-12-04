@@ -54,13 +54,14 @@ public:
 	inline SlVector3 &operator[](const unsigned int &i) {return normals[i];};
 	inline SlVector3 operator[](const unsigned int &i) const {return normals[i];};
 private:
-	SlVector3 normals[3]; 
+	SlVector3 normals[4]; 
 };
 
 class FemObject {
 public:
 	FemObject();
 	void load(const char *fname);
+	void loadNodeEle(const char *fname);
 	~FemObject();
 	void clearGlobalMatrix() {gm->clear();};
 	void computeGlobalMatrix(double dt);
@@ -73,6 +74,8 @@ public:
 	void collide(double dt);  // collide with the ground
 	void setForces(double dt, const SlVector3 &gravity); // initialize force accumulator
 	void computeBoundingBox(SlVector3 &bbMin, SlVector3 &bbMax);
+	void computeK(int t);
+	void applyPlasticity(int t, double dt, SlMatrix3x3 &S);
 
 	std::vector<FemGrip*> grips;  
 	unsigned int nv, av; // number of vertices, allocated space
@@ -97,10 +100,12 @@ public:
 	TetMatrix *k;  // this is the stiffness matrix for the tet
 	SlMatrix3x3 *Qx, *Qv;  // rotations for position and velocity (co-rotated formulation)
 
-	FrcOffsets *frcOffsets; // force offsets
+	//FrcOffsets *frcOffsets; // force offsets
 	GlobalMatrix *gm;  // global system matrix
 
 	double *density, *lambda, *mu, *scale;  // material parameters, phi = scale*lambda, psi = scale*mu
+	double *yieldStress, *plasticModulus, *alpha, *flowrate;  
+	double alphaCap;
 
 	double friction;
 
