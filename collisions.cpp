@@ -1,12 +1,12 @@
 #include <iostream>
 #include "fem.H"
 #include <sys/time.h>
-#include <dynamicsurface.h>
+//#include <dynamicsurface.h> //punt on collisions
 
 void FemSimulator::initCollisions() {
 	unsigned int nv=0,totalcv=0,totalv=0,totalt=0;
 	std::vector<Vec3d> vertex_positions;
-	std::vector<Vec3ui> triangles;
+	std::vector<Vec3st> triangles;
 	std::vector<double> masses;
 	for (unsigned int i=0; i<nobjects; i++) {
 		totalcv += objects[i].nv;
@@ -77,9 +77,9 @@ void FemSimulator::initCollisions() {
 	}
 
 	//std::cout<<totalv<<std::endl;
-	collisionSurface = new DynamicSurface(vertex_positions, triangles, masses, 1e-4, true, false);
-	collisionSurface->m_mesh.update_connectivity(totalv);
-	collisionSurface->m_velocities.resize(totalv);
+	//collisionSurface = new DynamicSurface(vertex_positions, triangles, masses, 1e-4, 0.0, true, false); //added friction coefficient
+	//collisionSurface->m_mesh.update_connectivity(totalv);  //done automatically in the new version
+	//collisionSurface->m_velocities.resize(totalv);
 
 	nCollisionSurfaceVertices = totalv;
 
@@ -87,6 +87,9 @@ void FemSimulator::initCollisions() {
 	delete [] used;
 }
 
+
+//punt on this
+#if 0
 void FemSimulator::handleSelfCollisions(double dt) {
 	timeval startTime, endTime;
 	gettimeofday(&startTime, NULL);
@@ -94,14 +97,20 @@ void FemSimulator::handleSelfCollisions(double dt) {
 	if (nCollisionSurfaceVertices == 0) return;
 	for (unsigned int i=0; i<nCollisionSurfaceVertices; i++) {
 		SlVector3 &x = objects[collisionSurfaceToVertices[i][0]].pos[collisionSurfaceToVertices[i][1]];
-		collisionSurface->m_positions[i] = Vec3d(x[0], x[1], x[2]);
+		//collisionSurface->pm_positions[i] = Vec3d(x[0], x[1], x[2]);
+		collisionSurface->set_position(i, Vec3d(x[0], x[1], x[2]));
 		SlVector3 &v = objects[collisionSurfaceToVertices[i][0]].vel[collisionSurfaceToVertices[i][1]];
-		collisionSurface->m_velocities[i] = Vec3d(v[0], v[1], v[2]);
+		//collisionSurface->m_velocities[i] = Vec3d(v[0], v[1], v[2]);
+		collisionSurface->set_newposition(i, Vec3d(x[0] + v[0]*dt, 
+							   x[1] + v[1]*dt, 
+							   x[2] + v[2]*dt));
 	}
-	collisionSurface->integrate(dt);
+	double actualDT; //not sure we need to use this for anything
+
+	//collisionSurface->integrate(dt, actualDT);
 
 	for (unsigned int i=0; i<nCollisionSurfaceVertices; i++) {
-		Vec3d &x = collisionSurface->m_positions[i];
+		Vec3d &x = collisionSurface->pm_positions[i];
 		SlVector3 y(x[0], x[1], x[2]);
 		//SlVector3 & v = objects[collisionSurfaceToVertices[i][0]].vel[collisionSurfaceToVertices[i][1]];
 		objects[collisionSurfaceToVertices[i][0]].vel[collisionSurfaceToVertices[i][1]] = 
@@ -112,3 +121,4 @@ void FemSimulator::handleSelfCollisions(double dt) {
 	collisionTime += (endTime.tv_sec - startTime.tv_sec) +
 		(endTime.tv_usec-startTime.tv_usec)*1.0e-6;
 }
+#endif

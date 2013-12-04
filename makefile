@@ -1,26 +1,26 @@
 #-----------------------------------------
 #Basic Stuff -----------------------------
-CC          = g++
-cc          = gcc
+CC          = `which c++` #g++
+cc          = `which c++` #gcc
 
 #-----------------------------------------
 #Optimization ----------------------------
-#OPT   = -O3 -fast -g -DPCUBE -DINVENTOR_DEFINED -Wall
-OPT   = -g -Wall
+OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION #-DPCUBE -DINVENTOR_DEFINED
+#OPT   = -g -Wall
 
 #-----------------------------------------
 #-----------------------------------------
 
 TARGETS = fracture
-OBJECTS = collisions.o fem.o grip.o main.o globalMatrix.o obstacle.o
+OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigidBody.o #collisions.o, punt on this
 
 #-----------------------------------------
 
-LIBS = -lm -L/usr/local/lib -L../../Library/Common -lslcommon 	../../Misc/eltopo-old/eltopo3d/libeltopo_release.a -llapack -lblas
-INCS = -I/usr/local/include -I../../Library/Common -I../../Misc/eltopo-old/eltopo3d -I../../Misc/eltopo-old/common
+LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath -L./bullet-2.82-r2704/build/src/BulletCollision -L./bullet-2.82-r2704/build/src/BulletDynamics -lslcommon -llapack -lblas -lBulletDynamics -lBulletCollision -lLinearMath  #./eltopo/eltopo3d/libeltopo_release.a
+INCS = -I/usr/local/include -I./Common -I./bullet-2.82-r2704/src/ #-I./eltopo/eltopo3d -I./eltopo/common
 
-CCOPTS = $(OPT) $(DEBUG) $(INCS) -pg
-LDOPTS = $(OPT) $(DEBUG) $(INCS) -pg
+CCOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
+LDOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
 
 #-----------------------------------------
 #-----------------------------------------
@@ -35,7 +35,7 @@ clean:
 #-----------------------------------------
 
 fracture: $(OBJECTS)
-	g++ $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
+	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
 
 #-----------------------------------------
 

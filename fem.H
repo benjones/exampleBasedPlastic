@@ -1,10 +1,17 @@
 #ifndef FEM_H
 #define FEM_H
 
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
-#define HASH_MAP std::tr1::unordered_map
-#define HASH_SET std::tr1::unordered_set
+//use the c++11 versions if available
+//#ifdef __clang__
+#include <unordered_map>
+#include <unordered_set>
+//#else
+//#include <tr1/unordered_map>
+//#include <tr1/unordered_set>
+//#endif
+
+//#define HASH_MAP std::tr1::unordered_map
+//#define HASH_SET std::tr1::unordered_set
 
 #include "grip.H"
 #include "obstacle.H"
@@ -13,7 +20,7 @@
 #include <slUtil.H>
 #include <assert.h>
 
-#include <dynamicsurface.h>
+//#include <dynamicsurface.h> //ignore collisions for now
 
 class Tet {
 public: 
@@ -131,8 +138,8 @@ class FemSimulator {
 public:
 	FemSimulator();
 	~FemSimulator();
-	void initCollisions();
-	void handleSelfCollisions(double dt);
+  //void initCollisions();
+  //void handleSelfCollisions(double dt); //punt on this
 	void computeVelocities(double dt, const SlVector3 &gravity);
 	void updatePositions(double dt);
 
@@ -142,7 +149,7 @@ public:
 	double computeForcesTime, computeMatrixTime, solveTime, collisionTime;
 
 private:
-	DynamicSurface *collisionSurface;
+  //DynamicSurface *collisionSurface;
 	SlInt2 *collisionSurfaceToVertices;
 	unsigned int nCollisionSurfaceVertices;
 };
