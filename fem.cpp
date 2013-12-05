@@ -74,7 +74,8 @@ void FemObject::load(const char *fname) {
 
 	frcOffsets = new FrcOffsets[ntets];
 
-	SlVector3 bbMin(DBL_MAX), bbMax(-DBL_MAX);
+	bbMin = SlVector3(DBL_MAX);
+	bbMax = SlVector3(-DBL_MAX);
 	std::cout<<"number of vertices: "<<nv<<"; number of tets: "<<ntets<<std::endl;
 
 	in.open(fname, std::ios::in);

@@ -237,6 +237,7 @@ void gtDump(char *fname, const std::vector<SlVector3> &meshPts, const std::vecto
 void gtRead(char *fname, std::vector<SlVector3> &meshPts, std::vector<SlTri> &triangles);
 void bgtDump(char *fname, const std::vector<SlVector3> &meshPts, const std::vector<SlTri> &triangles);
 bool readObjFile(char *fname, std::vector<SlVector3> &pts, std::vector<SlTri> &triangles);
+bool readObjFile(const char *fname, std::vector<SlVector3> &pts, std::vector<SlTri> &triangles, SlVector3& lc, SlVector3& uc); //with boundingBox
 void objDump(char *fname, const std::vector<SlVector3> &meshPts, const std::vector<SlTri> &triangles);
 
 

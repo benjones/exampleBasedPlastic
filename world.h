@@ -19,6 +19,8 @@ class World{
   World(const World& other) = delete;  //move only, no copying
   World(World&& other) = default;
 
+  void computeConstraints();
+
 
   void timeStep();
   void dumpFrame();
@@ -44,6 +46,7 @@ class World{
 
   std::vector<RigidBody> rigidBodies;
   std::vector<FemObject> femObjects;
+  std::vector<CouplingConstraint> constraints;
 
   int currentFrame;
 
