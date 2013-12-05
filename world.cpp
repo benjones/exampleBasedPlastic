@@ -57,6 +57,7 @@ World::World(std::string filename)
     auto& RB = rigidBodies.back();
     RB.shape = 
       std::unique_ptr<btCollisionShape>(new btStaticPlaneShape(btVector3(0,1,0), groundHeight));
+    RB.rbType = RigidBody::RBType::RB_PLANE;
     RB.motionState = 
       std::unique_ptr<btMotionState>(new btDefaultMotionState(btTransform(btQuaternion::getIdentity(),
 									  btVector3(0,0,0))));
@@ -114,7 +115,7 @@ World::World(std::string filename)
   
   auto bulletObjectsIn = root["bulletObjects"];
   for(auto i : range(bulletObjectsIn.size())){
-  
+    std::cout << "adding rb: " << i << std::endl;
     auto bo = bulletObjectsIn[i];
     rigidBodies.emplace_back();
     auto& RB = rigidBodies.back();
@@ -178,6 +179,8 @@ World::World(std::string filename)
     bulletWorld.addRigidBody(RB.bulletBody.get());
     
   }
+  std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
+  computeConstraints();
 }
 
 
@@ -261,7 +264,7 @@ void World::dumpFrame(){
 }
 
 void World::computeConstraints(){
-
+  std::cout << "computing constraints" << std::endl;
   //find the FEM nodes that are inside of a rigid body and constrain them.
 
   for(auto rbInd : range(rigidBodies.size())){
@@ -276,10 +279,10 @@ void World::computeConstraints(){
       if(!(rbBoundMin.x() > fem.bbMax.x() ||
 	   rbBoundMax.x() < fem.bbMin.x() ||
 	   rbBoundMin.y() > fem.bbMax.y() ||
-	   rbBoundMin.y() < fem.bbMin.y() ||
+	   rbBoundMax.y() < fem.bbMin.y() ||
 	   rbBoundMin.z() > fem.bbMax.z() ||
-	   rbBoundMin.z() < fem.bbMin.z())){
-	
+	   rbBoundMax.z() < fem.bbMin.z())){
+
 	for(auto i : range(fem.nv)){
 
 	  auto worldPos = btVector3(fem.pos[i].x(),
@@ -300,11 +303,20 @@ void World::computeConstraints(){
 		relPos.z() < extents.z()){
 
 	      constraints.push_back({rbInd, relPos, femInd, i});
+	      std::cout << "added constraint: " << rbInd << ' ' << relPos << ' ' << femInd << ' ' << i << std::endl;
 
 	    }
 	    
 
-	  } else {
+	  } else if(rb.rbType == RigidBody::RB_PLANE){
+	    const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
+	    if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
+	      constraints.push_back({rbInd, relPos, femInd, i});
+	      std::cout << "added constraint: " << rbInd << ' ' << relPos << ' ' << femInd << ' ' << i << std::endl;
+	    }
+	    
+
+	  }else {
 	    std::cout << "unknown RB type" << std::endl;
 	    exit(1);
 	  }

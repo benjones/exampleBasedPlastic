@@ -125,6 +125,27 @@ void readFrame(const std::string &objFile, size_t frameNumber){
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
 
+void drawTriangles(){
+  glBegin(GL_TRIANGLES);
+  for(auto& oj : globalObjs[currentFrame]){
+    for(size_t i = 0; i < oj.tris.size(); ++i){
+      SlVector3 v1 = oj.pts[oj.tris[i].indices[0]],
+	v2 = oj.pts[oj.tris[i].indices[1]],
+	v3 = oj.pts[oj.tris[i].indices[2]];
+      //glBegin(GL_LINE_LOOP);
+      SlVector3 normal = cross(v2 - v1, v3 -v1);
+      normalize(normal);
+      glNormal3d(normal[0], normal[1], normal[2]);
+      glVertex3d(v1[0], v1[1], v1[2]);
+      glVertex3d(v2[0], v2[1], v2[2]);
+      glVertex3d(v3[0], v3[1], v3[2]);
+      //	glEnd();
+      
+    }      
+  }
+  glEnd();
+}
+
 
 void displayFrame(){
 
@@ -149,7 +170,7 @@ void displayFrame(){
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
 
-  glEnable(GL_LIGHTING);
+  //glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHT1);
   
@@ -218,25 +239,15 @@ void displayFrame(){
     glColor4d(.5,.8,.5,1);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glMatrixMode(GL_MODELVIEW);
+    glEnable(GL_POLYGON_OFFSET_FILL); // Avoid Stitching!
+    glPolygonOffset(1.0, 1.0);
+    drawTriangles();
+    glDisable(GL_POLYGON_OFFSET_FILL);
 
-    glBegin(GL_TRIANGLES);
-    for(auto& oj : globalObjs[currentFrame]){
-      for(size_t i = 0; i < oj.tris.size(); ++i){
-	SlVector3 v1 = oj.pts[oj.tris[i].indices[0]],
-	  v2 = oj.pts[oj.tris[i].indices[1]],
-	  v3 = oj.pts[oj.tris[i].indices[2]];
-	//glBegin(GL_LINE_LOOP);
-	SlVector3 normal = cross(v2 - v1, v3 -v1);
-	normalize(normal);
-	glNormal3d(normal[0], normal[1], normal[2]);
-	glVertex3d(v1[0], v1[1], v1[2]);
-	glVertex3d(v2[0], v2[1], v2[2]);
-	glVertex3d(v3[0], v3[1], v3[2]);
-	//	glEnd();
-	
-      }      
-    }
-    glEnd();    
+    glColor3d(1, 1, 1); // Color for your polygon border
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    drawTriangles();
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 
 

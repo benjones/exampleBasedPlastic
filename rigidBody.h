@@ -25,7 +25,8 @@ class RigidBody{
   std::vector<CouplingConstraint> constraints;
 
   enum RBType{
-    RB_BOX
+    RB_BOX,
+    RB_PLANE
   };
   
   RBType rbType;

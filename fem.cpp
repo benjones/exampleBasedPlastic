@@ -838,7 +838,7 @@ void FemObject::applyPlasticity(int t, double dt, SlMatrix3x3 &S) {
 	if (Fhat[0] < FEPS || Fhat[1] < FEPS || Fhat[2] < FEPS) return;
 
 	SlVector3 Fstarhat = Fhat / cbrt(Fhat[0]*Fhat[1]*Fhat[2]);
-	double gamma = min(min(flowrate[t] * dt, 1.0) * thresh / m, 1.0);
+	double gamma = std::min(std::min(flowrate[t] * dt, 1.0) * thresh / m, 1.0);
 	SlVector3 Fphat(pow(Fstarhat[0], gamma), pow(Fstarhat[1], gamma), pow(Fstarhat[2], gamma));
 	alpha[t] += dt*m;
 	beta[t] = beta[t] * V * diagonal(SlVector3(1.0/Fphat[0], 1.0/Fphat[1], 1.0/Fphat[2])) * VT;
