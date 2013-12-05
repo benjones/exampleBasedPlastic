@@ -10,7 +10,7 @@ OS = $(shell uname -s)
 #Dans OPT flags
 # -march=native was not available in gcc 4.2 which is the latest version on the mac
 ifeq ($(OS),Darwin)
-OPT	= -fast -O3 -fomit-frame-pointer -mtune=native -finline-functions -funroll-loops -finline -fno-strict-aliasing -g
+OPT	= -O3 -fomit-frame-pointer -mtune=native -finline-functions -funroll-loops -finline -fno-strict-aliasing -g -stdlib=libc++ -std=c++11
 else
 OPT	= -O3 -fomit-frame-pointer -mtune=native -march=native -finline-functions -funroll-loops -finline -fno-strict-aliasing -g
 endif
