@@ -3,7 +3,7 @@
     "dt" : 0.01,
     
     "femObjects" : [ 
-	{"filename" : "cube.mesh",
+	{"filename" : "inputFiles/cube",
 	 "offset" : [0, 0.5, 0]
 	}
     ],
