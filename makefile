@@ -37,6 +37,9 @@ clean:
 fracture: $(OBJECTS)
 	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
 
+
+openglViewer: openglViewer.cpp
+	$(CC) $(OPT) -o openglViewer openglViewer.cpp -I./Common -L./Common -lslCommon -framework OpenGL -framework GLUT
 #-----------------------------------------
 
 .cpp.o: 

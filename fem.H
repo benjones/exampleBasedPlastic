@@ -132,6 +132,8 @@ public:
 
 	bool active;
 
+  SlVector3 bbMin, bbMax;
+
 private:
 //Allocated space for computation
 	bool *solver_gripped;
