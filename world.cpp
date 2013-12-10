@@ -222,6 +222,11 @@ void World::computeFemVelocities(){
     } else {
       femObject.setForces(dt, 0.0);
     }
+		for (unsigned int v=0; v<femObject.nv; v++) {
+			femObject.separationTensor[v] = 0.0;
+			femObject.unbalancedTensLoad[v] = 0.0;
+			femObject.unbalancedCompLoad[v] = 0.0;
+		}
   }
 
   for(auto& femObject : femObjects){
@@ -237,6 +242,7 @@ void World::computeFemVelocities(){
 void World::updateFemPositions(){
   for(auto& femObject : femObjects){
     femObject.updatePositions(dt);
+		femObject.fracture();
   }
 
 }

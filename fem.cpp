@@ -459,6 +459,7 @@ inline void M(const SlVector3 &x, const double &val, SlMatrix3x3 &m) {
 }
 
 void FemObject::computeSeparationTensor(int t, double dt, const SlMatrix3x3 &S, const SlVector3 f[4]) {
+	static const double EPS = 1e-6;
 	SlVector3 vals;
 	SlMatrix3x3 vecs, compression(0.0), tension(0.0), m;
 	SlVector3 tensionF, compressF;
@@ -467,6 +468,7 @@ void FemObject::computeSeparationTensor(int t, double dt, const SlMatrix3x3 &S, 
 	SlSymetricEigenDecomp(S, vals, vecs);
 
 	for (unsigned int i=0; i<3; i++) {
+		if (vals[i] > -EPS && vals[i] < EPS) continue;
 		M(SlVector3(vecs(0,i), vecs(1,i), vecs(2,i)), vals[i], m);
 		(vals[i] > 0) ? tension += m : compression += m;
 	}
@@ -476,12 +478,18 @@ void FemObject::computeSeparationTensor(int t, double dt, const SlMatrix3x3 &S, 
 	for (unsigned int i=0; i<4; i++) {
 		tensionF = QS * tetNormals[t][i];
 		compressF = (f[i]/dt) - tensionF;
-		scale = 1.0/mag(tensionF);
-		M(tensionF, scale, m);
-		separationTensor[tets[t](i)] += m;
-		scale = 1.0/mag(compressF);
-		M(compressF, scale, m);
-		separationTensor[tets[t](i)] -= m;
+		scale = mag(tensionF);
+		if (scale > EPS) {
+			scale = 1.0/scale;
+			M(tensionF, scale, m);
+			separationTensor[tets[t](i)] += m;
+		}
+		scale = mag(compressF);
+		if (scale > EPS) {
+			scale = 1.0/scale;
+			M(compressF, scale, m);
+			separationTensor[tets[t](i)] -= m;
+		}
 		unbalancedTensLoad[tets[t](i)] += tensionF;
 		unbalancedCompLoad[tets[t](i)] += compressF;
 	}
@@ -494,6 +502,7 @@ inline void swap(int *array, int i1, int i2) {
 }
 
 void FemObject::fracture() {
+	static const double EPS = 1e-6;
 	if (av == nv) {
 		std::cout<<"Warning: we've stopped fracture"<<std::endl;
 		return;
@@ -505,12 +514,20 @@ void FemObject::fracture() {
 	double maxval;
 	int oldnv = nv;
 	SlMatrix3x3 m;
+	double scale;
 
 	for (unsigned int v=0; v<oldnv; v++) {
-		M(unbalancedTensLoad[v], 1.0/mag(unbalancedTensLoad[v]), m);
-		separationTensor[v] -= m;
-		M(unbalancedCompLoad[v], 1.0/mag(unbalancedCompLoad[v]), m);
-		separationTensor[v] += m;
+		scale = mag(unbalancedTensLoad[v]);
+		if (scale > EPS) {
+			M(unbalancedTensLoad[v], 1.0/scale, m);
+			separationTensor[v] -= m;
+		}
+		scale = mag(unbalancedCompLoad[v]);
+		if (scale > EPS) {
+			M(unbalancedCompLoad[v], 1.0/scale, m);
+			separationTensor[v] += m;
+		}
+
 		SlSymetricEigenDecomp(separationTensor[v], vals, vecs);
 		maxval = vals[0];
 		maxi = 0;
@@ -552,19 +569,30 @@ void FemObject::fracture() {
 				}
 
 				if (pointsaboveplane == 3) {
-					swap(vertexToTetMap, below, above--);
 					tets[t](vertex) = nv;
+					swap(vertexToTetMap, below, above--);
 				} else if (pointsaboveplane == 0) {
 					below++;
 				} else {
 					// determine whether tet should be above or below.  geometric nightmare.  for now we vote.
 					if (pointsaboveplane > 1) {
-						swap(vertexToTetMap, below, above--);
 						tets[t](vertex) = nv;
+						swap(vertexToTetMap, below, above--);
 					} else {
 						below++;
 					}
 				}
+			}
+			if (below == vertexToTetMapEnd[v] || below == vertexToTetMapStart[v]) {
+				for (unsigned int i=vertexToTetMapStart[v]; i<vertexToTetMapEnd[v]; i++) {
+					int t = vertexToTetMap[i];
+					for (unsigned int j=0; j<4; j++) {
+						if (tets[t](j) == nv) {
+							tets[t](j) = v;
+						}
+					}
+				}
+				continue;
 			}
 			vertexToTetMapStart[nv] = below;
 			vertexToTetMapEnd[nv] = vertexToTetMapEnd[v];
@@ -585,6 +613,12 @@ void FemObject::fracture() {
 			}
 		}
 	}
+	if (oldnv != nv) {
+		std::cout<<"fracture! oldnv = "<<oldnv<<" nv = "<<nv<<std::endl;
+		delete gm;
+		gm = new GlobalMatrix(nv, ntets, tets);
+		extractSurface(tets, ntets, tris, ntris);
+	}
 }
 
 FemSimulator::FemSimulator() {
@@ -594,7 +628,6 @@ FemSimulator::FemSimulator() {
 	computeMatrixTime = 0.0;
 	solveTime = 0.0;
 	collisionTime = 0.0;
-	nCollisionSurfaceVertices = 0;
 }
 
 FemSimulator::~FemSimulator() {
@@ -719,6 +752,7 @@ bool extractSurface (const Tet* tets, unsigned int ntets,
       vtris.push_back(m->first);
     }
   }
+	if (tris) delete [] tris;
 	tris = new SlInt3[vtris.size()];
 	for (unsigned int i=0; i<vtris.size(); i++) {
 		tris[i] = vtris[i];
@@ -883,6 +917,9 @@ void FemObject::loadNodeEle(const char *fname) {
 	mass = new double[av];
 	massInv = new double[av];
 	vertexToughness = new double[av];
+	separationTensor = new SlMatrix3x3[av];
+	unbalancedTensLoad = new SlVector3[av];
+	unbalancedCompLoad = new SlVector3[av];
 
 	SlVector3 bbMin(DBL_MAX), bbMax(-DBL_MAX);
 	std::cout<<"number of vertices: "<<nv<<"; number of tets: "<<ntets<<std::endl;
@@ -984,10 +1021,10 @@ void FemObject::loadNodeEle(const char *fname) {
 			lambda[i] = 5e4;
 			mu[i] = 1e5;
 			scale[i] = 1e-10;
-			yieldStress[i] = 1;
+			yieldStress[i] = 10.0;
 			plasticModulus[i] = 0.0;
 			flowrate[i] = 100;
-			toughness[i] = 100.0;
+			toughness[i] = 50.0;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);
@@ -1035,8 +1072,8 @@ void FemObject::loadNodeEle(const char *fname) {
 			toughness[i] = strtod(stringptr, &stringptr);
 		}
   }
-
   fclose(infile);
+
 	for (unsigned int i=0; i<nv; i++) {
 		vel[i] = 0.0;
 		mass[i] = 0.0;
@@ -1101,7 +1138,7 @@ void FemObject::loadNodeEle(const char *fname) {
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
 
-	gm = new GlobalMatrix(av, ntets, tets);
+	gm = new GlobalMatrix(nv, ntets, tets);
 
 	solver_gripped = new bool[av];
 	solver_p = new SlVector3[av];
@@ -1230,9 +1267,11 @@ void FemObject::load(const char *fname) {
 FemObject::FemObject() {
 	friction = 0.5;
 	active = true;
+	tris = NULL;
 }
 
 FemObject::~FemObject() {
+	delete gm;
 	delete [] pos;
 	delete [] vel;
 	delete [] npos;
@@ -1258,6 +1297,9 @@ FemObject::~FemObject() {
 	delete [] flowrate;
 	delete [] toughness;
 	delete [] vertexToughness;
+	delete [] separationTensor;
+	delete [] unbalancedTensLoad;
+	delete [] unbalancedCompLoad;
 	delete [] vertexToTetMap;
 	delete [] vertexToTetMapStart;
 	delete [] vertexToTetMapEnd;

@@ -161,8 +161,8 @@ public:
 
 private:
   //DynamicSurface *collisionSurface;
-	SlInt2 *collisionSurfaceToVertices;
-	unsigned int nCollisionSurfaceVertices;
+	//SlInt2 *collisionSurfaceToVertices;
+	//unsigned int nCollisionSurfaceVertices;
 };
 
 inline void TetMatrix::mvmul (const SlVector3 *x, SlVector3 *y) {
