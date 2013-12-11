@@ -1,0 +1,248 @@
+%----------------------------------------------------------------------------
+%
+% Destruction
+% 
+%----------------------------------------------------------------------------
+%----------------------------------------------------------------------------
+%----------------------------------------------------------------------------
+
+\ProvidesFile{destruction.tex}
+\documentclass[review]{acmsiggraph-job}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{wasysym}
+\usepackage[scaled=.92]{helvet}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{parskip}
+\usepackage{url}
+\usepackage[labelfont=bf,textfont=it]{caption}
+\usepackage{color}
+\TOGonlineid{papers\_????}
+
+%\TOGyear{2013}
+%\TOGmonth{November}
+%\TOGvenue{ACM SIGGRAPH Asia}
+%\TOGlocation{Hong Kong}
+%\TOGvolume{32}
+%\TOGnumber{6}
+%\TOGarticlenum{185}
+%\TOGarticleDOI{2508363.2508430}
+
+%\TOGprojectURL{http://sealab.cs.utah.edu/Papers/Gerszewski-2013-PAO/index.html}
+%\TOGvideoURL{http://sealab.cs.utah.edu/Papers/Gerszewski-2013-PAO/Stuff/Gerszewski-2013-PAO.mov}
+
+\setlength\paperwidth{8.5in}  % Override any random settings...
+\setlength\paperheight{11in}
+
+\title{Physics-based Animation of Destruction}
+
+\author{}
+\pdfauthor{}
+\pdftitle{Physics-based Animation of Destruction}
+
+\newcommand{\theKeywords}{}
+
+\begin{document}
+%\abovecopyrightspacetext{}
+
+%\teaser{
+%\includegraphics[width=\linewidth]{Figures/Blank}
+%\caption{}
+%\label{fig:Blank}
+%}
+
+\maketitle
+
+\begin{abstract}
+\end{abstract}
+\begin{CRcatlist}
+  \CRcat{I.3.7}{Computer Graphics}{Three-Dimensional Graphics and Realism}{Animation};
+  \CRcat{I.6.8}{Simulation and Modeling}{Types of Simulation}{Animation}.
+\end{CRcatlist}
+
+\keywordlist{\theKeywords}
+
+\TOGlinkslist
+
+%----------------------------------------------------------------------------
+%----------------------------------------------------------------------------
+
+\definecolor{AdamColor}{rgb}{0,0,0.7}
+\newcommand{\adam}[1]{{\color{AdamColor} #1}}
+%\newcommand{\adam}[1]{{#1}}
+
+%\let\shortcite=\cite
+%\newcommand{\shortcite}[1]{\cite{#1}}
+\newcommand{\etal}{and colleagues}
+\newcommand{\Mueller}{M\"uller}
+\newcommand{\BM}[1]{\B{#1}}
+%\newcommand{\B}[1]{\mbox{\boldmath$#1$}}
+%\newcommand{\B}[1]{\textbf{\textit{#1}}}
+\newcommand{\B}[1]{\mathit{\mathbf{#1}}}
+\newcommand{\Per}{\%}
+\newcommand{\Unit}[1]{{\mbox{$\,\mathrm{#1}$}}}
+\newcommand{\Snit}[1]{{\mbox{\small$\mathrm{#1}$}}}
+\newcommand{\Tr}[1]{\mathrm{Tr}\left(#1\right)}
+\newcommand{\Hz}{\Unit{Hz}}
+\newcommand{\MHz}{\Unit{MHz}}
+\newcommand{\GHz}{\Unit{GHz}}
+\newcommand{\Sec}{\Unit{sec}}
+\newcommand{\SPF}{\Unit{sec/frame}}
+\newcommand{\Min}{\Unit{min}}
+\newcommand{\Max}{\Unit{max}}
+\newcommand{\M}{\Unit{m}}
+\newcommand{\Nab}{\B{\nabla}}
+\newcommand{\TP}{^\mathsf{T}}
+
+\newcommand{\Dist}{\mbox{dist}}
+
+\newcommand{\figureTopBot}[1]{
+  \begin{figure}[!tb]{\sloppy #1}\end{figure}
+}
+
+\newcommand{\figureTop}[1]{
+  \begin{figure}[!t]{\sloppy #1}\end{figure}
+}
+ 
+\newcommand{\figureBot}[1]{
+  \begin{figure}[!b]{\sloppy #1}\end{figure}
+}
+
+\newcommand{\figureWideTop}[1]{
+  \begin{figure*}[!t]{\sloppy #1}\end{figure*}
+}
+
+\newcommand{\eqAlgn}{\!\!&\!\!}
+
+\newcommand{\Eref}[1]{Equation~(\ref{#1})}
+\newcommand{\Erefs}[2]{Equations~(\ref{#1}) and (\ref{#2})}
+\newcommand{\eref}[1]{Equation~(\ref{#1})}
+\newcommand{\erefs}[2]{Equations~(\ref{#1}) and (\ref{#2})}
+\newcommand{\Sref}[1]{Section~\ref{#1}}
+\newcommand{\sref}[1]{Section~\ref{#1}}
+\newcommand{\fref}[1]{Figure~\ref{#1}}
+\newcommand{\frefAND}[2]{Figures~\ref{#1} and~\ref{#2}}
+\newcommand{\frefs}[2]{Figures~\ref{#1} and~\ref{#2}}
+\newcommand{\frefss}[3]{Figures~\ref{#1}, \ref{#2}, and~\ref{#3}}
+\newcommand{\frefsss}[4]{Figures~\ref{#1}, \ref{#2}, \ref{#3}, and~\ref{#4}}
+\newcommand{\Fref}[1]{Figure~\ref{#1}}
+\newcommand{\Frefs}[2]{Figures~\ref{#1} and~\ref{#2}}
+\newcommand{\Frefss}[3]{Figures~\ref{#1}, \ref{#2}, and~\ref{#3}}
+\newcommand{\Frefsss}[4]{Figures~\ref{#1}, \ref{#2}, \ref{#3}, and~\ref{#4}}
+\newcommand{\tref}[1]{Table~\ref{#1}}
+
+\renewcommand{\labelenumi}{\arabic{enumi}.}
+\renewcommand{\labelenumii}{\alph{enumii}.}
+\renewcommand{\labelenumiii}{\roman{enumiii}.}
+
+\newenvironment{algstep}{%
+  \begin{enumerate}%
+    \setlength{\itemsep}{0in}%
+    \setlength{\partopsep}{0in}%
+    \setlength{\topsep}{0in}%
+}{\end{enumerate}}
+
+%----------------------------------------------------------------------------
+%----------------------------------------------------------------------------
+
+\section{Introduction}\label{sec:Introduction}
+\copyrightspace
+
+\section{Related Work}\label{sec:RelatedWork}
+
+\section{Methods}
+We envision three-step simulation:
+\begin{enumerate}
+\item update momentum
+\item handle collisions/contact
+\item update positions
+\end{enumerate}
+
+As a point of comparison, Tamar did 
+\begin{enumerate}
+\item update momentum
+\item handle collisions/contact
+\item update positions
+\item update momentum again (this time incorporating constraints in the solve).
+\end{enumerate}
+The two updates are for their Newmark integration, but I think that is overkill.  One update should be enough.
+I am unclear on how they are incorporating the constraints in the second solve.  They claim this is a
+projection and that care must be used, but I cannot see how this would actually be done.  Also,
+it is not clear, but I suspect that they use the fem node masses when projecting the constraints, which
+I think would give much greater weight to the rigid bodies.
+
+\subsection{Update Momentum}
+Currently this is done separately for the finite elements and the rigid bodies.  But, Tamar's paper
+indicates that some consideration of the constraints during the (second) momentum update is necessary
+and I think she is probably right unless very small timesteps are used.  We were originally thinking 
+of applying the constraints after collisions, but I think this coupling would be too loose.  It would also
+suffer from the {\em stretched spring} problem where the constrained fem nodes are much more stretched than
+their neighbors.  One thought is to solve a coupled system.  
+
+Let $\B{M}_{d}$ and $\B{K}_{d}$ be the fem mass and stiffness matrices and assume that the rigid body 
+mass and intertia tensors are stacked in $\B{M}_r$.  Also, let $\B{C}$ represent the constraints.  Then basically
+we would solve 
+\begin{equation}
+\left(\begin{array}{cc}
+\left(
+\begin{array}{cc}
+\B{M}_d+\B{K}_d & 0 \\
+0 & \B{M}_r 
+\end{array}
+\right)
+& \B{C}^T\\
+\B{C} & 0
+\end{array}
+\right)\left(
+\begin{array}{c}
+\B{v}_d^*\\
+\B{v}_r^*\\
+\B{\lambda}
+\end{array}
+\right) =
+\left(
+\begin{array}{c}
+\B{Mv}_d + f\\
+\B{Mv}_r\\
+0
+\end{array}
+\right)
+\end{equation}
+There seem to be several advantages to this approach. (1) It explicitly couples the rigid and deformable bodies, allowing
+information on the constraints to cascade throught the finite element mesh (avoiding the stretchy springs artifacts).  
+(2) Nobody has done it this way before.  Disadvantages: the system would be huge!  And it is indefinite (we could make
+it definite by changing the lower right 0 to an identity, encouraging the system to minimize the lagrange multipliers).  
+It also would not quite enforce the constraints.
+
+Other options would be to figure out the project that Tamar was using (but this might lead to the stretchy springs).  
+Another option would be to treat the rigid bodies velocities as constraints on the finite element simulation (analogous to time-splitting schemes).
+We could then use the Lagrange multipliers to compute equal-and-oposite forces on the rigid bodies.  This feels less elegant to 
+me, but allows a cleaner separation between the rigid body and deformable codes.  Not sure exactly what the timestep would look like to make
+sure that constraints are enforced at render-time.
+
+Another approach would be to simply constrain fem vertices attached to rigid bodies to have rigid motion, either by using reduced coordinates
+or Lagrange multipliers.  This would ignore the rigid bodies mass/momentum though.
+
+\subsection{Collision Detection}
+Tamar used Guendelman 2002 (iterative impulse-based collision handling based on candidate positions) for rigid-rigid and deformable-rigid.
+Deformables were treated as particles.  Deformable-deformable were treated later in the timestep using Bridson's cloth code.
+As I said in my email, I don't advocate using just the surface of a volumetric mesh---it doesn't work very well for reasonable time steps or
+coarse models.  One thing we could try is to treat the deformable objects as rigid, using some ``shape'' (i.e. throwing out rotation/translation)
+over the timestep (maybe the end?) and integrating the linear and angular momentum.  Then just throw everything into bullet.  I don't really have
+any other ideas.  I am not familiar enough with bullet to know if this would be efficient.
+
+\subsection{Update Positions}
+This is straightforward.  We might need some sort of post-stabilization.
+
+\section{Results and Discussion}\label{sec:Results}
+
+\paragraph{Limitations and Future Work}
+
+\section*{Acknowledgments}
+
+
+\bibliographystyle{acmsiggraph}
+\bibliography{uniFluid}
+
+\end{document}

@@ -72,7 +72,7 @@ GlobalMatrix::GlobalMatrix(unsigned int nvertices, unsigned int ntets, const Tet
 
 
 		for (unsigned int i=0; i<vneighbors.size(); i++) {
-			if (vneighbors[i].size() == 0) {std::cout<<"panic"<<std::endl;}
+			if (vneighbors[i].size() == 0) {std::cout<<"panic "<<i<<std::endl;}
 			for (unsigned int j=0; j<vneighbors[i].size(); j++) {
 				if (vneighbors[i][j] <= i) {
 					if (i < nvertices) {

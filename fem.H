@@ -82,7 +82,9 @@ public:
 	void setForces(double dt, const SlVector3 &gravity); // initialize force accumulator
 	void computeBoundingBox(SlVector3 &bbMin, SlVector3 &bbMax);
 	void computeK(int t);
-	void applyPlasticity(int t, double dt, SlMatrix3x3 &S);
+	void applyPlasticity(int t, double dt, SlMatrix3x3 &stress, SlMatrix3x3 &S);
+	void computeSeparationTensor(int t, double dt, const SlMatrix3x3 &S, const SlVector3 f[4]);
+	void fracture();
 
 	std::vector<FemGrip*> grips;  
 	unsigned int nv, av; // number of vertices, allocated space
@@ -111,10 +113,17 @@ public:
 	GlobalMatrix *gm;  // global system matrix
 
 	double *density, *lambda, *mu, *scale;  // material parameters, phi = scale*lambda, psi = scale*mu
-	double *yieldStress, *plasticModulus, *alpha, *flowrate;  
+	double *yieldStress, *plasticModulus, *alpha, *flowrate;  // plasticity parameters
+	double *toughness, *vertexToughness; // fracture parameters
 	double alphaCap;
 
 	double friction;
+
+	SlVector3 *unbalancedCompLoad, *unbalancedTensLoad; // per-node fracture variables
+	SlMatrix3x3 *separationTensor; // per-node fracture variable
+	int *vertexToTetMap;
+	int *vertexToTetMapStart;
+	int *vertexToTetMapEnd;
 
 	SlInt3 *tris;  // surface triangles
 	unsigned int ntris;
@@ -152,8 +161,8 @@ public:
 
 private:
   //DynamicSurface *collisionSurface;
-	SlInt2 *collisionSurfaceToVertices;
-	unsigned int nCollisionSurfaceVertices;
+	//SlInt2 *collisionSurfaceToVertices;
+	//unsigned int nCollisionSurfaceVertices;
 };
 
 inline void TetMatrix::mvmul (const SlVector3 *x, SlVector3 *y) {
