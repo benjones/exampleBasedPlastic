@@ -40,11 +40,11 @@ int main(int argc, char *argv[]) {
 	
 	//simulator.initCollisions();
 
-  while (time < 5) {
+  while (time < 0.2){//5) {
     time += world.dt;
     timeSinceLastFrame += world.dt;
     
-    if (timeSinceLastFrame > framerate) {
+    if (true || timeSinceLastFrame > framerate) {
       timeSinceLastFrame = 0;
 
       /*char fname[80];

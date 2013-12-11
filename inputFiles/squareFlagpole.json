@@ -1,10 +1,10 @@
 {
     "ground" : true,
-    "dt" : 0.01,
+    "dt" : 0.001, //0.01,
     
     "femObjects" : [ 
 	{"filename" : "cube.mesh",
-	 "offset" : [0, 1.5, 0]
+	 "offset" : [0, 1.59, 0]
 	}
     ],
     

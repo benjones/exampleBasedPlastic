@@ -71,13 +71,13 @@ protected:
 
 	virtual void	predictUnconstraintMotion(btScalar timeStep);
 	
-	virtual void	integrateTransforms(btScalar timeStep);
+
 		
 	virtual void	calculateSimulationIslands();
 
 	virtual void	solveConstraints(btContactSolverInfo& solverInfo);
 	
-	virtual void	updateActivationState(btScalar timeStep);
+
 
 	void	updateActions(btScalar timeStep);
 
@@ -106,6 +106,9 @@ public:
 	///if maxSubSteps > 0, it will interpolate motion between fixedTimeStep's
 	virtual int	stepSimulation( btScalar timeStep,int maxSubSteps=1, btScalar fixedTimeStep=btScalar(1.)/btScalar(60.));
 
+	virtual void stepSimulationVelocitiesOnly(btScalar timeStep);
+	virtual void	integrateTransforms(btScalar timeStep);
+	virtual void	updateActivationState(btScalar timeStep);
 
 	virtual void	synchronizeMotionStates();
 

@@ -186,7 +186,7 @@ World::World(std::string filename)
 
 void World::timeStep(){
 
-  bulletWorld.stepSimulation(dt, 1, dt); //force bullet to use our dt
+  bulletWorld.stepSimulationVelocitiesOnly(dt); 
 
   computeFemVelocities();
   if(ground){
@@ -209,6 +209,13 @@ void World::timeStep(){
     }
   }
   
+  for(auto &rb : rigidBodies){
+    rb.couplingSolver.solveVelocityConstraints(*this, rb);
+  }
+  
+  bulletWorld.integrateTransforms(dt);
+  bulletWorld.updateActivationState(dt);
+  bulletWorld.synchronizeMotionStates();
   updateFemPositions();
   
 }
@@ -267,8 +274,7 @@ void World::computeConstraints(){
   std::cout << "computing constraints" << std::endl;
   //find the FEM nodes that are inside of a rigid body and constrain them.
 
-  for(auto rbInd : range(rigidBodies.size())){
-    auto& rb = rigidBodies[rbInd];
+  for(auto& rb : rigidBodies){
     for(auto femInd : range(femObjects.size())){
       auto& fem = femObjects[femInd];
 
@@ -282,37 +288,37 @@ void World::computeConstraints(){
 	   rbBoundMax.y() < fem.bbMin.y() ||
 	   rbBoundMin.z() > fem.bbMax.z() ||
 	   rbBoundMax.z() < fem.bbMin.z())){
-
+	std::cout << "aabb overlap" << std::endl;
 	for(auto i : range(fem.nv)){
 
 	  auto worldPos = btVector3(fem.pos[i].x(),
 				    fem.pos[i].y(),
 				    fem.pos[i].z());
 	  btVector3 relPos = rb.bulletBody->getWorldTransform().inverse()*worldPos;
-	  
+
 	  //check if the relPos is in the object
 	  
 	  if(rb.rbType == RigidBody::RB_BOX){
 	    const btBoxShape *box = dynamic_cast<btBoxShape*>(rb.bulletBody->getCollisionShape());
-	    auto extents = box->getHalfExtentsWithoutMargin();
-	    if( relPos.x() > -extents.x()  &&
-		relPos.x() < extents.x() &&
-		relPos.y() > -extents.y() &&
-		relPos.y() < extents.y() &&
-		relPos.z() > -extents.z() &&
-		relPos.z() < extents.z()){
-
-	      constraints.push_back({rbInd, relPos, femInd, i});
-	      std::cout << "added constraint: " << rbInd << ' ' << relPos << ' ' << femInd << ' ' << i << std::endl;
-
+	    auto extents = box->getHalfExtentsWithMargin();
+	    if( relPos.x() >= -extents.x()  &&
+		relPos.x() <= extents.x() &&
+		relPos.y() >= -extents.y() &&
+		relPos.y() <= extents.y() &&
+		relPos.z() >= -extents.z() &&
+		relPos.z() <= extents.z()){
+	      
+	      rb.constraints.push_back({relPos, femInd, i});
+	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
+	      
 	    }
 	    
 
 	  } else if(rb.rbType == RigidBody::RB_PLANE){
 	    const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
 	    if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
-	      constraints.push_back({rbInd, relPos, femInd, i});
-	      std::cout << "added constraint: " << rbInd << ' ' << relPos << ' ' << femInd << ' ' << i << std::endl;
+	      constraints.push_back({relPos, femInd, i});
+	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
 	    }
 	    
 

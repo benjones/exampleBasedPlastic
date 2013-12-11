@@ -467,6 +467,42 @@ int	btDiscreteDynamicsWorld::stepSimulation( btScalar timeStep,int maxSubSteps, 
 	return numSimulationSubSteps;
 }
 
+void btDiscreteDynamicsWorld::stepSimulationVelocitiesOnly(btScalar timeStep){
+
+  m_localTime = m_latencyMotionStateInterpolation ? 0 : timeStep;
+  m_fixedTimeStep = 0;
+  
+  ///apply gravity, predict motion
+  saveKinematicState(timeStep);
+  applyGravity();
+  predictUnconstraintMotion(timeStep);
+  
+  btDispatcherInfo& dispatchInfo = getDispatchInfo();
+  
+  dispatchInfo.m_timeStep = timeStep;
+  dispatchInfo.m_stepCount = 0;
+  dispatchInfo.m_debugDraw = getDebugDrawer();
+  
+  
+  createPredictiveContacts(timeStep);
+  
+  ///perform collision detection
+  performDiscreteCollisionDetection();
+  
+  calculateSimulationIslands();
+  
+  
+  getSolverInfo().m_timeStep = timeStep;
+  
+  
+  
+  ///solve contact and other joint constraints
+  solveConstraints(getSolverInfo());
+	
+  clearForces();
+}
+
+
 void	btDiscreteDynamicsWorld::internalSingleStepSimulation(btScalar timeStep)
 {
 	

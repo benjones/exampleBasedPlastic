@@ -12,12 +12,12 @@ OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -D
 #-----------------------------------------
 
 TARGETS = fracture
-OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigidBody.o #collisions.o, punt on this
+OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigidBody.o couplingConstraintSolver.o #collisions.o, punt on this
 
 #-----------------------------------------
 
 LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath -L./bullet-2.82-r2704/build/src/BulletCollision -L./bullet-2.82-r2704/build/src/BulletDynamics -lslcommon -llapack -lblas -lBulletDynamics -lBulletCollision -lLinearMath  #./eltopo/eltopo3d/libeltopo_release.a
-INCS = -I/usr/local/include -I./Common -I./bullet-2.82-r2704/src/ #-I./eltopo/eltopo3d -I./eltopo/common
+INCS = -I./Common -I./bullet-2.82-r2704/src/ -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
 
 CCOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
 LDOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
