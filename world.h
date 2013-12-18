@@ -20,7 +20,7 @@ class World{
   World(World&& other) = default;
 
   void computeConstraints();
-
+  void countConstraints();
 
   void timeStep();
   void dumpFrame();
@@ -28,6 +28,27 @@ class World{
   void computeFemVelocities();
   void updateFemPositions();
 
+  void computeCrossProductMatrices();
+
+  //multiply the constaint matrix by in and put the result in out.
+  //this is the lower left block of the system.
+  //make sure that in and out is correctly allocated already
+  void mulJV(double* in, double* out);
+
+  //out += JT*In.  This is the upper right block of the system
+  void mulJTLambda(double* in, double* out);
+
+  //set out to be the rigid mass/inertia matrix times in
+  //out = M_Rigid*In
+  void mulRigidMassMatrix(double* in, double* out);
+
+  //out = M^-1 I^-1 * in
+  void applyRigidPreconditioner(double* in, double* out);
+
+  //out += regularizerAlpha*in;
+  void applyRegularizer(double* in, double* out);
+  //out += 1/regularizerAlpha*in
+  void applyRegularizerPreconditioner(double* in, double* out);
 
   std::unique_ptr<btBroadphaseInterface> broadphaseInterface;  
   std::unique_ptr<btCollisionConfiguration> collisionConfiguration;
@@ -43,10 +64,13 @@ class World{
   double dt;
   btVector3 gravity;
   double friction;
+  
+  double regularizerAlpha;
+  size_t totalNumConstraints;
 
   std::vector<RigidBody> rigidBodies;
   std::vector<FemObject> femObjects;
-  std::vector<CouplingConstraint> constraints;
+
 
   int currentFrame;
 

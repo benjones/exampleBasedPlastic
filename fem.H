@@ -132,6 +132,8 @@ public:
 
 	bool active;
 
+  size_t firstNodeIndex; //index of the first node in the global matrix with all FEM objects
+
   SlVector3 bbMin, bbMax;
 
 private:

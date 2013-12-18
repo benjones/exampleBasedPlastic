@@ -6,16 +6,7 @@
 
 using iter::enumerate;
 
-inline Eigen::Matrix3d crossProductMatrix(const btVector3& v){
-  
-  Eigen::Matrix3d ret;
-  ret << 
-    0,      -v.z(), v.y(),
-    v.z(),  0,      -v.x(),
-    -v.y(), v.x(),  0;
-    
-  return ret;
-}
+
 
 
 void CouplingConstraintSolver::solveVelocityConstraints(World& world, RigidBody& rigidBody){

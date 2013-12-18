@@ -13,9 +13,12 @@
 
 #include "json/json.h"
 #include "cppitertools/range.hpp"
+#include "cppitertools/enumerate.hpp"
 #include "utils.h"
+#include <numeric>
 
 using iter::range;
+using iter::enumerate;
 
 World::World(std::string filename)
   :broadphaseInterface
@@ -88,6 +91,8 @@ World::World(std::string filename)
   bulletWorld.setGravity(gravity);
 
 
+  regularizerAlpha = root.get("regularizerAlpha", 1.0).asDouble();
+
 
   auto femObjectsIn = root["femObjects"];
   for(auto i : range(femObjectsIn.size())){
@@ -109,6 +114,13 @@ World::World(std::string filename)
 	femObj.pos[i] += offset;
       }
       
+      if(i == 0){
+	femObj.firstNodeIndex = 0;
+      } else {
+	femObj.firstNodeIndex = femObjects[i-1].firstNodeIndex +
+	  femObjects[i -1].nv;
+      }
+
     }
     
   }
@@ -181,14 +193,23 @@ World::World(std::string filename)
   }
   std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
   computeConstraints();
+  countConstraints();
 }
 
 
 void World::timeStep(){
 
+
+  //replace these two with a single CG solve
+
+  //make sure to call countConstraints every time the number of constraints changes
+  //make sure to call computeCrossProductMatrices before calling the JV and 
+  //JTLambda multiply functions
   bulletWorld.stepSimulationVelocitiesOnly(dt); 
 
   computeFemVelocities();
+
+
   if(ground){
     for(auto& femObject : femObjects){
       for(auto j : range(femObject.nv)){
@@ -209,10 +230,12 @@ void World::timeStep(){
     }
   }
   
+  /*
   for(auto &rb : rigidBodies){
     rb.couplingSolver.solveVelocityConstraints(*this, rb);
   }
-  
+  */
+
   bulletWorld.integrateTransforms(dt);
   bulletWorld.updateActivationState(dt);
   bulletWorld.synchronizeMotionStates();
@@ -280,7 +303,8 @@ void World::computeConstraints(){
   std::cout << "computing constraints" << std::endl;
   //find the FEM nodes that are inside of a rigid body and constrain them.
 
-  for(auto& rb : rigidBodies){
+  for( auto rbInd : range(rigidBodies.size())){
+    auto& rb = rigidBodies[rbInd];
     for(auto femInd : range(femObjects.size())){
       auto& fem = femObjects[femInd];
 
@@ -314,7 +338,7 @@ void World::computeConstraints(){
 		relPos.z() >= -extents.z() &&
 		relPos.z() <= extents.z()){
 	      
-	      rb.constraints.push_back({relPos, femInd, i});
+	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero()});
 	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
 	      
 	    }
@@ -323,7 +347,7 @@ void World::computeConstraints(){
 	  } else if(rb.rbType == RigidBody::RB_PLANE){
 	    const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
 	    if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
-	      constraints.push_back({relPos, femInd, i});
+	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero()});
 	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
 	    }
 	    
@@ -332,11 +356,130 @@ void World::computeConstraints(){
 	    std::cout << "unknown RB type" << std::endl;
 	    exit(1);
 	  }
-
 	}
       }
-
-      
     }
+  }
+}
+
+
+void World::computeCrossProductMatrices(){
+
+  for(auto& rb : rigidBodies){
+    for(auto& c : rb.constraints){
+      c.crossProductMatrix = 
+	crossProductMatrix(quatRotate(rb.bulletBody->getOrientation(),c.localPosition));
+    }
+  }
+}
+
+void World::mulJV(double* in, double*out){
+  size_t constraintIndex = 0;
+  size_t rbStart = femObjects.empty() ? 0 : 3*(femObjects.back().firstNodeIndex +
+					       femObjects.back().nv);
+  for(auto& rb : rigidBodies){
+    for(auto& c : rb.constraints){
+      size_t femIndex = femObjects[c.femIndex].firstNodeIndex + c.nodeIndex;
+      size_t rbIndex = rbStart + 6*c.rbIndex;
+      //the constaint block is I_3x3 for the FEM,
+      // -I_3x3 for the rigid linear
+      // and a cross product matrix the rotational part
+      out[3*constraintIndex   ] = in[3*femIndex   ] - in[rbIndex];
+      out[3*constraintIndex +1] = in[3*femIndex +1] - in[rbIndex +1];
+      out[3*constraintIndex +2] = in[3*femIndex +2] - in[rbIndex +2];
+      
+      inPlaceMult(in + rbIndex + 3,  
+		  out + 3*constraintIndex, 
+		  c.crossProductMatrix);
+
+
+      ++constraintIndex;
+    }
+  }
+  
+}
+
+
+//in = &(lambda[0])
+//out = &(velocitiesToSolveFor[0])
+void World::mulJTLambda(double* in, double* out){
+  size_t constraintIndex = 0;
+  size_t rbStart = femObjects.empty() ? 0 : 3*(femObjects.back().firstNodeIndex +
+					       femObjects.back().nv);
+  
+  for(auto& rb : rigidBodies){
+    for(auto& c : rb.constraints){
+      size_t femIndex = femObjects[c.femIndex].firstNodeIndex + c.nodeIndex;
+      size_t rbIndex = rbStart + 6*c.rbIndex;
+      
+      out[3*femIndex    ] += in[constraintIndex*3    ];
+      out[3*femIndex + 1] += in[constraintIndex*3 + 1];
+      out[3*femIndex + 2] += in[constraintIndex*3 + 2];
+      
+      out[rbIndex    ] -= in[constraintIndex*3    ];
+      out[rbIndex + 1] -= in[constraintIndex*3 + 1];
+      out[rbIndex + 2] -= in[constraintIndex*3 + 2];
+
+      inPlaceMultTranspose(in + constraintIndex*3,
+			   out + rbIndex + 3,
+			   c.crossProductMatrix);
+
+      ++constraintIndex;
+    }
+  }
+}
+
+//make sure in and out are the right size
+//in = first rigid body velocity in teh vector
+//out = first rigid body velocity in the vector
+void World::mulRigidMassMatrix(double* in, double* out){
+  for(auto pr : enumerate(rigidBodies)){
+    auto mass = 1.0/pr.element.bulletBody->getInvMass();
+    out[6*pr.index    ] = mass*in[6*pr.index    ];
+    out[6*pr.index + 1] = mass*in[6*pr.index + 1];
+    out[6*pr.index + 2] = mass*in[6*pr.index + 2];
+    //rotational part
+    bulletOverwriteMultiply(in + 6*pr.index + 3, 
+			    out + 6*pr.index + 3,
+			    pr.element.bulletBody->getInvInertiaTensorWorld().inverse());
+
+  }
+}
+
+void World::applyRigidPreconditioner(double* in, double* out){
+  
+  for(auto pr : enumerate(rigidBodies)){
+    auto& rb = pr.element;
+    out[6*pr.index    ] = rb.bulletBody->getInvMass()*in[6*pr.index    ];
+    out[6*pr.index + 1] = rb.bulletBody->getInvMass()*in[6*pr.index + 1];
+    out[6*pr.index + 2] = rb.bulletBody->getInvMass()*in[6*pr.index + 2];
+    
+    bulletOverwriteMultiply(in + 6*pr.index + 3,
+			    out + 6*pr.index + 3,
+			    rb.bulletBody->getInvInertiaTensorWorld());
+  }
+}
+
+void World::countConstraints(){
+  totalNumConstraints = std::accumulate(rigidBodies.begin(),
+					rigidBodies.end(),
+					0,
+					[&](size_t count, const RigidBody& rb){
+					  return count + rb.constraints.size();
+					});
+}
+
+void World::applyRegularizer(double* in, double* out){
+  
+  for(auto i : range(3*totalNumConstraints)){
+    out[i] += regularizerAlpha*in[i];
+  }
+}
+
+void World::applyRegularizerPreconditioner(double* in, double* out){
+
+  auto recip = 1.0/regularizerAlpha;
+  for(auto i : range(3*totalNumConstraints)){
+    out[i] += recip*in[i];
   }
 }
