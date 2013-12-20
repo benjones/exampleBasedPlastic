@@ -22,6 +22,7 @@ class World{
   void computeConstraints();
   void countConstraints();
 
+	void solve();
   void timeStep();
   void dumpFrame();
 

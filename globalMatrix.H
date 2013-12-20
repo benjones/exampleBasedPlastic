@@ -48,6 +48,7 @@ public:
 	void mvmul(const SlVector3 *x, SlVector3 *y);
 
 	void setPrecon(SlVector3 *precon);
+	void setPrecon(double *precon);
 
 	void clear();
 };

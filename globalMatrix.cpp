@@ -102,6 +102,20 @@ void GlobalMatrix::setPrecon(SlVector3 *precon) {
 	}
 }
 
+void GlobalMatrix::setPrecon(double *precon) {
+	for (unsigned int r=0; r<dim; r++) {
+		unsigned int *c = cols + colIndices[r];
+		SlMatrix3x3 *m = blocks + colIndices[r];
+		for (unsigned int j=0; j<nblocks[r]; j++, c++, m++) {		
+			if ((*c) == r) {
+				precon[3*r+0] = 1.0/((*m)(0,0));
+				precon[3*r+1] = 1.0/((*m)(1,1));
+				precon[3*r+2] = 1.0/((*m)(2,2));
+			}
+		}
+	}
+}
+
 void GlobalMatrix::clear() {
 	for (unsigned int i=0; i<totalblocks; i++) blocks[i] = 0.0;
 }

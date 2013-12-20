@@ -17,6 +17,14 @@
 #include "utils.h"
 #include <numeric>
 
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#elif linux
+extern "C" {
+#include <cblas.h>
+}
+#endif
+
 using iter::range;
 using iter::enumerate;
 
@@ -196,6 +204,99 @@ World::World(std::string filename)
   countConstraints();
 }
 
+void World::solve() {
+	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
+	double tol=1e-10;
+	unsigned int iter=0, max_iter = 10000;
+	unsigned int nfemdof = 0;
+
+	unsigned int n = 6*rigidBodies.size()+totalNumConstraints;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		n += 3*femObjects[i].nv;
+		nfemdof += 3*femObjects[i].nv;
+	}
+	
+	double *work = new double [4*n + nfemdof];
+	double *x = work;     // solution
+	double *r = work+n;   // residual
+	double *q = work+2*n; // temp storage
+	double *d = work+3*n; // search direction
+	double *p = work+4*n; // preconditioner
+	
+	int offset = 0;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].gm->setPrecon(p+offset);
+		offset += 3*femObjects[i].nv;
+	}
+
+	dptr1 = x;
+	for (unsigned int i=0; i<n; i++, dptr1++) (*dptr1) = 0.0;
+
+	dptr1 = r;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].frc;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+		}
+	}
+	
+	// d = p*r
+	dptr1 = d; dptr2 = p; dptr3 = r;
+	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+		(*dptr1) = (*dptr2) * (*dptr3);
+	}
+	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+	applyRegularizerPreconditioner(r+nfemdof+6*rigidBodies.size(), d+nfemdof+6*rigidBodies.size());
+
+
+	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
+	tol *= delta_new;
+	
+	if (cblas_dnrm2(n, (double*)r, 1) >= tol) {
+		while (iter++ < max_iter) {
+			// apply matrix
+			offset = 0;
+			for (unsigned int i=0; i<femObjects.size(); i++) {
+				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+				offset += 3*femObjects[i].nv;																	
+			}
+			mulRigidMassMatrix(d+offset, q+offset);
+			applyRegularizer(d+offset+6*rigidBodies.size(), q+offset+6*rigidBodies.size());
+			mulJV(d, q);
+			mulJTLambda(d, q);
+
+
+			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
+			cblas_daxpy(n, alpha, d, 1, x, 1);
+			cblas_daxpy(n, -alpha, q, 1, r, 1);
+			
+			if (cblas_dnrm2(n, r, 1) < tol) break;
+			
+			// q = p*r
+			dptr1 = q; dptr3 = p; dptr2 = r;
+			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+				(*dptr1) = (*dptr2) * (*dptr3);
+			}
+			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
+			applyRegularizerPreconditioner(r+nfemdof+6*rigidBodies.size(), q+nfemdof+6*rigidBodies.size());
+
+			delta_old = delta_new;
+			delta_new = cblas_ddot(n, r, 1, q, 1);
+			beta = delta_new / delta_old;
+			
+			cblas_daxpy(n, beta, d, 1, q, 1);
+			cblas_dcopy(n, q, 1, d, 1);
+		}
+	}
+
+	dptr1 = x;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].vel;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*vptr)[0] = (*(dptr1++)); (*vptr)[1] = (*(dptr1++)); (*vptr)[2] = (*(dptr1++));
+		}
+	}
+}
 
 void World::timeStep(){
 
@@ -472,7 +573,7 @@ void World::countConstraints(){
 void World::applyRegularizer(double* in, double* out){
   
   for(auto i : range(3*totalNumConstraints)){
-    out[i] += regularizerAlpha*in[i];
+    out[i] = regularizerAlpha*in[i];
   }
 }
 
@@ -480,6 +581,6 @@ void World::applyRegularizerPreconditioner(double* in, double* out){
 
   auto recip = 1.0/regularizerAlpha;
   for(auto i : range(3*totalNumConstraints)){
-    out[i] += recip*in[i];
+    out[i] = recip*in[i];
   }
 }
