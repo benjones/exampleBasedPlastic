@@ -119,14 +119,14 @@ World::World(std::string filename)
       femObj.bbMin += offset;
       femObj.bbMax += offset;
       for(auto  i : range(femObj.nv)){
-	femObj.pos[i] += offset;
+				femObj.pos[i] += offset;
       }
       
       if(i == 0){
-	femObj.firstNodeIndex = 0;
+				femObj.firstNodeIndex = 0;
       } else {
-	femObj.firstNodeIndex = femObjects[i-1].firstNodeIndex +
-	  femObjects[i -1].nv;
+				femObj.firstNodeIndex = femObjects[i-1].firstNodeIndex +
+					femObjects[i -1].nv;
       }
 
     }
@@ -208,14 +208,24 @@ void World::solve() {
 	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
 	double tol=1e-10;
 	unsigned int iter=0, max_iter = 10000;
-	unsigned int nfemdof = 0;
+	nfemdof = 0;
+	nrbdof = 0;
+	unsigned int nrbs = 0;
 
-	unsigned int n = 6*rigidBodies.size()+totalNumConstraints;
+	unsigned int n = 0; 
 	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].firstNodeIndex = n/3;
 		n += 3*femObjects[i].nv;
 		nfemdof += 3*femObjects[i].nv;
 	}
-	
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		n += 6;
+		nrbs++;
+		nrbdof += 6;
+	}
+	n += 3*totalNumConstraints;	
+
 	double *work = new double [4*n + nfemdof];
 	double *x = work;     // solution
 	double *r = work+n;   // residual
@@ -239,6 +249,24 @@ void World::solve() {
 			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
 		}
 	}
+
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+    //rotational part, there must be a less hideous way of doing this.
+		double angularvelocity[3];
+		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
+		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
+		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
+    bulletOverwriteMultiply(angularvelocity, 
+					dptr1,
+			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		dptr1 += 3;
+	}
+	for (unsigned int i=0; i<3*totalNumConstraints; i++) (*(dptr1++)) = 0.0;
 	
 	// d = p*r
 	dptr1 = d; dptr2 = p; dptr3 = r;
@@ -246,13 +274,22 @@ void World::solve() {
 		(*dptr1) = (*dptr2) * (*dptr3);
 	}
 	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
-	applyRegularizerPreconditioner(r+nfemdof+6*rigidBodies.size(), d+nfemdof+6*rigidBodies.size());
-
+	applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
 
 	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
 	tol *= delta_new;
+
+	std::cout<<delta_new<<std::endl;
 	
-	if (cblas_dnrm2(n, (double*)r, 1) >= tol) {
+	for (unsigned int i=0; i<n; i++) {
+		//if (i == nfemdof) std::cout<<"rigids"<<std::endl;
+		//if (i == nfemdof + nrbdof) std::cout<<"constraints"<<std::endl;
+		//if (i%3 == 1)std::cout<<i<<": "<<r[i]<<" "<<d[i]<<std::endl;
+	}
+
+	//std::cout<<"a: "<<d[10]<<std::endl;
+
+	if (cblas_dnrm2(n, (double*)r, 1) > tol) {
 		while (iter++ < max_iter) {
 			// apply matrix
 			offset = 0;
@@ -261,40 +298,48 @@ void World::solve() {
 				offset += 3*femObjects[i].nv;																	
 			}
 			mulRigidMassMatrix(d+offset, q+offset);
-			applyRegularizer(d+offset+6*rigidBodies.size(), q+offset+6*rigidBodies.size());
+			applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
 			mulJV(d, q);
 			mulJTLambda(d, q);
-
-
+			
 			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
 			cblas_daxpy(n, alpha, d, 1, x, 1);
 			cblas_daxpy(n, -alpha, q, 1, r, 1);
 			
 			if (cblas_dnrm2(n, r, 1) < tol) break;
 			
-			// q = p*r
+			// apply regularizer q = P*r
 			dptr1 = q; dptr3 = p; dptr2 = r;
 			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
 				(*dptr1) = (*dptr2) * (*dptr3);
 			}
 			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
-			applyRegularizerPreconditioner(r+nfemdof+6*rigidBodies.size(), q+nfemdof+6*rigidBodies.size());
+			applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
 
 			delta_old = delta_new;
 			delta_new = cblas_ddot(n, r, 1, q, 1);
 			beta = delta_new / delta_old;
+			std::cout<<delta_new<<" "<<delta_old<<std::endl;
 			
 			cblas_daxpy(n, beta, d, 1, q, 1);
 			cblas_dcopy(n, q, 1, d, 1);
 		}
 	}
 
+	//exit(0);
 	dptr1 = x;
 	for (unsigned int i=0; i<femObjects.size(); i++) {
 		SlVector3 *vptr = femObjects[i].vel;
 		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
 			(*vptr)[0] = (*(dptr1++)); (*vptr)[1] = (*(dptr1++)); (*vptr)[2] = (*(dptr1++));
 		}
+	}
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		btVector3 v(dptr1[0], dptr1[1], dptr1[2]);
+		btVector3 omega(dptr1[4], dptr1[5], dptr1[6]);
+		rigidBodies[i].bulletBody->setLinearVelocity(v);
+		rigidBodies[i].bulletBody->setAngularVelocity(omega);
+		dptr1 += 6;
 	}
 }
 
@@ -306,27 +351,32 @@ void World::timeStep(){
   //make sure to call countConstraints every time the number of constraints changes
   //make sure to call computeCrossProductMatrices before calling the JV and 
   //JTLambda multiply functions
+	computeCrossProductMatrices();
+
+  computeFemVelocities(); // this is really just forces
   bulletWorld.stepSimulationVelocitiesOnly(dt); 
 
-  computeFemVelocities();
+	solve();
+
+
 
 
   if(ground){
     for(auto& femObject : femObjects){
       for(auto j : range(femObject.nv)){
-	//bullet uses y as up, I think, lets keep that convention
-	auto x = femObject.pos[j][1] + dt*femObject.vel[j][1];
-	if( x < 0){
-	  auto impulse = -x/dt;
-	  double nm= 0.0, m = sqrt(sqr(femObject.vel[j][0]) +
-				   sqr(femObject.vel[j][2]));
-	  if(m > 0){
-	    nm = std::max(m - impulse*friction, 0.0) / m;
-	  }
-	  femObject.vel[j].set(nm*femObject.vel[j][0], 
-			       femObject.vel[j][1] + impulse,
-			       nm*femObject.vel[j][2]);
-	}
+				//bullet uses y as up, I think, lets keep that convention
+				auto x = femObject.pos[j][1] + dt*femObject.vel[j][1];
+				if( x < 0){
+					auto impulse = -x/dt;
+					double nm= 0.0, m = sqrt(sqr(femObject.vel[j][0]) +
+																	 sqr(femObject.vel[j][2]));
+					if(m > 0){
+						nm = std::max(m - impulse*friction, 0.0) / m;
+					}
+					femObject.vel[j].set(nm*femObject.vel[j][0], 
+															 femObject.vel[j][1] + impulse,
+															 nm*femObject.vel[j][2]);
+				}
       }
     }
   }
@@ -364,7 +414,7 @@ void World::computeFemVelocities(){
     femObject.computeForces(dt);
     femObject.clearGlobalMatrix();
     femObject.computeGlobalMatrix(dt);
-    femObject.solveForVelocities(dt);
+    //femObject.solveForVelocities(dt);
   }
 
 }
@@ -475,27 +525,36 @@ void World::computeCrossProductMatrices(){
 }
 
 void World::mulJV(double* in, double*out){
-  size_t constraintIndex = 0;
-  size_t rbStart = femObjects.empty() ? 0 : 3*(femObjects.back().firstNodeIndex +
-					       femObjects.back().nv);
+	size_t rbIndex = nfemdof;
+  size_t constraintIndex = nrbdof + nfemdof;
+
   for(auto& rb : rigidBodies){
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     for(auto& c : rb.constraints){
-      size_t femIndex = femObjects[c.femIndex].firstNodeIndex + c.nodeIndex;
-      size_t rbIndex = rbStart + 6*c.rbIndex;
+      size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+      //size_t rbIndex = rbStart + 6*(c.rbIndex-1);
       //the constaint block is I_3x3 for the FEM,
       // -I_3x3 for the rigid linear
       // and a cross product matrix the rotational part
-      out[3*constraintIndex   ] = in[3*femIndex   ] - in[rbIndex];
-      out[3*constraintIndex +1] = in[3*femIndex +1] - in[rbIndex +1];
-      out[3*constraintIndex +2] = in[3*femIndex +2] - in[rbIndex +2];
+      out[constraintIndex    ] += in[femIndex   ] - in[rbIndex];
+      out[constraintIndex + 1] += in[femIndex +1] - in[rbIndex +1];
+      out[constraintIndex + 2] += in[femIndex +2] - in[rbIndex +2];
+			//if (constraintIndex == 0) {
+			//	std::cout<<"----"<<std::endl;
+			//	std::cout<<out[3*constraintIndex]<<" "<<out[3*constraintIndex+1]<<" "<<out[3*constraintIndex+2]<<" "<<std::endl;
+			//	std::cout<<in[3*femIndex]<< " "<<in[3*femIndex+1]<< " "<<in[3*femIndex+2]<< " "<<std::endl;
+			//	std::cout<<in[rbIndex]<<" "<<in[rbIndex+1]<<" "<<in[rbIndex+2]<<" "<<std::endl;
+			//}
+				//std::cout<<3*femIndex<<std::endl;
       
       inPlaceMult(in + rbIndex + 3,  
-		  out + 3*constraintIndex, 
-		  c.crossProductMatrix);
+									out + constraintIndex, 
+									c.crossProductMatrix);
 
 
-      ++constraintIndex;
+      constraintIndex+=3;
     }
+		rbIndex += 6;
   }
   
 }
@@ -504,29 +563,29 @@ void World::mulJV(double* in, double*out){
 //in = &(lambda[0])
 //out = &(velocitiesToSolveFor[0])
 void World::mulJTLambda(double* in, double* out){
-  size_t constraintIndex = 0;
-  size_t rbStart = femObjects.empty() ? 0 : 3*(femObjects.back().firstNodeIndex +
-					       femObjects.back().nv);
-  
-  for(auto& rb : rigidBodies){
-    for(auto& c : rb.constraints){
-      size_t femIndex = femObjects[c.femIndex].firstNodeIndex + c.nodeIndex;
-      size_t rbIndex = rbStart + 6*c.rbIndex;
-      
-      out[3*femIndex    ] += in[constraintIndex*3    ];
-      out[3*femIndex + 1] += in[constraintIndex*3 + 1];
-      out[3*femIndex + 2] += in[constraintIndex*3 + 2];
-      
-      out[rbIndex    ] -= in[constraintIndex*3    ];
-      out[rbIndex + 1] -= in[constraintIndex*3 + 1];
-      out[rbIndex + 2] -= in[constraintIndex*3 + 2];
+	size_t rbIndex = nfemdof;
+  size_t constraintIndex = nrbdof+nfemdof;
 
-      inPlaceMultTranspose(in + constraintIndex*3,
+  for(auto& rb : rigidBodies){
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+    for(auto& c : rb.constraints){
+      size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+      
+      out[femIndex    ] += in[constraintIndex    ];
+      out[femIndex + 1] += in[constraintIndex + 1];
+      out[femIndex + 2] += in[constraintIndex + 2];
+      
+      out[rbIndex    ] -= in[constraintIndex    ];
+      out[rbIndex + 1] -= in[constraintIndex + 1];
+      out[rbIndex + 2] -= in[constraintIndex + 2];
+
+      inPlaceMultTranspose(in + constraintIndex,
 			   out + rbIndex + 3,
 			   c.crossProductMatrix);
 
-      ++constraintIndex;
+      constraintIndex+=3;
     }
+		rbIndex+=6;
   }
 }
 
@@ -534,30 +593,36 @@ void World::mulJTLambda(double* in, double* out){
 //in = first rigid body velocity in teh vector
 //out = first rigid body velocity in the vector
 void World::mulRigidMassMatrix(double* in, double* out){
+	int index = 0;
   for(auto pr : enumerate(rigidBodies)){
+		if (pr.element.rbType == RigidBody::RBType::RB_PLANE) continue;
     auto mass = 1.0/pr.element.bulletBody->getInvMass();
-    out[6*pr.index    ] = mass*in[6*pr.index    ];
-    out[6*pr.index + 1] = mass*in[6*pr.index + 1];
-    out[6*pr.index + 2] = mass*in[6*pr.index + 2];
+    out[index    ] = mass*in[index    ];
+    out[index + 1] = mass*in[index + 1];
+    out[index + 2] = mass*in[index + 2];
     //rotational part
-    bulletOverwriteMultiply(in + 6*pr.index + 3, 
-			    out + 6*pr.index + 3,
+    bulletOverwriteMultiply(in + index + 3, 
+			    out + index + 3,
 			    pr.element.bulletBody->getInvInertiaTensorWorld().inverse());
 
+		index+=6;
   }
 }
 
 void World::applyRigidPreconditioner(double* in, double* out){
   
+	int index = 0;
   for(auto pr : enumerate(rigidBodies)){
     auto& rb = pr.element;
-    out[6*pr.index    ] = rb.bulletBody->getInvMass()*in[6*pr.index    ];
-    out[6*pr.index + 1] = rb.bulletBody->getInvMass()*in[6*pr.index + 1];
-    out[6*pr.index + 2] = rb.bulletBody->getInvMass()*in[6*pr.index + 2];
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+    out[index    ] = rb.bulletBody->getInvMass()*in[index    ];
+    out[index + 1] = rb.bulletBody->getInvMass()*in[index + 1];
+    out[index + 2] = rb.bulletBody->getInvMass()*in[index + 2];
     
-    bulletOverwriteMultiply(in + 6*pr.index + 3,
-			    out + 6*pr.index + 3,
+    bulletOverwriteMultiply(in + index + 3,
+			    out + index + 3,
 			    rb.bulletBody->getInvInertiaTensorWorld());
+		index+=6;
   }
 }
 

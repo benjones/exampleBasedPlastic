@@ -1024,7 +1024,7 @@ void FemObject::loadNodeEle(const char *fname) {
 			yieldStress[i] = 10.0;
 			plasticModulus[i] = 0.0;
 			flowrate[i] = 100;
-			toughness[i] = 50.0;
+			toughness[i] = DBL_MAX;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);

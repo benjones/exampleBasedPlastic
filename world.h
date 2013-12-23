@@ -72,6 +72,7 @@ class World{
   std::vector<RigidBody> rigidBodies;
   std::vector<FemObject> femObjects;
 
+	unsigned int nrbdof, nfemdof;
 
   int currentFrame;
 
