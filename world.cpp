@@ -335,8 +335,10 @@ void World::solve() {
 		}
 	}
 	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
 		btVector3 v(dptr1[0], dptr1[1], dptr1[2]);
 		btVector3 omega(dptr1[4], dptr1[5], dptr1[6]);
+		std::cout<<v<<" "<<omega<<std::endl;
 		rigidBodies[i].bulletBody->setLinearVelocity(v);
 		rigidBodies[i].bulletBody->setAngularVelocity(omega);
 		dptr1 += 6;
