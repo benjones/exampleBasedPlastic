@@ -261,8 +261,7 @@ void World::solve() {
 		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
 		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
 		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
-    bulletOverwriteMultiply(angularvelocity, 
-					dptr1,
+    bulletOverwriteMultiply(angularvelocity, dptr1,
 			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
 		dptr1 += 3;
 	}
@@ -278,16 +277,6 @@ void World::solve() {
 
 	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
 	tol *= delta_new;
-
-	std::cout<<delta_new<<std::endl;
-	
-	for (unsigned int i=0; i<n; i++) {
-		//if (i == nfemdof) std::cout<<"rigids"<<std::endl;
-		//if (i == nfemdof + nrbdof) std::cout<<"constraints"<<std::endl;
-		//if (i%3 == 1)std::cout<<i<<": "<<r[i]<<" "<<d[i]<<std::endl;
-	}
-
-	//std::cout<<"a: "<<d[10]<<std::endl;
 
 	if (cblas_dnrm2(n, (double*)r, 1) > tol) {
 		while (iter++ < max_iter) {
@@ -319,14 +308,12 @@ void World::solve() {
 			delta_old = delta_new;
 			delta_new = cblas_ddot(n, r, 1, q, 1);
 			beta = delta_new / delta_old;
-			std::cout<<delta_new<<" "<<delta_old<<std::endl;
 			
 			cblas_daxpy(n, beta, d, 1, q, 1);
 			cblas_dcopy(n, q, 1, d, 1);
 		}
 	}
 
-	//exit(0);
 	dptr1 = x;
 	for (unsigned int i=0; i<femObjects.size(); i++) {
 		SlVector3 *vptr = femObjects[i].vel;
@@ -534,20 +521,12 @@ void World::mulJV(double* in, double*out){
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     for(auto& c : rb.constraints){
       size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
-      //size_t rbIndex = rbStart + 6*(c.rbIndex-1);
       //the constaint block is I_3x3 for the FEM,
       // -I_3x3 for the rigid linear
       // and a cross product matrix the rotational part
       out[constraintIndex    ] += in[femIndex   ] - in[rbIndex];
       out[constraintIndex + 1] += in[femIndex +1] - in[rbIndex +1];
       out[constraintIndex + 2] += in[femIndex +2] - in[rbIndex +2];
-			//if (constraintIndex == 0) {
-			//	std::cout<<"----"<<std::endl;
-			//	std::cout<<out[3*constraintIndex]<<" "<<out[3*constraintIndex+1]<<" "<<out[3*constraintIndex+2]<<" "<<std::endl;
-			//	std::cout<<in[3*femIndex]<< " "<<in[3*femIndex+1]<< " "<<in[3*femIndex+2]<< " "<<std::endl;
-			//	std::cout<<in[rbIndex]<<" "<<in[rbIndex+1]<<" "<<in[rbIndex+2]<<" "<<std::endl;
-			//}
-				//std::cout<<3*femIndex<<std::endl;
       
       inPlaceMult(in + rbIndex + 3,  
 									out + constraintIndex, 

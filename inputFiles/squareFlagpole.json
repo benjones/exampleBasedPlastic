@@ -15,6 +15,6 @@
 	    "offset" : [0, 1, 0],
 	    "shape" : "box"
 	}
-    ]
-
+    ],
+		"regularizerAlpha" : 1000.0
 }
