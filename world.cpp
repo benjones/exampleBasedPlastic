@@ -204,9 +204,97 @@ World::World(std::string filename)
   countConstraints();
 }
 
+void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c) {
+	Eigen::Vector3d v, CTv;
+	size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+	// project velocity onto the constraint (C^T v)
+
+	CTv[0] = in[femIndex   ] - in[rbIndex   ];
+	CTv[1] = in[femIndex +1] - in[rbIndex +1];
+	CTv[2] = in[femIndex +2] - in[rbIndex +2];
+  
+	v[0] = in[rbIndex + 3];
+	v[1] = in[rbIndex + 4];
+	v[2] = in[rbIndex + 5];
+	
+	CTv += c.crossProductMatrix * v;
+	
+	// compute the mass weighting matrix (C^T M^-1 C)^-1
+	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
+	Eigen::Matrix3d Iinv;
+	Iinv << 
+		btInvI[0][0], btInvI[0][1], btInvI[0][2],
+		btInvI[1][0], btInvI[1][1], btInvI[1][2],
+		btInvI[2][0], btInvI[2][1], btInvI[2][2];
+	Eigen::Matrix3d CTMinvC = c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
+	double rbInvMass = rb.bulletBody->getInvMass();
+	double femInvMass = 1.0/femObjects[c.femIndex].mass[c.nodeIndex];
+	double sumInvMass = rbInvMass + femInvMass;
+	CTMinvC(0,0) += sumInvMass; 
+	CTMinvC(1,1) += sumInvMass; 
+	CTMinvC(2,2) += sumInvMass; 
+	
+	Eigen::Vector3d CTMinvCinvCTv = CTMinvC.inverse()*CTv;
+	
+	Eigen::Vector3d CCTMinvCinvCTv[3];
+	CCTMinvCinvCTv[0] = CTMinvCinvCTv;
+	CCTMinvCinvCTv[1] = -CTMinvCinvCTv;
+	CCTMinvCinvCTv[2] = c.crossProductMatrix.transpose()*CTMinvCinvCTv;
+	
+	CCTMinvCinvCTv[0] *= femInvMass;
+	CCTMinvCinvCTv[1] *= rbInvMass;
+	CCTMinvCinvCTv[2] = Iinv * CCTMinvCinvCTv[2];
+	
+	//std::cout<<in[femIndex]<<" "<<CCTMinvCinvCTv[0][0]<<std::endl;
+	std::cout<<in[femIndex + 1]<<" "<<CCTMinvCinvCTv[0][1]<<std::endl;
+	//std::cout<<in[femIndex + 2]<<" "<<CCTMinvCinvCTv[0][2]<<std::endl;
+	//std::cout<<in[rbIndex + 0]<<" "<<CCTMinvCinvCTv[1][0]<<std::endl;
+	std::cout<<in[rbIndex + 1]<<" "<<CCTMinvCinvCTv[1][1]<<std::endl;
+	//std::cout<<in[rbIndex + 2]<<" "<<CCTMinvCinvCTv[1][2]<<std::endl;
+	std::cout<<in[rbIndex + 3]<<" "<<CCTMinvCinvCTv[2][0]<<std::endl;
+	std::cout<<in[rbIndex + 4]<<" "<<CCTMinvCinvCTv[2][1]<<std::endl;
+	std::cout<<in[rbIndex + 5]<<" "<<CCTMinvCinvCTv[2][2]<<std::endl;
+	std::cout<<"------------------"<<std::endl;
+	in[femIndex    ] -= CCTMinvCinvCTv[0][0];
+	in[femIndex  +1] -= CCTMinvCinvCTv[0][1];
+	in[femIndex  +2] -= CCTMinvCinvCTv[0][2];
+	in[rbIndex    ] -= CCTMinvCinvCTv[1][0];
+	in[rbIndex  +1] -= CCTMinvCinvCTv[1][1];
+	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
+	in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
+	in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
+	in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
+}
+
+void World::project(double *in) {
+	for (unsigned int i=0; i<4; i++) {
+
+		size_t rbIndex = nfemdof;
+		for(auto& rb : rigidBodies){
+			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+			for(auto& c : rb.constraints){
+				project(in, rb, rbIndex, c);
+			}
+			rbIndex += 6;
+		}
+		
+		rbIndex = nfemdof+nrbdof-6;
+		for (int j = rigidBodies.size()-1; j >= 0; j--) {
+			auto &rb = rigidBodies[j];
+			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+			for (int k = rb.constraints.size()-1; k >= 0; k--) {
+				auto &c = rb.constraints[k];
+				project(in, rb, rbIndex, c);
+			}
+			rbIndex -= 6;
+		}
+	}
+}
+
+
 void World::solve() {
 	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
-	double tol=1e-10;
+	double tol=1e-100;
 	unsigned int iter=0, max_iter = 10000;
 	nfemdof = 0;
 	nrbdof = 0;
@@ -226,13 +314,16 @@ void World::solve() {
 	}
 	n += 3*totalNumConstraints;	
 
-	double *work = new double [4*n + nfemdof];
+	double *work = new double [5*n + nfemdof];
 	double *x = work;     // solution
 	double *r = work+n;   // residual
 	double *q = work+2*n; // temp storage
 	double *d = work+3*n; // search direction
+	double *q2 = work+3*n; // search direction
 	double *p = work+4*n; // preconditioner
 	
+	for (unsigned int i=0; i<5*n+nfemdof; i++) work[i] = 0.0;
+
 	int offset = 0;
 	for (unsigned int i=0; i<femObjects.size(); i++) {
 		femObjects[i].gm->setPrecon(p+offset);
@@ -247,6 +338,7 @@ void World::solve() {
 		SlVector3 *vptr = femObjects[i].frc;
 		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
 			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+			//std::cout<<(*vptr)[1]/femObjects[i].mass[j]<<" "<<(*(dptr2++))<<" "<<femObjects[i].mass[j]<<std::endl;
 		}
 	}
 
@@ -267,16 +359,60 @@ void World::solve() {
 	}
 	for (unsigned int i=0; i<3*totalNumConstraints; i++) (*(dptr1++)) = 0.0;
 	
+	//project(r);
+	
 	// d = p*r
 	dptr1 = d; dptr2 = p; dptr3 = r;
 	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
 		(*dptr1) = (*dptr2) * (*dptr3);
+		std::cout<<(*dptr1)<<std::endl;
 	}
 	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
-	applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
+	//applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
+
+	project(d);
 
 	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
 	tol *= delta_new;
+
+	/*
+	for (unsigned int i=0; i<0; i++) {
+		for (unsigned int j=0; j<n; j++) {
+			d[j] = 0.0;
+		}
+		d[i] = 1.0;
+		offset = 0;
+		for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+			offset += 3*femObjects[i].nv;																	
+		}
+		mulRigidMassMatrix(d+offset, q+offset);
+		applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+		mulJV(d, q);
+		mulJTLambda(d, q);
+		double foo = q[i];
+		std::cout<<i<<": "<<q[i]<<" ";
+
+		for (unsigned int j=0; j<n; j++) {
+			d[j] = 1.0;
+		}
+		d[i] = 0.0;
+		offset = 0;
+		for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+			offset += 3*femObjects[i].nv;																	
+		}
+		mulRigidMassMatrix(d+offset, q+offset);
+		applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+		mulJV(d, q);
+		mulJTLambda(d, q);
+		std::cout<<q[i]<<std::endl;
+		if(std::abs(q[i]) > foo) {
+			std::cout<<"crap!!!"<<std::endl;
+		}
+		}
+	//exit(0);
+	*/
 
 	if (cblas_dnrm2(n, (double*)r, 1) > tol) {
 		while (iter++ < max_iter) {
@@ -287,23 +423,24 @@ void World::solve() {
 				offset += 3*femObjects[i].nv;																	
 			}
 			mulRigidMassMatrix(d+offset, q+offset);
-			applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
-			mulJV(d, q);
-			mulJTLambda(d, q);
-			
+			//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+			//mulJV(d, q);
+			//mulJTLambda(d, q);
+			project(q);
+
 			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
 			cblas_daxpy(n, alpha, d, 1, x, 1);
 			cblas_daxpy(n, -alpha, q, 1, r, 1);
 			
 			if (cblas_dnrm2(n, r, 1) < tol) break;
 			
-			// apply regularizer q = P*r
+			// apply preconditioner q = P*r
 			dptr1 = q; dptr3 = p; dptr2 = r;
 			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
 				(*dptr1) = (*dptr2) * (*dptr3);
 			}
 			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
-			applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
+			//applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
 
 			delta_old = delta_new;
 			delta_new = cblas_ddot(n, r, 1, q, 1);
@@ -311,8 +448,92 @@ void World::solve() {
 			
 			cblas_daxpy(n, beta, d, 1, q, 1);
 			cblas_dcopy(n, q, 1, d, 1);
+			project(d);
 		}
 	}
+
+	/*	
+		offset = 0;
+		for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].gm->mvmul((SlVector3 *)(x+offset),(SlVector3*) (q+offset));
+			offset += 3*femObjects[i].nv;																	
+		}
+		mulRigidMassMatrix(x+offset, q+offset);
+		applyRegularizer(x+offset+nrbdof, q+offset+nrbdof);
+		mulJV(x, q);
+		mulJTLambda(x, q);
+
+		//std::cout<<iter<<" "<<cblas_dnrm2(n, r, 1)<<std::endl;
+		//for (unsigned int i=nfemdof+nrbdof; i<n; i++) {
+		//std::cout<<x[i]<<" "<<r[i]<<" "<<q[i]<<std::endl; 
+		//}
+
+	for (unsigned int k=0; k<0; k++) {
+		double diag;
+		double sum = 0;
+		for (unsigned int i=0; i<n; i++) {
+			for (unsigned int j=0; j<n; j++) {
+				d[j] = 0.0;
+			}
+			d[i] = 1.0;
+			offset = 0;
+			for (unsigned int i=0; i<femObjects.size(); i++) {
+				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+				offset += 3*femObjects[i].nv;																	
+			}
+			mulRigidMassMatrix(d+offset, q+offset);
+			applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+			mulJV(d, q);
+			mulJTLambda(d, q);
+			if (i == k) diag = q[k];
+			else sum += std::abs(q[k]);
+			if (std::abs(q[k]) > 0) std::cout<<k<<", "<<i<<" = "<<q[k]<<"; ";
+			//if (std::fabs(q[n-3]) > 0)
+			//std::cout<<n-3<<", "<<i<<": "<<q[n-3]<<" ";
+		}
+		std::cout<<std::endl;
+		std::cout<<diag<<" "<<sum<<std::endl;
+		if (sum > diag) std::cout<<"crap!!"<<std::endl;
+	}
+	std::cout<<std::endl;
+	for (unsigned int i=0; i<n; i++) {
+		for (unsigned int j=0; j<n; j++) {
+			d[j] = 0.0;
+		}
+		d[i] = 1.0;
+		offset = 0;
+		for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+			offset += 3*femObjects[i].nv;																	
+		}
+		mulRigidMassMatrix(d+offset, q+offset);
+		applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+		mulJV(d, q);
+		mulJTLambda(d, q);
+		if (std::fabs(q[n-2]) > 0)
+			std::cout<<n-2<<", "<<i<<": "<<q[n-2]<<" ";
+	}
+		std::cout<<std::endl;
+	for (unsigned int i=0; i<n; i++) {
+		for (unsigned int j=0; j<n; j++) {
+			d[j] = 0.0;
+		}
+		d[i] = 1.0;
+		offset = 0;
+		for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+			offset += 3*femObjects[i].nv;																	
+		}
+		mulRigidMassMatrix(d+offset, q+offset);
+		applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+		mulJV(d, q);
+		mulJTLambda(d, q);
+		if (std::fabs(q[n-1]) > 0)
+			std::cout<<n-1<<", "<<i<<": "<<q[n-1]<<" ";
+	}
+	std::cout<<x[176]<<" "<<x[182]<<" "<<x[183]<<" "<<x[184]<<" "<<x[278]<<std::endl;
+	//exit(-1);
+	*/
 
 	dptr1 = x;
 	for (unsigned int i=0; i<femObjects.size(); i++) {
@@ -323,11 +544,8 @@ void World::solve() {
 	}
 	for (unsigned int i=0; i<rigidBodies.size(); i++) {
 		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		btVector3 v(dptr1[0], dptr1[1], dptr1[2]);
-		btVector3 omega(dptr1[4], dptr1[5], dptr1[6]);
-		std::cout<<v<<" "<<omega<<std::endl;
-		rigidBodies[i].bulletBody->setLinearVelocity(v);
-		rigidBodies[i].bulletBody->setAngularVelocity(omega);
+		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
+		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
 		dptr1 += 6;
 	}
 }
@@ -445,6 +663,7 @@ void World::computeConstraints(){
 
   for( auto rbInd : range(rigidBodies.size())){
     auto& rb = rigidBodies[rbInd];
+    auto mass = 1.0/rb.bulletBody->getInvMass();
     for(auto femInd : range(femObjects.size())){
       auto& fem = femObjects[femInd];
 
@@ -478,16 +697,17 @@ void World::computeConstraints(){
 		relPos.z() >= -extents.z() &&
 		relPos.z() <= extents.z()){
 	      
-	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero()});
+	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), std::min(fem.mass[i], mass)-1e-6});
+				fem.grip(femInd);
 	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
-	      
 	    }
 	    
 
 	  } else if(rb.rbType == RigidBody::RB_PLANE){
 	    const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
 	    if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
-	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero()});
+	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), std::min(fem.mass[i], mass)-1e-6});
+				fem.grip(femInd);
 	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
 	    }
 	    
@@ -516,6 +736,7 @@ void World::computeCrossProductMatrices(){
 void World::mulJV(double* in, double*out){
 	size_t rbIndex = nfemdof;
   size_t constraintIndex = nrbdof + nfemdof;
+	double v[3];
 
   for(auto& rb : rigidBodies){
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
@@ -524,13 +745,20 @@ void World::mulJV(double* in, double*out){
       //the constaint block is I_3x3 for the FEM,
       // -I_3x3 for the rigid linear
       // and a cross product matrix the rotational part
-      out[constraintIndex    ] += in[femIndex   ] - in[rbIndex];
-      out[constraintIndex + 1] += in[femIndex +1] - in[rbIndex +1];
-      out[constraintIndex + 2] += in[femIndex +2] - in[rbIndex +2];
+      out[constraintIndex    ] += c.weight*(in[femIndex   ] - in[rbIndex   ]);
+      out[constraintIndex + 1] += c.weight*(in[femIndex +1] - in[rbIndex +1]);
+      out[constraintIndex + 2] += c.weight*(in[femIndex +2] - in[rbIndex +2]);
+      //out[constraintIndex    ] += c.weight*(-in[femIndex   ] - in[rbIndex   ]);
+      //out[constraintIndex + 1] += c.weight*(-in[femIndex +1] - in[rbIndex +1]);
+      //out[constraintIndex + 2] += c.weight*(-in[femIndex +2] - in[rbIndex +2]);
       
-      inPlaceMult(in + rbIndex + 3,  
-									out + constraintIndex, 
-									c.crossProductMatrix);
+			v[0] = c.weight*in[rbIndex + 3];
+			v[1] = c.weight*in[rbIndex + 4];
+			v[2] = c.weight*in[rbIndex + 5];
+
+      inPlaceMult(v,  
+								out + constraintIndex, 
+								c.crossProductMatrix);
 
 
       constraintIndex+=3;
@@ -546,23 +774,28 @@ void World::mulJV(double* in, double*out){
 void World::mulJTLambda(double* in, double* out){
 	size_t rbIndex = nfemdof;
   size_t constraintIndex = nrbdof+nfemdof;
+	double v[3];
 
   for(auto& rb : rigidBodies){
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     for(auto& c : rb.constraints){
       size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
       
-      out[femIndex    ] += in[constraintIndex    ];
-      out[femIndex + 1] += in[constraintIndex + 1];
-      out[femIndex + 2] += in[constraintIndex + 2];
-      
-      out[rbIndex    ] -= in[constraintIndex    ];
-      out[rbIndex + 1] -= in[constraintIndex + 1];
-      out[rbIndex + 2] -= in[constraintIndex + 2];
+			v[0] = c.weight*in[constraintIndex    ];
+			v[1] = c.weight*in[constraintIndex + 1];
+			v[2] = c.weight*in[constraintIndex + 2];
 
-      inPlaceMultTranspose(in + constraintIndex,
-			   out + rbIndex + 3,
-			   c.crossProductMatrix);
+      out[femIndex    ] += v[0];
+      out[femIndex + 1] += v[1];
+      out[femIndex + 2] += v[2];
+      
+      out[rbIndex    ] -= v[0];
+      out[rbIndex + 1] -= v[1];
+      out[rbIndex + 2] -= v[2];
+
+      inPlaceMultTranspose(v,
+			 out + rbIndex + 3,
+			 c.crossProductMatrix);
 
       constraintIndex+=3;
     }
@@ -617,16 +850,37 @@ void World::countConstraints(){
 }
 
 void World::applyRegularizer(double* in, double* out){
-  
-  for(auto i : range(3*totalNumConstraints)){
-    out[i] = regularizerAlpha*in[i];
-  }
+  size_t constraintIndex = 0;
+
+  for(auto& rb : rigidBodies){
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+    for(auto& c : rb.constraints){
+			out[constraintIndex    ] = 4*c.weight*in[constraintIndex    ];
+			out[constraintIndex + 1] = 4*c.weight*in[constraintIndex + 1];
+			out[constraintIndex + 2] = 4*c.weight*in[constraintIndex + 2];
+			constraintIndex += 3;
+		}
+	}  
+  //for(auto i : range(3*totalNumConstraints)){
+	//out[i] = regularizerAlpha*in[i];
+  //}
 }
 
 void World::applyRegularizerPreconditioner(double* in, double* out){
+  size_t constraintIndex = 0;
 
-  auto recip = 1.0/regularizerAlpha;
-  for(auto i : range(3*totalNumConstraints)){
-    out[i] = recip*in[i];
-  }
+  for(auto& rb : rigidBodies){
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+    for(auto& c : rb.constraints){
+			out[constraintIndex    ] = in[constraintIndex    ] / (4*c.weight);
+			out[constraintIndex + 1] = in[constraintIndex + 1] / (4*c.weight);
+			out[constraintIndex + 2] = in[constraintIndex + 2] / (4*c.weight);
+			constraintIndex += 3;
+		}
+	}  
+
+  //auto recip = 1.0/regularizerAlpha;
+  //for(auto i : range(3*totalNumConstraints)){
+	//out[i] = recip*in[i];
+  //}
 }
