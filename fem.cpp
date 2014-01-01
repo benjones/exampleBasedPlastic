@@ -517,6 +517,7 @@ void FemObject::fracture() {
 	double scale;
 
 	for (unsigned int v=0; v<oldnv; v++) {
+		if (gripped(v)) continue;
 		scale = mag(unbalancedTensLoad[v]);
 		if (scale > EPS) {
 			M(unbalancedTensLoad[v], 1.0/scale, m);
@@ -1020,11 +1021,11 @@ void FemObject::loadNodeEle(const char *fname) {
 			density[i] = 1000;
 			lambda[i] = 5e4;
 			mu[i] = 1e5;
-			scale[i] = 1e-10;
-			yieldStress[i] = 10.0;
+			scale[i] = 1;
+			yieldStress[i] = DBL_MAX;//10.0;
 			plasticModulus[i] = 0.0;
 			flowrate[i] = 100;
-			toughness[i] = DBL_MAX;
+			toughness[i] = DBL_MAX;//100.0;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);

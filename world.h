@@ -23,6 +23,8 @@ class World{
   void countConstraints();
 
 	void solve();
+	void project(double *in);
+	void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
   void timeStep();
   void dumpFrame();
 
