@@ -23,6 +23,7 @@ class World{
   void countConstraints();
 
 	void solve();
+	void solveMinres();
 	void project(double *in);
 	void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
   void timeStep();
@@ -32,6 +33,9 @@ class World{
   void updateFemPositions();
 
   void computeCrossProductMatrices();
+
+	void mulSpringMatrix(double *in, double *out);
+	void applySpringPreconditioner(double *in, double *out);
 
   //multiply the constaint matrix by in and put the result in out.
   //this is the lower left block of the system.

@@ -207,452 +207,6 @@ World::World(std::string filename)
   countConstraints();
 }
 
-bool output = false;
-void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c) {
-	Eigen::Vector3d v, CTv;
-	size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
-	double rbInvMass = rb.bulletBody->getInvMass();
-	double femInvMass = 1.0/femObjects[c.femIndex].mass[c.nodeIndex];
-	double sumInvMass = rbInvMass + femInvMass;
-
-	// project velocity onto the constraint (C^T v)
-
-	//CTv[0] = femInvMass*in[femIndex   ] - rbInvMass*in[rbIndex   ];
-	//CTv[1] = femInvMass*in[femIndex +1] - rbInvMass*in[rbIndex +1];
-	//CTv[2] = femInvMass*in[femIndex +2] - rbInvMass*in[rbIndex +2];
-	CTv[0] = in[femIndex   ] - in[rbIndex   ];
-	CTv[1] = in[femIndex +1] - in[rbIndex +1];
-	CTv[2] = in[femIndex +2] - in[rbIndex +2];
-  
-	v[0] = in[rbIndex + 3];
-	v[1] = in[rbIndex + 4];
-	v[2] = in[rbIndex + 5];
-	
-	//CTv += c.crossProductMatrix * v;
-	
-	// compute the mass weighting matrix (C^T M^-1 C)^-1
-	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
-	Eigen::Matrix3d Iinv;
-	Iinv << 
-		btInvI[0][0], btInvI[0][1], btInvI[0][2],
-		btInvI[1][0], btInvI[1][1], btInvI[1][2],
-		btInvI[2][0], btInvI[2][1], btInvI[2][2];
-	Eigen::Matrix3d CTMinvC; //= c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
-	CTMinvC << 0,0,0, 0,0,0, 0,0,0;
-	CTMinvC(0,0) += sumInvMass; 
-	CTMinvC(1,1) += sumInvMass; 
-	CTMinvC(2,2) += sumInvMass; 
-	
-	Eigen::Vector3d CTMinvCinvCTv = CTMinvC.inverse()*CTv;
-	
-	//if (output) std::cout<<CTMinvC<<std::endl<<"CTMinvCinvCTv"<<CTMinvCinvCTv<<std::endl<<"CTv "<<CTv<<std::endl;
-
-	Eigen::Vector3d CCTMinvCinvCTv[3];
-	CCTMinvCinvCTv[0] = CTMinvCinvCTv;
-	CCTMinvCinvCTv[1] = -CTMinvCinvCTv;
-	CCTMinvCinvCTv[2] = c.crossProductMatrix.transpose()*CTMinvCinvCTv;
-	
-	CCTMinvCinvCTv[0] *= femInvMass;
-	CCTMinvCinvCTv[1] *= rbInvMass;
-	CCTMinvCinvCTv[2] = Iinv * CCTMinvCinvCTv[2];
-	
-
-	//in[femIndex    ] = (femInvMass*in[femIndex   ] - CCTMinvCinvCTv[0][0]);
-	//in[femIndex  +1] = (femInvMass*in[femIndex +1] - CCTMinvCinvCTv[0][1]);
-	//in[femIndex  +2] = (femInvMass*in[femIndex +2] - CCTMinvCinvCTv[0][2]);
-	//in[rbIndex    ] = (rbInvMass*in[rbIndex   ] - CCTMinvCinvCTv[1][0]);
-	//in[rbIndex  +1] = (rbInvMass*in[rbIndex +1] - CCTMinvCinvCTv[1][1]);
-	//in[rbIndex  +2] = (rbInvMass*in[rbIndex +2] - CCTMinvCinvCTv[1][2]);
-	in[femIndex    ] -= CCTMinvCinvCTv[0][0];
-	in[femIndex  +1] -= CCTMinvCinvCTv[0][1];
-	in[femIndex  +2] -= CCTMinvCinvCTv[0][2];
-	in[rbIndex    ] -= CCTMinvCinvCTv[1][0];
-	in[rbIndex  +1] -= CCTMinvCinvCTv[1][1];
-	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
-	//in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
-	//in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
-	//in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
-	if (output) {
-	//std::cout<<in[femIndex]<<" "<<CCTMinvCinvCTv[0][0]<<std::endl;
-		//std::cout<<in[femIndex + 1]<<" "<<CCTMinvCinvCTv[0][1]<<std::endl;
-	//std::cout<<in[femIndex + 2]<<" "<<CCTMinvCinvCTv[0][2]<<std::endl;
-	//std::cout<<in[rbIndex + 0]<<" "<<CCTMinvCinvCTv[1][0]<<std::endl;
-	//std::cout<<in[rbIndex + 1]<<" "<<CCTMinvCinvCTv[1][1]<<std::endl;
-	//std::cout<<in[rbIndex + 2]<<" "<<CCTMinvCinvCTv[1][2]<<std::endl;
-	//std::cout<<in[rbIndex + 3]<<" "<<CCTMinvCinvCTv[2][0]<<std::endl;
-	//std::cout<<in[rbIndex + 4]<<" "<<CCTMinvCinvCTv[2][1]<<std::endl;
-	//std::cout<<in[rbIndex + 5]<<" "<<CCTMinvCinvCTv[2][2]<<std::endl;
-		std::cout<<in[rbIndex+0]-in[femIndex+0]<<" "<<in[rbIndex+1]-in[femIndex+1]<<" "<<in[rbIndex+2]-in[femIndex+2]<<std::endl;
-		std::cout<<in[rbIndex+0]<<" "<<in[rbIndex+1]<<" "<<in[rbIndex+2]<<std::endl;
-	std::cout<<"------------------"<<std::endl;
-	}}
-
-void World::project(double *in) {
-	//return;
-	for (unsigned int i=0; i<4; i++) {
-
-		size_t rbIndex = nfemdof;
-		for(auto& rb : rigidBodies){
-			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
-			for(auto& c : rb.constraints){
-				project(in, rb, rbIndex, c);
-			}
-			rbIndex += 6;
-		}
-
-		rbIndex = nfemdof+nrbdof-6;
-		for (int j = rigidBodies.size()-1; j >= 0; j--) {
-			auto &rb = rigidBodies[j];
-			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
-			for (int k = rb.constraints.size()-1; k >= 0; k--) {
-				if (k==3) output = true;
-				auto &c = rb.constraints[k];
-				project(in, rb, rbIndex, c);
-				output=false;
-			}
-			rbIndex -= 6;
-		}
-	}
-}
-
-class Preconditioner {
-public:
-	Preconditioner(World *w) {
-		this->w = w;
-		p = new double [w->nfemdof];
-		int offset = 0;
-		for (unsigned int i=0; i<w->femObjects.size(); i++) {
-			w->femObjects[i].gm->setPrecon(p+offset);
-			offset += 3*w->femObjects[i].nv;
-		}
-	}
-
-	~Preconditioner() {
-		delete [] p;
-	}
-
-	void Apply(const SimpleVector &x, SimpleVector &y) const {
-		double *dptr1 = y.vals; double *dptr2 = p; double *dptr3 = x.vals;
-		for (unsigned int i=0; i<w->nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-			(*dptr1) = (*dptr2) * (*dptr3);
-		}
-		w->applyRigidPreconditioner(x.vals+w->nfemdof, y.vals+w->nfemdof);
-		w->applyRegularizerPreconditioner(x.vals+w->nfemdof+w->nrbdof, y.vals+w->nfemdof+w->nrbdof);
-	}
-
-private:
-	World *w;
-	double *p;
-};
-	
-class Operator {
-public:
-	Operator(World *w) {
-		this->w = w;
-	}
-
-	~Operator() {
-	}
-	
-	void Apply(const SimpleVector &x, SimpleVector &y) const {
-		int offset = 0;
-		for (unsigned int i=0; i<w->femObjects.size(); i++) {
-			w->femObjects[i].gm->mvmul((SlVector3 *)(x.vals+offset),(SlVector3*) (y.vals+offset));
-			offset += 3*w->femObjects[i].nv;																	
-		}
-		w->mulRigidMassMatrix(x.vals+offset, y.vals+offset);
-		//w->applyRegularizer(x.vals+offset+w->nrbdof, y.vals+offset+w->nrbdof);
-		w->mulJV(x.vals, y.vals);
-		w->mulJTLambda(x.vals, y.vals);
-	}
-private:
-	World *w;
-};
-
-#if 1
-void World::solve() {
-
-	nfemdof = 0;
-	nrbdof = 0;
-	unsigned int nrbs = 0;
-	unsigned int n = 0; 
-
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-			femObjects[i].firstNodeIndex = n/3;
-			n += 3*femObjects[i].nv;
-			nfemdof += 3*femObjects[i].nv;
-		}
-	
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		n += 6;
-		nrbs++;
-		nrbdof += 6;
-	}
-	n += 3*totalNumConstraints;	
-
-	SimpleVector rhs(n), x(n);
-	x = 0;
-
-	double *dptr1 = rhs.vals;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].frc;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
-		}
-	}
-
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
-
-    //rotational part, there must be a less hideous way of doing this.
-		double angularvelocity[3];
-		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
-		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
-		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
-    bulletOverwriteMultiply(angularvelocity, dptr1,
-			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
-		dptr1 += 3;
-	}
-	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
-		(*(dptr1++)) = 0.0;
-	}
-
-		size_t rbIndex = nfemdof;
-  for(auto& rb : rigidBodies){
-		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
-    for(auto& c : rb.constraints){
-      size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
-			btVector3 f, t;
-			SlVector3 &fempos = femObjects[c.femIndex].pos[c.nodeIndex];
-			btVector3 rbpos = rb.bulletBody->getCenterOfMassTransform()*c.localPosition;
-			f[0] = dt*1e4*(fempos[0] - rbpos[0]);
-			f[1] = dt*1e4*(fempos[1] - rbpos[1]);
-			f[2] = dt*1e4*(fempos[2] - rbpos[2]);
-			t = f.cross(rb.bulletBody->getCenterOfMassPosition()-rbpos);
-			rhs[femIndex  ] -= f[0];
-			rhs[femIndex+1] -= f[1];
-			rhs[femIndex+2] -= f[2];
-			rhs[rbIndex  ] += f[0];
-			rhs[rbIndex+1] += f[1];
-			rhs[rbIndex+2] += f[2];
-			rhs[rbIndex+3] += t[0];
-			rhs[rbIndex+4] += t[1];
-			rhs[rbIndex+5] += t[2];
-		}
-		rbIndex+=6;
-	}
-	Operator op(this);
-	//Preconditioner prec(this);
-	Preconditioner *prec = NULL;
-
-	double shift(0);
-	int max_iter(100);
-	double tol(1e-12);
-	bool show(true);
-
-	MINRES(op, x, rhs, prec, shift, max_iter, tol, show);
-
-
-	dptr1 = x.vals;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].vel;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*vptr)[0] = (*(dptr1++));
-			(*vptr)[1] = (*(dptr1++));
-			(*vptr)[2] = (*(dptr1++));
-		}
-	}
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
-		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
-		dptr1 += 6;
-	}
-
-	//SimpleVector foo(n);
-	//double *b = new double[n];
-	//for (unsigned int i=0; i<n; i++)
-	//b[i]=0.0;
-
-	//op.Apply(x,foo);
-	//mulJV(x.vals, b);	
-	//for (unsigned int i=0; i<n; i++)
-	//std::cout<<b[i]<<std::endl;
-}
-
-#else
-void World::solve() {
-	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
-	double tol=1e-40;
-	unsigned int iter=0, max_iter = 10000;
-	nfemdof = 0;
-	nrbdof = 0;
-	unsigned int nrbs = 0;
-
-	unsigned int n = 0; 
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		femObjects[i].firstNodeIndex = n/3;
-		n += 3*femObjects[i].nv;
-		nfemdof += 3*femObjects[i].nv;
-	}
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		n += 6;
-		nrbs++;
-		nrbdof += 6;
-	}
-	n += 3*totalNumConstraints;	
-
-	double *work = new double [5*n + nfemdof];
-	double *x = work;     // solution
-	double *r = work+n;   // residual
-	double *q = work+2*n; // temp storage
-	double *d = work+3*n; // search direction
-	double *q2 = work+3*n; // search direction
-	double *p = work+4*n; // preconditioner
-	
-	for (unsigned int i=0; i<5*n+nfemdof; i++) work[i] = 0.0;
-
-	int offset = 0;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		femObjects[i].gm->setPrecon(p+offset);
-		offset += 3*femObjects[i].nv;
-	}
-
-	dptr1 = r;
-	dptr2 = x;
-	for (unsigned int i=0; i<n; i++, dptr2++) (*dptr2) = 0.0;
-
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].frc;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
-			//(*(dptr2++)) = (*vptr)[0] / femObjects[i].mass[j];
-			//(*(dptr2++)) = (*vptr)[1] / femObjects[i].mass[j];
-			//(*(dptr2++)) = (*vptr)[2] / femObjects[i].mass[j];
-			//std::cout<<(*vptr)[1]/femObjects[i].mass[j]<<" "<<(*(dptr2++))<<" "<<femObjects[i].mass[j]<<std::endl;
-		}
-	}
-
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
-
-    //rotational part, there must be a less hideous way of doing this.
-		double angularvelocity[3];
-		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
-		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
-		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
-    bulletOverwriteMultiply(angularvelocity, dptr1,
-			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
-		dptr1 += 3;
-		//(*(dptr2++)) = angularvelocity[0];
-		//(*(dptr2++)) = angularvelocity[1];
-		//(*(dptr2++)) = angularvelocity[2];
-	}
-	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
-		(*(dptr1++)) = 0.0;
-		//(*(dptr2++)) = 0.0;
-	}
-
-	//offset = 0;
-	//for (unsigned int i=0; i<femObjects.size(); i++) {
-	//	femObjects[i].gm->mvmul((SlVector3 *)(x+offset),(SlVector3*) (q+offset));
-	//	offset += 3*femObjects[i].nv;																	
-	//}
-	//mulRigidMassMatrix(x+offset, q+offset);
-	//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
-	//mulJV(d, q);
-	//mulJTLambda(d, q);
-	
-	//cblas_daxpy(n, -1, q, 1, r, 1); 
-	
-	//std::cout<<"project r"<<std::endl;
-	//project(r);
-
-	// d = p*r
-	dptr1 = d; dptr2 = p; dptr3 = r;
-	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-		(*dptr1) = (*dptr2) * (*dptr3);
-	}
-	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
-	//applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
-
-	project(r);
-	project(d);
-	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
-	tol *= delta_new;
-
-	if (delta_new > tol) {
-		while (iter++ < max_iter) {
-			// apply matrix
-			project(d);
-			offset = 0;
-			for (unsigned int i=0; i<femObjects.size(); i++) {
-				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
-				offset += 3*femObjects[i].nv;																	
-			}
-			mulRigidMassMatrix(d+offset, q+offset);
-			//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
-			//mulJV(d, q);
-			//mulJTLambda(d, q);
-			project(q);
-
-			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
-			cblas_daxpy(n, alpha, d, 1, x, 1);
-			cblas_daxpy(n, -alpha, q, 1, r, 1);
-			
-			// apply preconditioner q = P*r
-			dptr1 = q; dptr3 = p; dptr2 = r;
-			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-				(*dptr1) = (*dptr2) * (*dptr3);
-			}
-			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
-			//applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
-
-			delta_old = delta_new;
-			delta_new = cblas_ddot(n, r, 1, q, 1);
-			project(q);
-			beta = delta_new / delta_old;
-			
-			cblas_daxpy(n, beta, d, 1, q, 1);
-			cblas_dcopy(n, q, 1, d, 1);
-			//project(d);
-			std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
-			if (delta_new < tol) break;// || delta_new > delta_old) break;
-			
-		}
-	}
-
-	dptr1 = x;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].vel;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*vptr)[0] = (*(dptr1++));// / femObjects[i].mass[j]; 
-			(*vptr)[1] = (*(dptr1++));// / femObjects[i].mass[j]; 
-			(*vptr)[2] = (*(dptr1++));// / femObjects[i].mass[j];
-		}
-	}
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
-		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
-		dptr1 += 6;
-	}
-}
-#endif
-
 void World::timeStep(){
 
 
@@ -702,6 +256,157 @@ void World::timeStep(){
   bulletWorld.synchronizeMotionStates();
   updateFemPositions();
   
+}
+
+
+void World::solve() {
+	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
+	double tol=1e-40;
+	unsigned int iter=0, max_iter = 10000;
+	nfemdof = 0;
+	nrbdof = 0;
+	unsigned int nrbs = 0;
+
+	unsigned int n = 0; 
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].firstNodeIndex = n/3;
+		n += 3*femObjects[i].nv;
+		nfemdof += 3*femObjects[i].nv;
+	}
+
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		n += 6;
+		nrbs++;
+		nrbdof += 6;
+	}
+
+	double *work = new double [4*n + nfemdof];
+	double *x = work;     // solution
+	double *r = work+n;   // residual
+	double *q = work+2*n; // temp storage
+	double *d = work+3*n; // search direction
+	double *p = work+4*n; // preconditioner
+	
+	for (unsigned int i=0; i<4*n+nfemdof; i++) work[i] = 0.0;
+
+	// set up fem preconditioner
+	int offset = 0;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].gm->setPrecon(p+offset);
+		offset += 3*femObjects[i].nv;
+	}
+
+	// zero out initial guess
+	dptr1 = x;
+	for (unsigned int i=0; i<n; i++, dptr1++) (*dptr1) = 0.0;
+
+	dptr1 = r;
+	// fill in rhs (momentum + time integrated forces), fem first
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].frc;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+		}
+	}
+
+	// rigid bodies
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+
+    //rotational part, there must be a less hideous way of doing this.
+		double angularvelocity[3];
+		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
+		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
+		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
+    bulletOverwriteMultiply(angularvelocity, dptr1,
+			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		dptr1 += 3;
+	}
+
+	// constraint springs, double check that these are the right rigid body positions
+	size_t rbIndex = nfemdof;
+  for(auto& rb : rigidBodies){
+		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+    for(auto& c : rb.constraints){
+      size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+			btVector3 f, t;
+			SlVector3 &fempos = femObjects[c.femIndex].pos[c.nodeIndex];
+			btVector3 rbpos = rb.bulletBody->getCenterOfMassTransform()*c.localPosition;
+			f[0] = dt*1e4*(fempos[0] - rbpos[0]);
+			f[1] = dt*1e4*(fempos[1] - rbpos[1]);
+			f[2] = dt*1e4*(fempos[2] - rbpos[2]);
+			t = f.cross(rb.bulletBody->getCenterOfMassPosition()-rbpos);
+			r[femIndex  ] -= f[0]; r[femIndex+1] -= f[1]; r[femIndex+2] -= f[2];
+			r[rbIndex  ] += f[0];  r[rbIndex+1] += f[1];  r[rbIndex+2] += f[2];
+			r[rbIndex+3] += t[0];  r[rbIndex+4] += t[1];  r[rbIndex+5] += t[2];
+		}
+		rbIndex+=6;
+	}
+
+	// apply preconditioner to the residual to get intial search direction, d = p*r
+	dptr1 = d; dptr2 = p; dptr3 = r;
+	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+		(*dptr1) = (*dptr2) * (*dptr3);
+	}
+	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+	applySpringPreconditioner(r, d);
+
+	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
+	tol *= delta_new;
+
+	if (delta_new > tol) {
+		while (iter++ < max_iter) {
+			// apply matrix
+			offset = 0;
+			for (unsigned int i=0; i<femObjects.size(); i++) {
+				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+				offset += 3*femObjects[i].nv;																	
+			}
+			mulRigidMassMatrix(d+offset, q+offset);
+			mulSpringMatrix(d,q);
+
+			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
+			cblas_daxpy(n, alpha, d, 1, x, 1);
+			cblas_daxpy(n, -alpha, q, 1, r, 1);
+			
+			// apply preconditioner q = P*r
+			dptr1 = q; dptr3 = p; dptr2 = r;
+			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+				(*dptr1) = (*dptr2) * (*dptr3);
+			}
+			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
+			applySpringPreconditioner(r, q);
+
+			delta_old = delta_new;
+			delta_new = cblas_ddot(n, r, 1, q, 1);
+			beta = delta_new / delta_old;
+			
+			cblas_daxpy(n, beta, d, 1, q, 1);
+			cblas_dcopy(n, q, 1, d, 1);
+
+			//std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
+			if (delta_new < tol) break;
+		}
+	}
+
+	dptr1 = x;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].vel;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*vptr)[0] = (*(dptr1++));  (*vptr)[1] = (*(dptr1++));  (*vptr)[2] = (*(dptr1++));
+		}
+	}
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
+		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
+		dptr1 += 6;
+	}
 }
 
 
@@ -836,10 +541,13 @@ void World::computeCrossProductMatrices(){
   }
 }
 
-#if 1
-void World::mulJV(double* in, double*out){
+
+void World::applySpringPreconditioner(double *in, double *out) {
+	// do nothing for now...
+}
+
+void World::mulSpringMatrix(double* in, double*out){
 	size_t rbIndex = nfemdof;
-	double v[3];
 	double mult = dt*dt*1e4;
 
   for(auto& rb : rigidBodies){
@@ -870,7 +578,7 @@ void World::mulJV(double* in, double*out){
   }
   
 }
-#else
+
 void World::mulJV(double* in, double*out){
 	size_t rbIndex = nfemdof;
   size_t constraintIndex = nrbdof + nfemdof;
@@ -886,9 +594,6 @@ void World::mulJV(double* in, double*out){
       out[constraintIndex    ] += c.weight*(in[femIndex   ] - in[rbIndex   ]);
       out[constraintIndex + 1] += c.weight*(in[femIndex +1] - in[rbIndex +1]);
       out[constraintIndex + 2] += c.weight*(in[femIndex +2] - in[rbIndex +2]);
-      //out[constraintIndex    ] += c.weight*(-in[femIndex   ] - in[rbIndex   ]);
-      //out[constraintIndex + 1] += c.weight*(-in[femIndex +1] - in[rbIndex +1]);
-      //out[constraintIndex + 2] += c.weight*(-in[femIndex +2] - in[rbIndex +2]);
       
 			v[0] = c.weight*in[rbIndex + 3];
 			v[1] = c.weight*in[rbIndex + 4];
@@ -905,14 +610,7 @@ void World::mulJV(double* in, double*out){
   }
   
 }
-#endif
 
-#if 1
-//in = &(lambda[0])
-//out = &(velocitiesToSolveFor[0])
-void World::mulJTLambda(double* in, double* out){
-}
-#else
 void World::mulJTLambda(double* in, double* out){
 	size_t rbIndex = nfemdof;
   size_t constraintIndex = nrbdof+nfemdof;
@@ -944,7 +642,7 @@ void World::mulJTLambda(double* in, double* out){
 		rbIndex+=6;
   }
 }
-#endif
+
 
 //make sure in and out are the right size
 //in = first rigid body velocity in teh vector
@@ -998,15 +696,12 @@ void World::applyRegularizer(double* in, double* out){
   for(auto& rb : rigidBodies){
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     for(auto& c : rb.constraints){
-			out[constraintIndex    ] = 0.0;//4*c.weight*in[constraintIndex    ];
-			out[constraintIndex + 1] = 0.0;//4*c.weight*in[constraintIndex + 1];
-			out[constraintIndex + 2] = 0.0;//4*c.weight*in[constraintIndex + 2];
+			out[constraintIndex    ] = 0.0;//c.weight*in[constraintIndex    ];
+			out[constraintIndex + 1] = 0.0;//c.weight*in[constraintIndex + 1];
+			out[constraintIndex + 2] = 0.0;//c.weight*in[constraintIndex + 2];
 			constraintIndex += 3;
 		}
 	}  
-  //for(auto i : range(3*totalNumConstraints)){
-	//out[i] = regularizerAlpha*in[i];
-  //}
 }
 
 void World::applyRegularizerPreconditioner(double* in, double* out){
@@ -1015,15 +710,398 @@ void World::applyRegularizerPreconditioner(double* in, double* out){
   for(auto& rb : rigidBodies){
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     for(auto& c : rb.constraints){
-			out[constraintIndex    ] = 0.0;//in[constraintIndex    ] / (4*c.weight);
-			out[constraintIndex + 1] = 0.0;//in[constraintIndex + 1] / (4*c.weight);
-			out[constraintIndex + 2] = 0.0;//in[constraintIndex + 2] / (4*c.weight);
+			out[constraintIndex    ] = 0.0;//in[constraintIndex    ] / (c.weight);
+			out[constraintIndex + 1] = 0.0;//in[constraintIndex + 1] / (c.weight);
+			out[constraintIndex + 2] = 0.0;//in[constraintIndex + 2] / (c.weight);
 			constraintIndex += 3;
 		}
 	}  
-
-  //auto recip = 1.0/regularizerAlpha;
-  //for(auto i : range(3*totalNumConstraints)){
-	//out[i] = recip*in[i];
-  //}
 }
+
+
+bool output = false;
+void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c) {
+	Eigen::Vector3d v, CTv;
+	size_t femIndex = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+	double rbInvMass = rb.bulletBody->getInvMass();
+	double femInvMass = 1.0/femObjects[c.femIndex].mass[c.nodeIndex];
+	double sumInvMass = rbInvMass + femInvMass;
+
+	// project velocity onto the constraint (C^T v)
+
+	//CTv[0] = femInvMass*in[femIndex   ] - rbInvMass*in[rbIndex   ];
+	//CTv[1] = femInvMass*in[femIndex +1] - rbInvMass*in[rbIndex +1];
+	//CTv[2] = femInvMass*in[femIndex +2] - rbInvMass*in[rbIndex +2];
+	CTv[0] = in[femIndex   ] - in[rbIndex   ];
+	CTv[1] = in[femIndex +1] - in[rbIndex +1];
+	CTv[2] = in[femIndex +2] - in[rbIndex +2];
+  
+	v[0] = in[rbIndex + 3];
+	v[1] = in[rbIndex + 4];
+	v[2] = in[rbIndex + 5];
+	
+	//CTv += c.crossProductMatrix * v;
+	
+	// compute the mass weighting matrix (C^T M^-1 C)^-1
+	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
+	Eigen::Matrix3d Iinv;
+	Iinv << 
+		btInvI[0][0], btInvI[0][1], btInvI[0][2],
+		btInvI[1][0], btInvI[1][1], btInvI[1][2],
+		btInvI[2][0], btInvI[2][1], btInvI[2][2];
+	Eigen::Matrix3d CTMinvC; //= c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
+	CTMinvC << 0,0,0, 0,0,0, 0,0,0;
+	CTMinvC(0,0) += sumInvMass; 
+	CTMinvC(1,1) += sumInvMass; 
+	CTMinvC(2,2) += sumInvMass; 
+	
+	Eigen::Vector3d CTMinvCinvCTv = CTMinvC.inverse()*CTv;
+	
+
+	Eigen::Vector3d CCTMinvCinvCTv[3];
+	CCTMinvCinvCTv[0] = CTMinvCinvCTv;
+	CCTMinvCinvCTv[1] = -CTMinvCinvCTv;
+	CCTMinvCinvCTv[2] = c.crossProductMatrix.transpose()*CTMinvCinvCTv;
+	
+	CCTMinvCinvCTv[0] *= femInvMass;
+	CCTMinvCinvCTv[1] *= rbInvMass;
+	CCTMinvCinvCTv[2] = Iinv * CCTMinvCinvCTv[2];
+	
+
+	in[femIndex    ] -= CCTMinvCinvCTv[0][0];
+	in[femIndex  +1] -= CCTMinvCinvCTv[0][1];
+	in[femIndex  +2] -= CCTMinvCinvCTv[0][2];
+	in[rbIndex    ] -= CCTMinvCinvCTv[1][0];
+	in[rbIndex  +1] -= CCTMinvCinvCTv[1][1];
+	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
+}
+
+void World::project(double *in) {
+	for (unsigned int i=0; i<4; i++) {
+
+		size_t rbIndex = nfemdof;
+		for(auto& rb : rigidBodies){
+			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+			for(auto& c : rb.constraints){
+				project(in, rb, rbIndex, c);
+			}
+			rbIndex += 6;
+		}
+
+		rbIndex = nfemdof+nrbdof-6;
+		for (int j = rigidBodies.size()-1; j >= 0; j--) {
+			auto &rb = rigidBodies[j];
+			if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+			for (int k = rb.constraints.size()-1; k >= 0; k--) {
+				if (k==3) output = true;
+				auto &c = rb.constraints[k];
+				project(in, rb, rbIndex, c);
+				output=false;
+			}
+			rbIndex -= 6;
+		}
+	}
+}
+
+class Preconditioner {
+public:
+	Preconditioner(World *w) {
+		this->w = w;
+		p = new double [w->nfemdof];
+		int offset = 0;
+		for (unsigned int i=0; i<w->femObjects.size(); i++) {
+			w->femObjects[i].gm->setPrecon(p+offset);
+			offset += 3*w->femObjects[i].nv;
+		}
+	}
+
+	~Preconditioner() {
+		delete [] p;
+	}
+
+	void Apply(const SimpleVector &x, SimpleVector &y) const {
+		double *dptr1 = y.vals; double *dptr2 = p; double *dptr3 = x.vals;
+		for (unsigned int i=0; i<w->nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+			(*dptr1) = (*dptr2) * (*dptr3);
+		}
+		w->applyRigidPreconditioner(x.vals+w->nfemdof, y.vals+w->nfemdof);
+		w->applyRegularizerPreconditioner(x.vals+w->nfemdof+w->nrbdof, y.vals+w->nfemdof+w->nrbdof);
+	}
+
+private:
+	World *w;
+	double *p;
+};
+	
+class Operator {
+public:
+	Operator(World *w) {
+		this->w = w;
+	}
+
+	~Operator() {
+	}
+	
+	void Apply(const SimpleVector &x, SimpleVector &y) const {
+		int offset = 0;
+		for (unsigned int i=0; i<w->femObjects.size(); i++) {
+			w->femObjects[i].gm->mvmul((SlVector3 *)(x.vals+offset),(SlVector3*) (y.vals+offset));
+			offset += 3*w->femObjects[i].nv;																	
+		}
+		w->mulRigidMassMatrix(x.vals+offset, y.vals+offset);
+		w->applyRegularizer(x.vals+offset+w->nrbdof, y.vals+offset+w->nrbdof);
+		w->mulJV(x.vals, y.vals);
+		w->mulJTLambda(x.vals, y.vals);
+	}
+private:
+	World *w;
+};
+
+void World::solveMinres() {
+
+	nfemdof = 0;
+	nrbdof = 0;
+	unsigned int nrbs = 0;
+	unsigned int n = 0; 
+
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+			femObjects[i].firstNodeIndex = n/3;
+			n += 3*femObjects[i].nv;
+			nfemdof += 3*femObjects[i].nv;
+		}
+	
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		n += 6;
+		nrbs++;
+		nrbdof += 6;
+	}
+	n += 3*totalNumConstraints;	
+
+	SimpleVector rhs(n), x(n);
+	x = 0;
+
+	double *dptr1 = rhs.vals;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].frc;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+		}
+	}
+
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+
+    //rotational part, there must be a less hideous way of doing this.
+		double angularvelocity[3];
+		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
+		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
+		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
+    bulletOverwriteMultiply(angularvelocity, dptr1,
+			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		dptr1 += 3;
+	}
+	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
+		(*(dptr1++)) = 0.0;
+	}
+
+	Operator op(this);
+	//Preconditioner prec(this);
+	Preconditioner *prec = NULL;
+
+	double shift(0);
+	int max_iter(100);
+	double tol(1e-12);
+	bool show(true);
+
+	MINRES(op, x, rhs, prec, shift, max_iter, tol, show);
+
+	dptr1 = x.vals;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].vel;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*vptr)[0] = (*(dptr1++));
+			(*vptr)[1] = (*(dptr1++));
+			(*vptr)[2] = (*(dptr1++));
+		}
+	}
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
+		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
+		dptr1 += 6;
+	}
+}
+
+#if 0
+void World::solve() {
+	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
+	double tol=1e-40;
+	unsigned int iter=0, max_iter = 10000;
+	nfemdof = 0;
+	nrbdof = 0;
+	unsigned int nrbs = 0;
+
+	unsigned int n = 0; 
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].firstNodeIndex = n/3;
+		n += 3*femObjects[i].nv;
+		nfemdof += 3*femObjects[i].nv;
+	}
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		n += 6;
+		nrbs++;
+		nrbdof += 6;
+	}
+	n += 3*totalNumConstraints;	
+
+	double *work = new double [5*n + nfemdof];
+	double *x = work;     // solution
+	double *r = work+n;   // residual
+	double *q = work+2*n; // temp storage
+	double *d = work+3*n; // search direction
+	double *q2 = work+3*n; // search direction
+	double *p = work+4*n; // preconditioner
+	
+	for (unsigned int i=0; i<5*n+nfemdof; i++) work[i] = 0.0;
+
+	int offset = 0;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].gm->setPrecon(p+offset);
+		offset += 3*femObjects[i].nv;
+	}
+
+	dptr1 = r;
+	dptr2 = x;
+	for (unsigned int i=0; i<n; i++, dptr2++) (*dptr2) = 0.0;
+
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].frc;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+			//(*(dptr2++)) = (*vptr)[0] / femObjects[i].mass[j];
+			//(*(dptr2++)) = (*vptr)[1] / femObjects[i].mass[j];
+			//(*(dptr2++)) = (*vptr)[2] / femObjects[i].mass[j];
+			//std::cout<<(*vptr)[1]/femObjects[i].mass[j]<<" "<<(*(dptr2++))<<" "<<femObjects[i].mass[j]<<std::endl;
+		}
+	}
+
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
+    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
+		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
+		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
+
+    //rotational part, there must be a less hideous way of doing this.
+		double angularvelocity[3];
+		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
+		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
+		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
+    bulletOverwriteMultiply(angularvelocity, dptr1,
+			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		dptr1 += 3;
+		//(*(dptr2++)) = angularvelocity[0];
+		//(*(dptr2++)) = angularvelocity[1];
+		//(*(dptr2++)) = angularvelocity[2];
+	}
+	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
+		(*(dptr1++)) = 0.0;
+		//(*(dptr2++)) = 0.0;
+	}
+
+	//offset = 0;
+	//for (unsigned int i=0; i<femObjects.size(); i++) {
+	//	femObjects[i].gm->mvmul((SlVector3 *)(x+offset),(SlVector3*) (q+offset));
+	//	offset += 3*femObjects[i].nv;																	
+	//}
+	//mulRigidMassMatrix(x+offset, q+offset);
+	//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+	//mulJV(d, q);
+	//mulJTLambda(d, q);
+	
+	//cblas_daxpy(n, -1, q, 1, r, 1); 
+	
+	//std::cout<<"project r"<<std::endl;
+	//project(r);
+
+	// d = p*r
+	dptr1 = d; dptr2 = p; dptr3 = r;
+	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+		(*dptr1) = (*dptr2) * (*dptr3);
+	}
+	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+	//applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
+
+	//project(r);
+	//project(d);
+	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
+	tol *= delta_new;
+
+	if (delta_new > tol) {
+		while (iter++ < max_iter) {
+			// apply matrix
+			project(d);
+			offset = 0;
+			for (unsigned int i=0; i<femObjects.size(); i++) {
+				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+				offset += 3*femObjects[i].nv;																	
+			}
+			mulRigidMassMatrix(d+offset, q+offset);
+			//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+			//mulJV(d, q);
+			//mulJTLambda(d, q);
+			project(q);
+
+			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
+			cblas_daxpy(n, alpha, d, 1, x, 1);
+			cblas_daxpy(n, -alpha, q, 1, r, 1);
+			
+			// apply preconditioner q = P*r
+			dptr1 = q; dptr3 = p; dptr2 = r;
+			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+				(*dptr1) = (*dptr2) * (*dptr3);
+			}
+			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
+			//applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
+
+			delta_old = delta_new;
+			delta_new = cblas_ddot(n, r, 1, q, 1);
+			//project(q);
+			beta = delta_new / delta_old;
+			
+			cblas_daxpy(n, beta, d, 1, q, 1);
+			cblas_dcopy(n, q, 1, d, 1);
+			//project(d);
+			std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
+			if (delta_new < tol) break;// || delta_new > delta_old) break;
+			
+		}
+	}
+
+	dptr1 = x;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].vel;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*vptr)[0] = (*(dptr1++));// / femObjects[i].mass[j]; 
+			(*vptr)[1] = (*(dptr1++));// / femObjects[i].mass[j]; 
+			(*vptr)[2] = (*(dptr1++));// / femObjects[i].mass[j];
+		}
+	}
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
+		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
+		dptr1 += 6;
+	}
+}
+#endif
+
