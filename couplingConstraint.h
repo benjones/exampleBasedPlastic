@@ -9,6 +9,7 @@ struct CouplingConstraint{
   size_t nodeIndex; //node index in that FEM
   size_t rbIndex;
   Eigen::Matrix3d crossProductMatrix; //updated each time we solve.
+	double weight;
   //cross product matrix of currentRigidRotate(localPositition)
 
 };

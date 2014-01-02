@@ -10,11 +10,11 @@
     
     "bulletObjects" : [
 	{
-	    "mass" : 100,
+	    "mass" : 4,
 	    "extents" : [0.1, 0.5, 0.1],
 	    "offset" : [0, 1, 0],
 	    "shape" : "box"
 	}
     ],
-		"regularizerAlpha" : 1000.0
+		"regularizerAlpha" : 0.0
 }

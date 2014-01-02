@@ -127,6 +127,7 @@ public:
 	SlVector3 *frc;  // force accumulator
 	unsigned char *flags; // 4 = constrained;
 	inline bool gripped(int i){return ((flags[i]) & 4);}
+	inline void grip(int i) {flags[i] &= 4;}
 
 	unsigned int ntets;  // # tets
 	Tet* tets; // tets
