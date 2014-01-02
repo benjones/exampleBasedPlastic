@@ -25,6 +25,11 @@ using std::unordered_map;
 //#define TIMING
 //#define OUTPUT
 
+#include "cppitertools/range.hpp"
+using iter::range;
+
+#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+
 static const double FEPS = 1e-6;
 
 bool extractSurface (const Tet* tets, unsigned int ntets, SlInt3 * &tris, unsigned int &ntris);
@@ -849,6 +854,8 @@ char *inputfindfield(char *string)
 }
 
 void FemObject::loadNodeEle(const char *fname) {
+  totalMass = 0;
+  
   char inputline[1024];
   char *stringptr;
   FILE *infile = NULL;
@@ -1093,6 +1100,8 @@ void FemObject::loadNodeEle(const char *fname) {
 		SlMatrix3x3 &b = beta[t];
 		tetMass[t] = density * det / 6.0;
 
+		totalMass += tetMass[t];
+
 		b = inverse(X);
 		SlMatrix3x3 bt(b);
 		bt.inplaceTranspose();
@@ -1137,6 +1146,7 @@ void FemObject::loadNodeEle(const char *fname) {
 
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
+	setupBulletMesh();
 
 	gm = new GlobalMatrix(nv, ntets, tets);
 
@@ -1148,8 +1158,12 @@ void FemObject::loadNodeEle(const char *fname) {
 	solver_precon = new SlVector3[av];
 }
 
-void FemObject::load(const char *fname) {
+void FemObject::load(const char *fname, btDiscreteDynamicsWorld* world) {
+  bulletWorld = world;
+
 	if (!strstr(fname, ".mesh")) return loadNodeEle(fname);
+
+	totalMass = 0;
 	std::ifstream in(fname, std::ios::in);
 	nv = 0;
 	ntets = 0;
@@ -1237,6 +1251,9 @@ void FemObject::load(const char *fname) {
 		if (det < 0) cout<<"inverted element"<<endl;
 		SlMatrix3x3 &b = beta[t];
 		tetMass[t] = density * det / 6.0;
+		
+		totalMass += tetMass[t];
+
 
 		b = inverse(X);
 		SlMatrix3x3 bt(b);
@@ -1253,6 +1270,9 @@ void FemObject::load(const char *fname) {
 
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
+
+	setupBulletMesh();
+
 
 	gm = new GlobalMatrix(nv, ntets, tets);
 
@@ -1312,6 +1332,241 @@ FemObject::~FemObject() {
 	delete [] solver_precon;
 }
 
+
+
+
+SlMatrix3x3 computeInertiaTensorPoints(double mass,
+									   SlVector3 localVertices[4]){
+  
+  SlMatrix3x3 ret(0.0);
+  SlMatrix3x3 identity;
+  identity.setIdentity();
+  for(auto i : range(4)){
+	ret += 
+	  (mass/4)*(dot(localVertices[i], localVertices[i])*identity -
+				SlMatrixProduct(localVertices[i], localVertices[i]));
+  }
+  
+  return ret;
+}
+
+
+void Tet::setInertiaTerms(SlVector3* pos,
+						  SlVector3* vel,
+						  double density,
+						  btConvexHullShape* shape,
+						  btRigidBody* body){
+  
+  SlVector3 centerOfMass(0.0);
+  auto comVelocity = btVector3{0.0, 0.0, 0.0};
+  for(auto vInd : vertices){
+	centerOfMass += pos[vInd];
+	comVelocity += btVector3{vel[vInd](0),
+		vel[vInd](1),
+		vel[vInd](2)};
+  }
+  centerOfMass /=4; //constant density over the tet
+  comVelocity /= 4;
+  
+  SlVector3 localVertices[4]; //to align the tet with the principal axes and put it at the COM
+
+
+  auto mass = 1.0/body->getInvMass();
+  auto angularMomentum = SlVector3{0.0};
+  for(auto i : range(4)){
+	localVertices[i] = pos[vertices[i]] - centerOfMass;
+	angularMomentum += (mass/4)*cross(localVertices[i], vel[vertices[i]]);
+  }
+  
+  auto inertiaTensor = computeInertiaTensorPoints(mass,
+												  localVertices);
+  
+  
+  auto angularVelocity = inverse(inertiaTensor)*angularMomentum;
+  
+
+
+  SlMatrix3x3 eVecs;
+  SlVector3 eVals;
+  
+  SlSymetricEigenDecomp(inertiaTensor,
+						 eVals,
+						 eVecs);
+
+  //rotate the local vertices so that its aligned with the principal axes
+  
+  auto* shapePoints = shape->getUnscaledPoints();
+
+  for(auto i  : range(4)){
+	auto& v = localVertices[i];
+	v = transmult(eVecs, v);
+	
+	//add the points to the shape
+	shapePoints[i] = btVector3{v(0), v(1), v(2)}; 
+  }
+  assert(shape->getNumVertices() == 4);
+  shape->recalcLocalAabb();
+
+  //eVals are the principal inertia tensor components
+  body->setMassProps(mass, btVector3{eVals(0), eVals(1), eVals(2)}); 
+  
+  auto rotMatrix = btMatrix3x3{eVecs(0,0), eVecs(0,1), eVecs(0,2),
+							   eVecs(1,0), eVecs(1,1), eVecs(1,2),
+							   eVecs(2,0), eVecs(2,1), eVecs(2,2)};
+
+  body->setCenterOfMassTransform(btTransform{rotMatrix,
+		btVector3{centerOfMass(0),
+		  centerOfMass(1),
+		  centerOfMass(2)}});
+  
+  //should double check that this transform is correct and gives us the world positions of vertices
+  body->setLinearVelocity(comVelocity);
+  body->setAngularVelocity({angularVelocity(0),
+		angularVelocity(1),
+		angularVelocity(2)});
+  
+
+
+#define EXTRA_INERTIA_CHECKS 0
+#if EXTRA_INERTIA_CHECKS
+  //double check that the new inertia tensor is diagonal
+  auto newInertiaTensor = computeInertiaTensorPoints(mass,
+													 localVertices);
+
+  std::cout << "new inertia tensor: \n" << newInertiaTensor << std::endl;
+
+  //std::cout << "new det: " << determinant(newInertiaTensor) << std::endl;
+
+  //newInertiaTensor = scale*newInertiaTensor;
+  //std::cout << "scaled new inertia tensor: \n" << newInertiaTensor << std::endl;
+
+  std::cout << "evecs: " << eVecs << std::endl;
+  std::cout << "evals (scaled): " << eVals << std::endl;
+  std::cout << "mass: " << mass << std::endl;
+
+  std::cout << "RT before R " <<
+	transpose(eVecs)*(inertiaTensor)*eVecs << std::endl;
+
+  //double check that the new center of mass is close to 0
+  SlVector3 localCOM = localVertices[0] + localVertices[1] + localVertices[2] + localVertices[3];
+  assert(fabs(localCOM.x()) < 1e-7);
+  assert(fabs(localCOM.y()) < 1e-7);
+  assert(fabs(localCOM.z()) < 1e-7);
+
+
+  assert(fabs(newInertiaTensor(0,1)) < 1e-7);
+  assert(fabs(newInertiaTensor(0,2)) < 1e-7);
+  assert(fabs(newInertiaTensor(1,0)) < 1e-7);
+  assert(fabs(newInertiaTensor(1,2)) < 1e-7);
+  assert(fabs(newInertiaTensor(2,0)) < 1e-7);
+  assert(fabs(newInertiaTensor(2,1)) < 1e-7);
+  assert(fabs(newInertiaTensor(0,0) - eVals(0)) < 1e-7);
+  assert(fabs(newInertiaTensor(1,1) - eVals(1)) < 1e-7);
+  assert(fabs(newInertiaTensor(2,2) - eVals(2)) < 1e-7);
+		 
+  std::cout << "inertia checks pass" << std::endl;
+#endif
+  
+}
+
+
+
+void FemObject::setupBulletMesh(){
+  /*
+  bulletVertexArray = 
+    std::unique_ptr<btTriangleIndexVertexArray>{new btTriangleIndexVertexArray{ntris,
+									       reinterpret_cast<int*>(tris),
+									       sizeof(SlInt3),
+									       nv,
+									       reinterpret_cast<double*>(pos),
+									       sizeof(SlVector3)}};
+  bulletMeshShape = 
+    std::unique_ptr<btGImpactMeshShape>{new btGImpactMeshShape{bulletVertexArray.get()}};
+
+  bulletMeshShape->updateBound(); //update the AABBs
+  */
+
+  //create a rigid body per tet
+
+  bulletTetShapes.reserve(ntets);
+  bulletTetShapes.resize(0);
+  for(auto i : range(ntets)){
+	bulletTetShapes.push_back(std::unique_ptr<btConvexHullShape>{new btConvexHullShape{}});
+	//add 4 points
+	bulletTetShapes.back()->addPoint(btVector3{0,0,0}, false); //don't recalc AABBs
+
+	bulletMotionStates.
+	  push_back(std::unique_ptr<btDefaultMotionState>{
+		  new btDefaultMotionState{btTransform{btQuaternion::getIdentity(),
+				btVector3(0,0,0)}}});
+	
+	bulletTetBodies.push_back(std::unique_ptr<btRigidBody>{
+		new btRigidBody{tetMass[i], 
+			bulletMotionStates.back().get(),
+			bulletTetShapes.back().get()}});
+
+	tets[i].setInertiaTerms(pos, vel, density[i], 
+							bulletTetShapes.back().get(),
+							bulletTetBodies.back().get());
+	
+	bulletWorld->addRigidBody(bulletTetBodies.back().get());
+	
+
+  }
+
+}
+
+void FemObject::updateBulletShapes(){
+  for(auto i : range(ntets)){
+	auto& t = tets[i];
+	//compute moment of inertia, and set linear/angular velocities
+	t.setInertiaTerms(pos, vel, density[i],
+					  bulletTetShapes[i].get(),
+					  bulletTetBodies[i].get());
+
+  }
+
+}
+
+
+void FemObject::setupRigidProperties(){
+
+  /*  btVector3 localInertia(0,0,0);
+  bulletMeshShape->updateBound();
+  bulletMeshShape->calculateLocalInertia(totalMass, localInertia);
+  
+  bulletMotionStates.
+	push_back(std::unique_ptr<btDefaultMotionState>{
+		new btDefaultMotionState{btTransform{btQuaternion::getIdentity(),
+			  btVector3{0,0,0}}}};
+	  
+  */
+}
+
+//do simple mass weighted averaging of the vertex positions
+void FemObject::stitchTets(){
+  
+  std::fill(pos, pos + nv, SlVector3{0.0});
+  
+  for(auto tInd : range(ntets)){
+	auto& t = tets[tInd];
+	auto& trans = bulletTetBodies[tInd]->getCenterOfMassTransform();
+	for(auto i : range(4)){
+	  auto worldPos = trans(bulletTetShapes[tInd]->getUnscaledPoints()[i]);
+	  pos[t.vertices[i]] += (tetMass[tInd]/4)*SlVector3{worldPos.x(), worldPos.y(), worldPos.z()};
+	}
+  }
+  for(auto pInd : range(nv)){
+	pos[pInd] /= mass[pInd];
+  }
+  
+}
+
+
+
+
+
+
 #if 0
 void FemObject::collide(double dt) {
 	double bound = 5.0;
@@ -1364,3 +1619,64 @@ timeSinceLastFrame+=dt;
 #endif
 
 
+//this is incorrect, but may be worth pursuing later on
+
+#if 0
+
+double computeDiagonalTerm(SlVector3 p[4],
+						   int i){
+  
+  return p[0](i)*(p[0](i) +
+				  p[1](i) +
+				  p[2](i) +
+				  p[3](i)) +
+	p[1](i)*(p[1](i) +
+			 p[2](i) +
+			 p[3](i)) +
+	p[2](i)*(p[2](i) + p[3](i)) +
+	p[3](i)*p[3](i);
+}
+
+double computeOffdiagTerm(SlVector3 p[4],
+						  int i, int j){
+
+  double ret = 0;
+  for(auto k : range(4)){
+	for(auto l : range(4)){	  
+	  ret += ((k == l) ? 2*p[k](i)*p[l](j) :
+			  p[k](i)*p[l](j));
+	}
+  }
+  /*ret += p[0](i)*p[0](j) +
+	p[1](i)*p[1](j) +
+	p[2](i)*p[2](j) +
+	p[3](i)*p[3](j);*/
+  return ret;
+}
+
+
+
+
+SlMatrix3x3 computeInertiaTensor(double mass,
+								 SlVector3 localVertices[4]){
+
+  //use the formulas from here: http://www.thescipub.com/abstract/?doi=jmssp.2005.8.11
+  //to compute the inertia tensor
+  auto mass_60 = mass/10;
+  auto mass_120 = mass/20;
+  auto diagX = computeDiagonalTerm(localVertices, 0);
+  auto diagY = computeDiagonalTerm(localVertices, 1);
+  auto diagZ = computeDiagonalTerm(localVertices, 2);
+  double a = mass_60*(diagY + diagZ);
+  double b = mass_60*(diagX + diagZ);
+  double c = mass_60*(diagX + diagY);
+  double aPrime = mass_120*computeOffdiagTerm(localVertices, 1, 2);
+  double bPrime = mass_120*computeOffdiagTerm(localVertices, 0, 2);
+  double cPrime = mass_120*computeOffdiagTerm(localVertices, 0, 1);
+  //there's probably an easier way to compute this
+  
+  return SlMatrix3x3 (a, -bPrime, -cPrime,
+					  -bPrime, b, -aPrime,
+					  -cPrime, -aPrime, c);
+}
+#endif

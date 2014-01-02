@@ -107,7 +107,7 @@ World::World(std::string filename)
     auto& femObjectIn = femObjectsIn[i];
     auto fnameIn = femObjectIn["filename"];
     femObjects.emplace_back();
-    femObjects.back().load(fnameIn.asString().c_str());
+    femObjects.back().load(fnameIn.asString().c_str(), &bulletWorld);
     
     if(!femObjectIn["offset"].isNull()){
       assert(femObjectIn["offset"].isArray() &&
@@ -345,10 +345,10 @@ void World::timeStep(){
   computeFemVelocities(); // this is really just forces
   bulletWorld.stepSimulationVelocitiesOnly(dt); 
 
-	solve();
+  solve();
 
-
-
+  
+  /*
 
   if(ground){
     for(auto& femObject : femObjects){
@@ -369,18 +369,32 @@ void World::timeStep(){
       }
     }
   }
-  
+  */
   /*
   for(auto &rb : rigidBodies){
     rb.couplingSolver.solveVelocityConstraints(*this, rb);
   }
   */
 
+  //use bullet to handle collisions here
+
+  for(auto & fem: femObjects){
+	fem.updateBulletShapes();
+	
+  }
+  
+  //do bullet step
+
   bulletWorld.integrateTransforms(dt);
   bulletWorld.updateActivationState(dt);
   bulletWorld.synchronizeMotionStates();
-  updateFemPositions();
+
   
+  //updateFemPositions();
+  for(auto& fem : femObjects){
+	fem.stitchTets();
+	fem.fracture();
+  }
 }
 
 

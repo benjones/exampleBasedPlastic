@@ -16,8 +16,11 @@ class World{
   public:
   
   World(std::string filename);
-  World(const World& other) = delete;  //move only, no copying
-  World(World&& other) = default;
+  World(const World& other) = delete;  //no moving or copying
+  World(World&& other) = delete;
+
+  World& operator=(World&& other) = delete;
+  World& operator=(const World& other) = delete;
 
   void computeConstraints();
   void countConstraints();

@@ -22,12 +22,31 @@
 
 //#include <dynamicsurface.h> //ignore collisions for now
 
+//bullet stuff
+#include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
+#include <BulletCollision/Gimpact/btGImpactShape.h>
+#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include <BulletDynamics/Dynamics/btRigidBody.h>
+#include <LinearMath/btDefaultMotionState.h>
+
+class btDiscreteDynamicsWorld;
+
 class Tet {
 public: 
 	unsigned int vertices[4];
 
 	inline unsigned int &operator()(const unsigned int &i) { return vertices[i]; }
 	inline unsigned int operator()(const unsigned int &i) const { return vertices[i]; }
+
+
+  //also sets linear and angular momentum
+  void setInertiaTerms(SlVector3* pos,
+					   SlVector3* vel,
+					   double density,
+					   btConvexHullShape* shape,
+					   btRigidBody* body);
+					   
+
 };
 
 #include "globalMatrix.H"
@@ -67,7 +86,16 @@ private:
 class FemObject {
 public:
 	FemObject();
-	void load(const char *fname);
+  
+  FemObject(const FemObject& other) = delete; //no copying
+  FemObject& operator=(const FemObject& other) = delete;
+
+  //move only
+  FemObject(FemObject&& other) = default;
+  FemObject& operator=(FemObject&& other) = default;
+
+
+  void load(const char *fname, btDiscreteDynamicsWorld* world);
 	void loadNodeEle(const char *fname);
 	~FemObject();
 	void clearGlobalMatrix() {gm->clear();};
@@ -136,6 +164,25 @@ public:
 
   SlVector3 bbMin, bbMax;
 
+
+  void setupBulletMesh();
+  void setupRigidProperties();
+  void updateBulletShapes();
+
+  void stitchTets(); //stitch tets together after doing bullet collision stuff
+  
+  /*std::unique_ptr<btTriangleIndexVertexArray> bulletVertexArray;
+  std::unique_ptr<btGImpactMeshShape> bulletMeshShape;
+  std::unique_ptr<btDefaultMotionState> bulletMotionState;
+  */
+
+  std::vector<std::unique_ptr<btConvexHullShape>> bulletTetShapes;
+  std::vector<std::unique_ptr<btRigidBody>> bulletTetBodies;
+  std::vector<std::unique_ptr<btDefaultMotionState>> bulletMotionStates;
+  btDiscreteDynamicsWorld* bulletWorld;
+  double totalMass;
+
+
 private:
 //Allocated space for computation
 	bool *solver_gripped;
@@ -144,6 +191,9 @@ private:
 	SlVector3 *solver_z;
 	SlVector3 *solver_s;
 	SlVector3 *solver_precon;
+
+  std::vector<SlVector3> stitchedPositions;
+  
 
 };
 
