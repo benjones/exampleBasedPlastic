@@ -1420,7 +1420,7 @@ void Tet::setInertiaTerms(SlVector3* pos,
 		  centerOfMass(1),
 		  centerOfMass(2)}});
   
-  //should double check that this transform is correct and gives us the world positions of vertices
+ 
   body->setLinearVelocity(comVelocity);
   body->setAngularVelocity({angularVelocity(0),
 		angularVelocity(1),
@@ -1428,8 +1428,19 @@ void Tet::setInertiaTerms(SlVector3* pos,
   
 
 
-#define EXTRA_INERTIA_CHECKS 0
+#define EXTRA_INERTIA_CHECKS 1
 #if EXTRA_INERTIA_CHECKS
+ 
+  //should double check that this transform is correct and gives us the world positions of vertices
+  auto trans = body->getCenterOfMassTransform();
+  for(auto i : range(4)){
+	auto worldPos = trans(shape->getUnscaledPoints()[i]);
+	assert(fabs(worldPos.x() - pos[vertices[i]](0)) < 1e-7);
+	assert(fabs(worldPos.y() - pos[vertices[i]](1)) < 1e-7);
+	assert(fabs(worldPos.z() - pos[vertices[i]](2)) < 1e-7);
+
+  }
+
   //double check that the new inertia tensor is diagonal
   auto newInertiaTensor = computeInertiaTensorPoints(mass,
 													 localVertices);
@@ -1494,8 +1505,10 @@ void FemObject::setupBulletMesh(){
   for(auto i : range(ntets)){
 	bulletTetShapes.push_back(std::unique_ptr<btConvexHullShape>{new btConvexHullShape{}});
 	//add 4 points
-	bulletTetShapes.back()->addPoint(btVector3{0,0,0}, false); //don't recalc AABBs
-
+	for(auto j : range(4)){
+	  bulletTetShapes.back()->addPoint(btVector3{0,0,0}, false); //don't recalc AABBs
+	}
+	
 	bulletMotionStates.
 	  push_back(std::unique_ptr<btDefaultMotionState>{
 		  new btDefaultMotionState{btTransform{btQuaternion::getIdentity(),

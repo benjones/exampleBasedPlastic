@@ -83,7 +83,7 @@ protected:
 
 	void	startProfiling(btScalar timeStep);
 
-	virtual void	internalSingleStepSimulation( btScalar timeStep);
+
 
 	void	createPredictiveContacts(btScalar timeStep);
 
@@ -107,8 +107,15 @@ public:
 	virtual int	stepSimulation( btScalar timeStep,int maxSubSteps=1, btScalar fixedTimeStep=btScalar(1.)/btScalar(60.));
 
 	virtual void stepSimulationVelocitiesOnly(btScalar timeStep);
+
+	virtual void	internalSingleStepSimulation( btScalar timeStep);
+
 	virtual void	integrateTransforms(btScalar timeStep);
 	virtual void	updateActivationState(btScalar timeStep);
+
+	virtual void preCoupledSolve(btScalar timeStep);
+	virtual void postCoupledSolve(btScalar timeStep);
+
 
 	virtual void	synchronizeMotionStates();
 
