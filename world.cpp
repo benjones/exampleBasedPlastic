@@ -220,8 +220,13 @@ void World::timeStep(){
   computeFemVelocities(); // this is really just forces
   //bulletWorld.stepSimulationVelocitiesOnly(dt); 
   bulletWorld.preCoupledSolve(dt);
+  std::cout << "after precoupled sovle " << std::endl;
+  femObjects[0].dump();
+
   solve();
 
+  std::cout << "after  sovle " << std::endl;
+  femObjects[0].dump();
 
 
 
@@ -252,19 +257,28 @@ void World::timeStep(){
   */
 
 	//bulletWorld.stepSimulation(dt);
+  for(auto& fem : femObjects){
+	fem.updateBulletShapes();
+  }
   bulletWorld.postCoupledSolve(dt);
 	/*bulletWorld.integrateTransforms(dt);
   bulletWorld.updateActivationState(dt);
   bulletWorld.synchronizeMotionStates();*/
 
+  std::cout << "after  post sovle " << std::endl;
+  femObjects[0].dump();
 
 
-	// updateFemPositions();
-  for(auto& fem : femObjects){
+  //updateFemPositions();
+	 for(auto& fem : femObjects){
 	fem.stitchTets();
 	fem.fracture();
-  }
+	}
   
+  std::cout << "after  stitch " << std::endl;
+  femObjects[0].dump();
+
+
 }
 
 

@@ -5,7 +5,8 @@ cc          = `which c++` #gcc
 
 #-----------------------------------------
 #Optimization ----------------------------
-OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION #-DPCUBE -DINVENTOR_DEFINED
+#OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION #-DPCUBE -DINVENTOR_DEFINED
+OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION
 #OPT   = -g -Wall
 
 #-----------------------------------------
@@ -19,8 +20,8 @@ OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigid
 LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath -L./bullet-2.82-r2704/build/src/BulletCollision -L./bullet-2.82-r2704/build/src/BulletDynamics -lslcommon -llapack -lblas -lBulletDynamics -lBulletCollision -lLinearMath  #./eltopo/eltopo3d/libeltopo_release.a
 INCS = -I./Common -I./bullet-2.82-r2704/src/ -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
 
-CCOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
-LDOPTS = $(OPT) $(DEBUG) $(INCS) #-pg
+CCOPTS = $(OPT) $(INCS) #-pg
+LDOPTS = $(OPT) $(INCS) #-pg
 
 #-----------------------------------------
 #-----------------------------------------

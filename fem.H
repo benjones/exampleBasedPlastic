@@ -29,6 +29,10 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <LinearMath/btDefaultMotionState.h>
 
+#include "cppitertools/range.hpp"
+#include "utils.h"
+using iter::range;
+
 class btDiscreteDynamicsWorld;
 
 class Tet {
@@ -172,6 +176,33 @@ public:
 
   void stitchTets(); //stitch tets together after doing bullet collision stuff
   
+  void dumpVel(){
+	std::cout << "vel" << std::endl;
+	for(auto i : range(nv)){
+	  std::cout << vel[i] << std::endl;
+	}
+  }
+
+  void dumpPos(){
+	std::cout << "pos" << std::endl;
+	for(auto i : range(nv)){
+	  std::cout << pos[i] << std::endl;
+	}
+  }
+
+  void dumpTrans(){
+	std::cout << "btrans" << std::endl;
+	for(auto& tb : bulletTetBodies){
+	  std::cout << tb->getCenterOfMassTransform() << std::endl;
+	}
+  }
+
+  void dump(){
+	dumpVel();
+	dumpPos();
+	dumpTrans();
+  }
+
   /*std::unique_ptr<btTriangleIndexVertexArray> bulletVertexArray;
   std::unique_ptr<btGImpactMeshShape> bulletMeshShape;
   std::unique_ptr<btDefaultMotionState> bulletMotionState;
