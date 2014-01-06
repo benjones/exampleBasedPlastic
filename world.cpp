@@ -106,6 +106,7 @@ World::World(std::string filename)
 
 
   auto femObjectsIn = root["femObjects"];
+  femObjects.reserve(femObjectsIn.size());
   for(auto i : range(femObjectsIn.size())){
     auto& femObjectIn = femObjectsIn[i];
     auto fnameIn = femObjectIn["filename"];
@@ -135,7 +136,7 @@ World::World(std::string filename)
     }
     
   }
-  
+
   auto bulletObjectsIn = root["bulletObjects"];
   for(auto i : range(bulletObjectsIn.size())){
     std::cout << "adding rb: " << i << std::endl;
@@ -220,14 +221,8 @@ void World::timeStep(){
   computeFemVelocities(); // this is really just forces
   //bulletWorld.stepSimulationVelocitiesOnly(dt); 
   bulletWorld.preCoupledSolve(dt);
-  std::cout << "after precoupled sovle " << std::endl;
-  femObjects[0].dump();
 
   solve();
-
-  std::cout << "after  sovle " << std::endl;
-  femObjects[0].dump();
-
 
 
 	/*if(ground){
@@ -265,20 +260,12 @@ void World::timeStep(){
   bulletWorld.updateActivationState(dt);
   bulletWorld.synchronizeMotionStates();*/
 
-  std::cout << "after  post sovle " << std::endl;
-  femObjects[0].dump();
-
 
   //updateFemPositions();
-	 for(auto& fem : femObjects){
+  for(auto& fem : femObjects){
 	fem.stitchTets();
 	fem.fracture();
-	}
-  
-  std::cout << "after  stitch " << std::endl;
-  femObjects[0].dump();
-
-
+  }
 }
 
 

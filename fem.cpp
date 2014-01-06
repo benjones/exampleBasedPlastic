@@ -396,7 +396,7 @@ void FemObject::applyPlasticity(int t, double dt, SlMatrix3x3 &stress, SlMatrix3
 }
 
 void FemObject::computeForces(double dt) {
-	SlMatrix3x3 Fx, Fv, QTx, QTv, S, U, V;
+	SlMatrix3x3 Fx, Fv, QTx, QTgv, S, U, V;
 	SlVector3 Fhat;
 
 
@@ -932,7 +932,7 @@ void FemObject::loadNodeEle(const char *fname) {
 	unbalancedCompLoad = new SlVector3[av];
 
 	SlVector3 bbMin(DBL_MAX), bbMax(-DBL_MAX);
-	std::cout<<"number of vertices: "<<nv<<"; number of tets: "<<ntets<<std::endl;
+	std::cout<<"number of vertices: "<<nv<< std::endl;
   for (unsigned int i = 0; i < nv; i++) {
     stringptr = inputtextline(inputline, infile, nodefilename);
 		if (i == 0) firstindex = strtol(stringptr, &stringptr, 0);
@@ -978,6 +978,7 @@ void FemObject::loadNodeEle(const char *fname) {
   stringptr = inputtextline(inputline, infile, elefilename);
   ntets = (int) strtol(stringptr, &stringptr, 0);
 
+  std::cout << "number of tets: "<<ntets<<std::endl;
   stringptr = inputfindfield(stringptr);
   if (*stringptr == '\0') {
   } else {
@@ -1294,6 +1295,8 @@ FemObject::FemObject() {
 }
 
 FemObject::~FemObject() {
+  std::cout << "destruction" << std::endl;
+
 	delete gm;
 	delete [] pos;
 	delete [] vel;
@@ -1379,32 +1382,11 @@ void Tet::setInertiaTerms(SlVector3* pos,
   for(auto i : range(4)){
 	localVertices[i] = pos[vertices[i]] - centerOfMass;
 	angularMomentum += (mass/4)*cross(localVertices[i], vel[vertices[i]]);
-	std::cout << "vind: " << vertices[i] << std::endl;
-	std::cout << "unrotated shape point : " << localVertices[i] << std::endl;
   }
   
   auto inertiaTensor = computeInertiaTensorPoints(mass,
 												  localVertices);
-  
-  std::cout << "angular momentum: " << angularMomentum << std::endl;
   auto angularVelocity = inverse(inertiaTensor)*angularMomentum;
-  
-  /*Eigen::Matrix3d eigenInertiaTensor;
-  eigenInertiaTensor << 
-	inertiaTensor(0,0), inertiaTensor(0,1), inertiaTensor(0,2), 
-	inertiaTensor(1,0), inertiaTensor(1,1), inertiaTensor(1,2), 
-	inertiaTensor(2,0), inertiaTensor(2,1), inertiaTensor(2,2) ;
-
-  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d>eSolver(eigenInertiaTensor);
-  auto& eeVecs = eSolver.eigenvectors();
-  auto& eeVals = eSolver.eigenvalues();
-  SlMatrix3x3 eVecs(eeVecs(0,0), eeVecs(0,1), eeVecs(0,2),
-					eeVecs(1,0), eeVecs(1,1), eeVecs(1,2),
-					eeVecs(2,0), eeVecs(2,1), eeVecs(2,2));
-  SlVector3 eVals(eeVals(0), eeVals(1), eeVals(2));
-  
-  std::cout << "tensor: " << inertiaTensor << std::endl;
-  std::cout << "eVecs: " << eVecs << std::endl;*/
   
   SlMatrix3x3 eVecs;
   SlVector3 eVals;
@@ -1412,64 +1394,31 @@ void Tet::setInertiaTerms(SlVector3* pos,
   					 eVals,
   					 eVecs);
   //returned a reflection for eVecs
-
-
   if(fabs(determinant(eVecs) -1) > 1e-3){ //det is close to -1 (probably)
 	eVecs(0,2) *= -1;
 	eVecs(1,2) *= -1;
 	eVecs(2,2) *= -1;
-	std::cout << "reflection " << std::endl;
-	std::cout << "tensor: "  << inertiaTensor << std::endl;
-	std::cout << "eDecomp: " << eVecs*diagonal(eVals)*transpose(eVecs) << std::endl;
   }
 
-
-
-
-
-
   //rotate the local vertices so that its aligned with the principal axes
-  
   auto* shapePoints = shape->getUnscaledPoints();
 
   for(auto i  : range(4)){
 	auto& v = localVertices[i];
 	v = transmult(eVecs, v);
-	//add the points to the shape
 	shapePoints[i] = btVector3{v(0), v(1), v(2)}; 
-	std::cout << "rotated shape point: " << shapePoints[i] << std::endl;
-	//	std::cout << "localVertex: " << localVertices[i] << std::endl;
   }
+
   assert(shape->getNumVertices() == 4);
   shape->recalcLocalAabb();
 
   //eVals are the principal inertia tensor components
   body->setMassProps(mass, btVector3{eVals(0), eVals(1), eVals(2)}); 
   
-  /*auto rotMatrix = btMatrix3x3{eVecs(0,0), eVecs(0,1), eVecs(0,2),
-							   eVecs(1,0), eVecs(1,1), eVecs(1,2),
-							   eVecs(2,0), eVecs(2,1), eVecs(2,2)};
-
-
-  btQuaternion rotQuat;
-  rotMatrix.getRotation(rotQuat);
-  std::cout << "evecs as quat" << rotQuat << std::endl;
-  */
-  //SlVector3 quatVector;
-  //double quatScalar;
-  //SlMatrixToQuaternion(eVecs, quatVector, quatScalar);
   auto bulletRot = btMatrix3x3{eVecs(0,0), eVecs(0,1), eVecs(0,2),
 							   eVecs(1,0), eVecs(1,1), eVecs(1,2),
 							   eVecs(2,0), eVecs(2,1), eVecs(2,2)};
 
-
-	//btQuaternion{quatVector(0), quatVector(1), quatVector(2), quatScalar};
-
-  for(auto i : range(4)){
-	std::cout << "quat rotated vertices: " << bulletRot*shapePoints[i] << std::endl;
-  }
-
-  //std::cout << "eigendecomp quat: " << bulletRot << std::endl;
   body->setCenterOfMassTransform(btTransform{bulletRot,
 		btVector3{centerOfMass(0),
 		  centerOfMass(1),
@@ -1477,19 +1426,11 @@ void Tet::setInertiaTerms(SlVector3* pos,
   
  
   body->setLinearVelocity(comVelocity);
-  //body->setAngularVelocity(btVector3{0,0,0});
   body->setAngularVelocity({angularVelocity(0),
 		angularVelocity(1),
 		angularVelocity(2)});
   
-  std::cout << "comvelocity: " << comVelocity.x() << ' ' << comVelocity.y() << ' ' << comVelocity.z() << std::endl;
-  std::cout << "angvel: " << angularVelocity << std::endl;
-
-  std::cout << "trans in setup inertia: " << body->getCenterOfMassTransform() << std::endl;
-
-  
-
-#define EXTRA_INERTIA_CHECKS 1
+#define EXTRA_INERTIA_CHECKS 0
 #if EXTRA_INERTIA_CHECKS
  
   //should double check that this transform is correct and gives us the world positions of vertices
@@ -1577,6 +1518,7 @@ void FemObject::setupBulletMesh(){
   bulletTetShapes.resize(0);
   for(auto i : range(ntets)){
 	bulletTetShapes.push_back(std::unique_ptr<btConvexHullShape>{new btConvexHullShape{}});
+	bulletTetShapes.back()->setMargin(0.0); //this is supposedly dangerous
 	//add 4 points
 	for(auto j : range(4)){
 	  bulletTetShapes.back()->addPoint(btVector3{0,0,0}, false); //don't recalc AABBs
@@ -1637,20 +1579,25 @@ void FemObject::setupRigidProperties(){
 void FemObject::stitchTets(){
   
   std::fill(pos, pos + nv, SlVector3{0.0});
+  //std::fill(vel, vel + nv, SlVector3{0.0});
   
   for(auto tInd : range(ntets)){
 	auto& t = tets[tInd];
-	auto& trans = bulletTetBodies[tInd]->getCenterOfMassTransform();
-	std::cout << "trans in stitch : " << trans << std::endl;
+	auto& bulletTet = bulletTetBodies[tInd];
+	auto& trans = bulletTet->getCenterOfMassTransform();
+	auto massFactor = tetMass[tInd]/4;
+
 	for(auto i : range(4)){
-	  std::cout << "unscaled point: " << (bulletTetShapes[tInd]->getUnscaledPoints())[i] << std::endl;
-	  auto worldPos = trans((bulletTetShapes[tInd]->getUnscaledPoints())[i]);
-	  std::cout << "worldPos: " << worldPos << std::endl;
-	  pos[t.vertices[i]] += (tetMass[tInd]/4)*SlVector3{worldPos.x(), worldPos.y(), worldPos.z()};
+	  auto localPos = bulletTetShapes[tInd]->getUnscaledPoints()[i];
+	  auto worldPos = trans(localPos);
+	  //auto worldVel = bulletTet->getVelocityInLocalPoint(localPos);
+	  pos[t.vertices[i]] += massFactor*SlVector3{worldPos.x(), worldPos.y(), worldPos.z()};
+	  //vel[t.vertices[i]] += massFactor*SlVector3{worldVel.x(), worldVel.y(), worldVel.z()};
 	}
   }
   for(auto pInd : range(nv)){
 	pos[pInd] /= mass[pInd];
+	//vel[pInd] /= mass[pInd];
   }
   
 }

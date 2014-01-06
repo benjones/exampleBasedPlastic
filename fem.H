@@ -97,6 +97,7 @@ public:
   //move only
   FemObject(FemObject&& other) = default;
   FemObject& operator=(FemObject&& other) = default;
+  
 
 
   void load(const char *fname, btDiscreteDynamicsWorld* world);

@@ -16,6 +16,9 @@
 #include<GL/glu.h>
 #endif
 
+#include "cppitertools/enumerate.hpp"
+using iter::enumerate;
+
 struct objStruct {
   std::vector<SlVector3> pts;
   std::vector<SlTri> tris;
@@ -125,9 +128,15 @@ void readFrame(const std::string &objFile, size_t frameNumber){
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
 
-void drawTriangles(){
+void drawTriangles(bool changeColor){
   glBegin(GL_TRIANGLES);
-  for(auto& oj : globalObjs[currentFrame]){
+  for(auto e : enumerate(globalObjs[currentFrame])){
+	auto& oj = e.element;
+	if(changeColor){
+	  auto greenChannel = static_cast<double>(e.index)/globalObjs[currentFrame].size();
+		
+		glColor4d(.5,greenChannel,.5,1);
+	}
     for(size_t i = 0; i < oj.tris.size(); ++i){
       SlVector3 v1 = oj.pts[oj.tris[i].indices[0]],
 	v2 = oj.pts[oj.tris[i].indices[1]],
@@ -236,17 +245,17 @@ void displayFrame(){
     //for (unsigned i = 0; i < globalPInfo.size(); ++i) {
 
     //draw obj
-    glColor4d(.5,.8,.5,1);
+
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glMatrixMode(GL_MODELVIEW);
     glEnable(GL_POLYGON_OFFSET_FILL); // Avoid Stitching!
     glPolygonOffset(1.0, 1.0);
-    drawTriangles();
+    drawTriangles(true);
     glDisable(GL_POLYGON_OFFSET_FILL);
 
     glColor3d(1, 1, 1); // Color for your polygon border
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    drawTriangles();
+    drawTriangles(false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 

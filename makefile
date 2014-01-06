@@ -30,7 +30,7 @@ default: $(TARGETS)
 
 
 clean: 
-	/bin/rm -f *.o $(TARGETS)
+	/bin/rm -fv *.o $(TARGETS) openglViewer
 
 #-----------------------------------------
 #-----------------------------------------
