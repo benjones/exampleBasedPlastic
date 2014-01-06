@@ -31,13 +31,19 @@ extern "C" {
 using iter::range;
 using iter::enumerate;
 
+void callbackWrapper(btBroadphasePair& collisionPair, 
+					 btCollisionDispatcher& _dispatcher, 
+					 btDispatcherInfo& dispatcherInfo){
+  
+}
+
 World::World(std::string filename)
   :broadphaseInterface
    (std::unique_ptr<btBroadphaseInterface>(new btDbvtBroadphase())),
    collisionConfiguration
    (std::unique_ptr<btCollisionConfiguration>(new btDefaultCollisionConfiguration())),
    dispatcher
-   (std::unique_ptr<btDispatcher>(new btCollisionDispatcher(collisionConfiguration.get()))),
+   (std::unique_ptr<btCollisionDispatcher>(new btCollisionDispatcher(collisionConfiguration.get()))),
    bulletSolver
    (std::unique_ptr<btSequentialImpulseConstraintSolver>
     (new btSequentialImpulseConstraintSolver())),
@@ -206,6 +212,17 @@ World::World(std::string filename)
   std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
   computeConstraints();
   countConstraints();
+  
+  std::function<void(btBroadphasePair&,
+					 btCollisionDispatcher&, 
+					 const btDispatcherInfo&)> collisionCallback = 
+	[this](btBroadphasePair& collisionPair,
+		   btCollisionDispatcher& _dispatcher,
+		   const btDispatcherInfo& dispatcherInfo){
+	constraintCullingCallback(collisionPair, _dispatcher, dispatcherInfo);
+  };
+  dispatcher->setNearCallback(collisionCallback);
+
 }
 
 void World::timeStep(){
@@ -539,6 +556,55 @@ void World::computeConstraints(){
     }
   }
 }
+
+void World::constraintCullingCallback(btBroadphasePair& collisionPair, 
+									  btCollisionDispatcher& _dispatcher, 
+									  const btDispatcherInfo& dispatcherInfo){
+  //seems pretty slow, but here's a fist shot
+  //there are probably fewer rigidbodies than tets, so lets's search there first
+  
+  auto* ptr0 = reinterpret_cast<btRigidBody*>(collisionPair.m_pProxy0->m_clientObject);
+  auto* ptr1 = reinterpret_cast<btRigidBody*>(collisionPair.m_pProxy1->m_clientObject);
+
+
+  auto predicate = [&](const RigidBody& rb){
+	return (rb.bulletBody.get() == ptr0 ||
+			rb.bulletBody.get() == ptr1);
+  };
+
+  auto it1 = std::find_if(rigidBodies.begin(), rigidBodies.end(),predicate);
+  if(it1 != rigidBodies.end()){
+	//std::cout << "found a RB" << std::endl;
+	//one of them is a rigid body
+	auto it2 = std::find_if(it1 + 1, rigidBodies.end(), predicate);
+	if(it2 != rigidBodies.end()){
+	  //they're both rigid bodies, so process collisions normally
+	  dispatcher->defaultNearCallback(collisionPair, _dispatcher, dispatcherInfo);
+	} else {
+	  //see if they're joined by a constraint
+	  auto& rb = *it1;
+	  auto it3 = std::find_if(rb.constraints.begin(), rb.constraints.end(),
+						   [&](const CouplingConstraint& constraint) -> bool{
+							 
+							 auto* ptr = femObjects[constraint.femIndex].bulletTetBodies[constraint.nodeIndex].get();
+							 return(ptr == ptr0 ||
+									ptr == ptr1);
+						   });
+	  if(it3 != rb.constraints.end()){
+		//they're joined, so don't process the collision
+		//std::cout << "not colliding constrained tet with rb" << std::endl;
+	  } else {
+		//there is no constraint, handle them naturally
+		dispatcher->defaultNearCallback(collisionPair, _dispatcher, dispatcherInfo);
+	  }
+	}
+  } else {
+	//neither are rigid bodies, so process the collision normally
+	dispatcher->defaultNearCallback(collisionPair, _dispatcher, dispatcherInfo);
+	
+  }
+}
+
 
 
 void World::computeCrossProductMatrices(){

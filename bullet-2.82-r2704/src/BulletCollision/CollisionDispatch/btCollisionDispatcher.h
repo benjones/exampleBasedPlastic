@@ -35,7 +35,9 @@ class btCollisionConfiguration;
 
 class btCollisionDispatcher;
 ///user can override this nearcallback for collision filtering and more finegrained control over collision detection
-typedef void (*btNearCallback)(btBroadphasePair& collisionPair, btCollisionDispatcher& dispatcher, const btDispatcherInfo& dispatchInfo);
+//typedef void (*btNearCallback)(btBroadphasePair& collisionPair, btCollisionDispatcher& dispatcher, const btDispatcherInfo& dispatchInfo);
+#include <functional>
+typedef std::function<void(btBroadphasePair&, btCollisionDispatcher&, const btDispatcherInfo&)> btNearCallback;
 
 
 ///btCollisionDispatcher supports algorithms that handle ConvexConvex and ConvexConcave collision pairs.

@@ -40,6 +40,10 @@ class World{
 	void mulSpringMatrix(double *in, double *out);
 	void applySpringPreconditioner(double *in, double *out);
 
+  void constraintCullingCallback(btBroadphasePair& collisionPair, 
+								 btCollisionDispatcher& _dispatcher, 
+								 const btDispatcherInfo& dispatcherInfo);
+
   //multiply the constaint matrix by in and put the result in out.
   //this is the lower left block of the system.
   //make sure that in and out is correctly allocated already
@@ -62,7 +66,7 @@ class World{
 
   std::unique_ptr<btBroadphaseInterface> broadphaseInterface;  
   std::unique_ptr<btCollisionConfiguration> collisionConfiguration;
-  std::unique_ptr<btDispatcher> dispatcher;
+  std::unique_ptr<btCollisionDispatcher> dispatcher;
 
   //maybe using the MLCP solver makes sense, since it's supposed to give higher fidelity results
   std::unique_ptr<btSequentialImpulseConstraintSolver> bulletSolver;
@@ -84,5 +88,5 @@ class World{
 	unsigned int nrbdof, nfemdof;
 
   int currentFrame;
-
+  
 };

@@ -227,7 +227,8 @@ public:
 
 	virtual bool	processOverlap(btBroadphasePair& pair)
 	{
-		(*m_dispatcher->getNearCallback())(pair,*m_dispatcher,m_dispatchInfo);
+	  //(*m_dispatcher->getNearCallback())(pair,*m_dispatcher,m_dispatchInfo);
+	  (m_dispatcher->getNearCallback())(pair,*m_dispatcher,m_dispatchInfo);
 
 		return false;
 	}
