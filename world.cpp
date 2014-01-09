@@ -226,6 +226,50 @@ World::World(std::string filename)
 }
 
 void World::timeStep(){
+ //replace these two with a single CG solve
+
+  //make sure to call countConstraints every time the number of constraints changes
+  //make sure to call computeCrossProductMatrices before calling the JV and 
+  //JTLambda multiply functions
+	computeCrossProductMatrices();
+
+  computeFemVelocities(); // this is really just forces
+  //bulletWorld.stepSimulationVelocitiesOnly(dt); 
+
+  
+
+  for(auto& fem : femObjects){
+	fem.copyStateToBulletParticles();
+  }
+  bulletWorld.preCoupledSolve(dt);
+
+  //std::cout << "pre solve" << std::endl;
+  //for(auto& fem: femObjects) {fem.dump();}
+  solve();
+
+  //std::cout << "post solve" << std::endl;
+  //for(auto& fem: femObjects) {fem.dump();}
+	//bulletWorld.stepSimulation(dt);
+
+  for(auto& fem : femObjects){
+	fem.copyStateToBulletParticles();
+	//std::cout <<"pre postcopule " << std::endl;
+	//fem.dump();
+  }
+  bulletWorld.postCoupledSolve(dt);
+  
+  //updateFemPositions();
+  for(auto& fem : femObjects){
+	fem.copyVelocitiesFromBulletParticles();
+	fem.updatePositions(dt);
+	fem.fracture();
+	//std::cout << "updating pos" << std::endl;
+	//fem.dump();
+  }
+
+}
+
+void World::timeStepRigidCollisions(){
 
 
   //replace these two with a single CG solve
@@ -241,42 +285,11 @@ void World::timeStep(){
 
   solve();
 
-
-	/*if(ground){
-    for(auto& femObject : femObjects){
-      for(auto j : range(femObject.nv)){
-				//bullet uses y as up, I think, lets keep that convention
-				auto x = femObject.pos[j][1] + dt*femObject.vel[j][1];
-				if( x < 0){
-					auto impulse = -x/dt;
-					double nm= 0.0, m = sqrt(sqr(femObject.vel[j][0]) +
-																	 sqr(femObject.vel[j][2]));
-					if(m > 0){
-						nm = std::max(m - impulse*friction, 0.0) / m;
-					}
-					femObject.vel[j].set(nm*femObject.vel[j][0], 
-															 femObject.vel[j][1] + impulse,
-															 nm*femObject.vel[j][2]);
-				}
-      }
-    }
-	}*/
-  
-  /*
-  for(auto &rb : rigidBodies){
-    rb.couplingSolver.solveVelocityConstraints(*this, rb);
-  }
-  */
-
 	//bulletWorld.stepSimulation(dt);
   for(auto& fem : femObjects){
 	fem.updateBulletShapes();
   }
   bulletWorld.postCoupledSolve(dt);
-	/*bulletWorld.integrateTransforms(dt);
-  bulletWorld.updateActivationState(dt);
-  bulletWorld.synchronizeMotionStates();*/
-
 
   //updateFemPositions();
   for(auto& fem : femObjects){
@@ -584,9 +597,12 @@ void World::constraintCullingCallback(btBroadphasePair& collisionPair,
 	  //see if they're joined by a constraint
 	  auto& rb = *it1;
 	  auto it3 = std::find_if(rb.constraints.begin(), rb.constraints.end(),
-						   [&](const CouplingConstraint& constraint) -> bool{
-							 
-							 auto* ptr = femObjects[constraint.femIndex].bulletTetBodies[constraint.nodeIndex].get();
+							  [&](const CouplingConstraint& constraint) -> bool{
+								
+								//auto* ptr = 
+								//femObjects[constraint.femIndex].bulletTetBodies[constraint.nodeIndex].get();
+								auto* ptr = 
+								  femObjects[constraint.femIndex].particleRigidBodies[constraint.nodeIndex].get();
 							 return(ptr == ptr0 ||
 									ptr == ptr1);
 						   });

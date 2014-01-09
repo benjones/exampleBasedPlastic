@@ -1,4 +1,5 @@
 #include "fem.H"
+#include "world.h"
 #include <iostream>
 #include <fstream>
 #include <slIO.H>
@@ -1029,8 +1030,8 @@ void FemObject::loadNodeEle(const char *fname) {
     }
 		if (neleattributes == 0) {
 			density[i] = 1000;
-			lambda[i] = 5e4;
-			mu[i] = 1e5;
+			lambda[i] = 5e2;
+			mu[i] = 1e3;
 			scale[i] = 1;
 			yieldStress[i] = DBL_MAX;//10.0;
 			plasticModulus[i] = 0.0;
@@ -1150,7 +1151,8 @@ void FemObject::loadNodeEle(const char *fname) {
 
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
-	setupBulletMesh();
+	//setupBulletMesh();
+	setupBulletParticles();
 
 	gm = new GlobalMatrix(nv, ntets, tets);
 
@@ -1275,7 +1277,8 @@ void FemObject::load(const char *fname, btDiscreteDynamicsWorld* world) {
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
 
-	setupBulletMesh();
+	setupBulletParticles();
+	//setupBulletMesh();
 
 
 	gm = new GlobalMatrix(nv, ntets, tets);
@@ -1603,6 +1606,63 @@ void FemObject::stitchTets(){
 }
 
 
+ void FemObject::setupBulletParticles(){
+   std::cout << "making particles" << std::endl;
+   particleCollisionShape = std::unique_ptr<btCollisionShape>(new btSphereShape(0));
+   particleCollisionShape->setMargin(0); 
+   particleRigidBodies.reserve(nv);
+   particleMotionStates.reserve(nv);
+   for(auto i : range(nv)){
+	 particleMotionStates.emplace_back(new btDefaultMotionState{
+		 btTransform{btQuaternion::getIdentity(),
+			 btVector3{0,0,0}}});
+	 particleRigidBodies.emplace_back(new btRigidBody{mass[i],
+		   particleMotionStates.back().get(), //no motion state
+		   particleCollisionShape.get()});//share the same shape
+	 //don't include a moment of inertia, I assume it's set to infinity?
+	 bulletWorld->addRigidBody(particleRigidBodies.back().get());
+   }
+
+ }
+
+
+void FemObject::copyStateToBulletParticles(){
+  for(auto i : range(nv)){
+	particleRigidBodies[i]->setCenterOfMassTransform(btTransform{btQuaternion::getIdentity(),
+		  {pos[i](0), pos[i](1), pos[i](2)}});
+	particleRigidBodies[i]->setLinearVelocity({vel[i](0), vel[i](1), vel[i](2)});
+	particleRigidBodies[i]->setAngularVelocity({0,0,0});
+  }
+}
+
+void FemObject::copyVelocitiesFromBulletParticles(){
+  for(auto i : range(nv)){
+	auto& lv = particleRigidBodies[i]->getLinearVelocity();
+	vel[i] = {lv.x(), lv.y(), lv.z()};
+  }
+}
+
+/*BulletProxyHolder::BulletProxyHolder(btBroadphaseInterface* _interface, 
+									 World& _world, size_t _femIndex, 
+									 size_t _nodeIndex)
+  :world(_world), femIndex(_femIndex), nodeIndex(_nodeIndex),
+   interface(_interface){
+  SlVector3 slPos = world.femObjects[femIndex].pos[nodeIndex];
+  auto btPos = btVector3{slPos(0), slPos(1), slPos(2)};
+  
+  proxy = 
+	std::unique_ptr<btBroadphaseProxy>{interface->createProxy(btPos, btPos, 0, //shape type unused
+															  this, 
+															  btBroadphaseProxy::DefaultFilter,
+															  btBroadphaseProxy::AllFilter,
+															  world.dispatcher.get(),
+															  0)};
+  
+  
+   }
+BulletProxyHolder::~BulletProxyHolder(){
+  interface->destroyProxy(proxy.get(), world.dispatcher.get());
+  }*/
 
 
 

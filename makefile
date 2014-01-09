@@ -5,7 +5,7 @@ cc          = `which c++` #gcc
 
 #-----------------------------------------
 #Optimization ----------------------------
-OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION #-DPCUBE -DINVENTOR_DEFINED
+OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION -flto#-DPCUBE -DINVENTOR_DEFINED
 #OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION
 #OPT   = -g -Wall
 
@@ -26,7 +26,7 @@ LDOPTS = $(OPT) $(INCS) #-pg
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS)
+default: $(TARGETS) openglViewer
 
 
 clean: 

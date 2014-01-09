@@ -26,6 +26,7 @@
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <LinearMath/btDefaultMotionState.h>
 
@@ -34,6 +35,21 @@
 using iter::range;
 
 class btDiscreteDynamicsWorld;
+
+/*class World;
+
+struct BulletProxyHolder{
+  BulletProxyHolder(btBroadphaseInterface* _interface, World& _world, 
+					size_t _femIndex, size_t _nodeIndex);
+  ~BulletProxyHolder();
+  
+
+  World& world;
+  size_t femIndex, nodeIndex;
+  btBroadphaseInterface* interface;
+  std::unique_ptr<btBroadphaseProxy> proxy;
+};
+*/
 
 class Tet {
 public: 
@@ -176,6 +192,11 @@ public:
   void updateBulletShapes();
 
   void stitchTets(); //stitch tets together after doing bullet collision stuff
+
+
+  void setupBulletParticles();
+  void copyStateToBulletParticles();
+  void copyVelocitiesFromBulletParticles();
   
   void dumpVel(){
 	std::cout << "vel" << std::endl;
@@ -193,8 +214,14 @@ public:
 
   void dumpTrans(){
 	std::cout << "btrans" << std::endl;
-	for(auto& tb : bulletTetBodies){
+	for(auto& tb : particleRigidBodies){
 	  std::cout << tb->getCenterOfMassTransform() << std::endl;
+	}
+  }
+  void dumpBulletVel(){
+	std::cout << "bVel" << std::endl;
+	for(auto& tb : particleRigidBodies){
+	  std::cout << tb->getLinearVelocity() << std::endl;
 	}
   }
 
@@ -202,6 +229,7 @@ public:
 	dumpVel();
 	dumpPos();
 	dumpTrans();
+	dumpBulletVel();
   }
 
   /*std::unique_ptr<btTriangleIndexVertexArray> bulletVertexArray;
@@ -212,6 +240,13 @@ public:
   std::vector<std::unique_ptr<btConvexHullShape>> bulletTetShapes;
   std::vector<std::unique_ptr<btRigidBody>> bulletTetBodies;
   std::vector<std::unique_ptr<btDefaultMotionState>> bulletMotionStates;
+  //std::vector<std::unique_ptr<BulletProxyHolder>> bulletCollisionProxies;
+
+  //this will be a 0 radius, 0 margin circle, tentatively
+  std::unique_ptr<btCollisionShape> particleCollisionShape;
+  std::vector<std::unique_ptr<btRigidBody>> particleRigidBodies;
+  std::vector<std::unique_ptr<btDefaultMotionState>> particleMotionStates;
+
   btDiscreteDynamicsWorld* bulletWorld;
   double totalMass;
 
