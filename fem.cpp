@@ -1030,13 +1030,13 @@ void FemObject::loadNodeEle(const char *fname) {
     }
 		if (neleattributes == 0) {
 			density[i] = 1000;
-			lambda[i] = 5e2;
-			mu[i] = 1e3;
-			scale[i] = 1;
-			yieldStress[i] = DBL_MAX;//10.0;
+			lambda[i] = 5e3;
+			mu[i] = 1e4;
+			scale[i] = 1e-2;
+			yieldStress[i] = 20.0;
 			plasticModulus[i] = 0.0;
 			flowrate[i] = 100;
-			toughness[i] = DBL_MAX;//100.0;
+			toughness[i] = DBL_MAX;//50.0;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);

@@ -30,4 +30,6 @@ class RigidBody{
   };
   
   RBType rbType;
+
+  btVector3 constantForce; //apply this force each frame
 };

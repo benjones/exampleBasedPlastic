@@ -1,0 +1,33 @@
+{
+    "ground" : false,
+	"gravity" : 0,
+    "dt" : 0.001111111112,
+    
+    "femObjects" : [ 
+	{"filename" : "inputFiles/tallbox.1",
+	 "offset" : [0, 1, 0],
+	 "rotation" : {
+		 "axis" : [0, 0, 1],
+		 "angle" : 1.57079632679
+	 }
+	}
+    ],
+    
+    "bulletObjects" : [
+		{
+			"mass" : 4,
+			"extents" : [0.2, 0.2, 0.2],
+			"offset" : [-0.6, 1, 0],
+			"shape" : "box",
+			"constantForce" : [-100, 0, 0]
+		},
+		{
+			"mass" : 4,
+			"extents" : [0.2, 0.2, 0.2],
+			"offset" : [0.6, 1, 0],
+			"shape" : "box",
+			"constantForce" : [100, 0, 0]
+		}
+    ],
+		"regularizerAlpha" : 0.0
+}

@@ -16,6 +16,7 @@
 #include "cppitertools/enumerate.hpp"
 #include "utils.h"
 #include <numeric>
+#include <limits>
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -75,8 +76,10 @@ World::World(std::string filename)
     //set up the ground RB
     rigidBodies.emplace_back();
     auto& RB = rigidBodies.back();
+	auto normal = btVector3{0,1,0};
+	normal.normalize();
     RB.shape = 
-      std::unique_ptr<btCollisionShape>(new btStaticPlaneShape(btVector3(0,1,0), groundHeight));
+      std::unique_ptr<btCollisionShape>(new btStaticPlaneShape(normal, groundHeight));
     RB.rbType = RigidBody::RBType::RB_PLANE;
     RB.motionState = 
       std::unique_ptr<btMotionState>(new btDefaultMotionState(btTransform(btQuaternion::getIdentity(),
@@ -117,19 +120,63 @@ World::World(std::string filename)
     auto& femObjectIn = femObjectsIn[i];
     auto fnameIn = femObjectIn["filename"];
     femObjects.emplace_back();
-    femObjects.back().load(fnameIn.asString().c_str(), &bulletWorld);
-    
+	auto& femObj = femObjects.back();
+    femObj.load(fnameIn.asString().c_str(), &bulletWorld);
+
+	auto centerOfMass = SlVector3{0, 0, 0};
+	double totalMass = 0.0;
+	for(auto vInd : range(femObj.nv)){
+	  centerOfMass += femObj.mass[vInd]*femObj.pos[vInd];
+	  totalMass += femObj.mass[vInd];
+	}
+	centerOfMass /= totalMass;
+
+	//center the object about its COM to make rotation make sense
+	femObj.bbMin -= centerOfMass;
+	femObj.bbMax -= centerOfMass;
+	for(auto  vInd : range(femObj.nv)){
+	  femObj.pos[vInd] -= centerOfMass;
+	}
+
+	if(!femObjectIn["rotation"].isNull()){
+	  SlVector3 axis;
+	  axis(0) = femObjectIn["rotation"]["axis"][0].asDouble();
+	  axis(1) = femObjectIn["rotation"]["axis"][1].asDouble();
+	  axis(2) = femObjectIn["rotation"]["axis"][2].asDouble();
+	  normalize(axis);
+	  double angle = femObjectIn["rotation"]["angle"].asDouble();
+	  
+	  std::cout << "rotating about " << axis << " by " 
+				<< angle << " radians" << std::endl;
+
+	  SlMatrix3x3 rot;
+	  SlMomentToPosMatrix(angle*axis, rot);
+	  
+	  //recompute bounding boxes
+	  femObj.bbMin.set(std::numeric_limits<double>::max());
+	  femObj.bbMax.set(std::numeric_limits<double>::lowest());
+	  for(auto vInd : range(femObj.nv)){
+		femObj.pos[vInd] = rot*femObj.pos[vInd];
+		for(auto j : range(3)){
+		  femObj.bbMin(j) = std::min(femObj.bbMin(j), femObj.pos[vInd](j));
+		  femObj.bbMax(j) = std::max(femObj.bbMax(j), femObj.pos[vInd](j));
+		}
+	  }
+	  
+	}
+	
+
     if(!femObjectIn["offset"].isNull()){
       assert(femObjectIn["offset"].isArray() &&
 	     femObjectIn["offset"].size() == 3);
-      SlVector3 offset(femObjectIn["offset"][0].asDouble(),
-		       femObjectIn["offset"][1].asDouble(),
-		       femObjectIn["offset"][2].asDouble());
-      auto& femObj = femObjects.back();
+      auto offset = SlVector3{femObjectIn["offset"][0].asDouble(),
+							  femObjectIn["offset"][1].asDouble(),
+							  femObjectIn["offset"][2].asDouble()};
+	  
       femObj.bbMin += offset;
       femObj.bbMax += offset;
-      for(auto  i : range(femObj.nv)){
-				femObj.pos[i] += offset;
+      for(auto  vInd : range(femObj.nv)){
+				femObj.pos[vInd] += offset;
       }
       
       if(i == 0){
@@ -155,6 +202,14 @@ World::World(std::string filename)
       exit(1);
     }
     double mass = bo["mass"].asDouble();
+
+	if(bo["constantForce"].isNull()){
+	  RB.constantForce = btVector3{0,0,0};
+	} else {
+	  RB.constantForce = btVector3{ bo["constantForce"][0].asDouble(),
+									bo["constantForce"][1].asDouble(),
+									bo["constantForce"][2].asDouble()};
+	}
     
     btVector3 offset(0.0,0.0,0.0); //default to no offset
     auto offsetIn = bo["offset"];
@@ -242,6 +297,11 @@ void World::timeStep(){
 	fem.copyStateToBulletParticles();
   }
   bulletWorld.preCoupledSolve(dt);
+
+  //apply constant forces:
+  for(auto& rb : rigidBodies){
+	rb.bulletBody->applyCentralForce(rb.constantForce);
+  }
 
   //std::cout << "pre solve" << std::endl;
   //for(auto& fem: femObjects) {fem.dump();}
@@ -500,6 +560,7 @@ void World::dumpFrame(){
   for(auto& rigidBody : rigidBodies){
     sprintf(fname, framestring, objectCount, currentFrame);
     rigidBody.dump(fname);
+	objectCount++;
   }
   currentFrame++;
 
