@@ -233,34 +233,45 @@ World::World(std::string filename)
     RB.motionState = 
       std::unique_ptr<btMotionState>(new btDefaultMotionState(btTransform(rotation, offset)));
 
-    
+
+
+	//LOAD SHAPE SPECIFIC STUFF
     auto shapeTypeIn = bo["shape"];
     if(shapeTypeIn.asString() == "box"){
       RB.rbType = RigidBody::RBType::RB_BOX;
       auto extentsIn = bo["extents"];
       if(!extentsIn.isArray()){
-	std::cout << "boxest must have extents, half widths of the box" << std::endl;
-	exit(1);
+		std::cout << "boxest must have extents, half widths of the box" << std::endl;
+		exit(1);
       }
-      btVector3 extents = btVector3(extentsIn[0].asDouble(),
-				    extentsIn[1].asDouble(),
-				    extentsIn[2].asDouble());
+      btVector3 extents{extentsIn[0].asDouble(),
+		  extentsIn[1].asDouble(),
+		  extentsIn[2].asDouble()};
       
       RB.shape = std::unique_ptr<btCollisionShape>(new btBoxShape(extents));
       
-    } else { //add other shape types here
+    } else if(shapeTypeIn.asString() == "mesh"){
+	  RB.rbType = RigidBody::RBType::RB_TRIMESH;
+	  RB.loadTrimesh(bo["filename"].asString());
+
+	}else { //add other shape types here
       std::cout << "unknown shape: " << bo["shape"].asString() << std::endl;
       exit(1);
     }
+
+
+
+	
     btVector3 inertiaTensor(0,0,0);
-
+	
     RB.shape->calculateLocalInertia(mass, inertiaTensor);
-    RB.bulletBody = std::unique_ptr<btRigidBody> (new btRigidBody(mass, 
-								  RB.motionState.get(), 
-								  RB.shape.get(),
-								  inertiaTensor));
-
-      
+    RB.bulletBody = std::unique_ptr<btRigidBody> {
+	  new btRigidBody{mass, 
+					  RB.motionState.get(), 
+					  RB.shape.get(),
+					  inertiaTensor}};
+	
+	
     bulletWorld.addRigidBody(RB.bulletBody.get());
     
   }

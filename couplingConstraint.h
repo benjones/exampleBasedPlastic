@@ -1,7 +1,7 @@
 #pragma once
 #include <eigen3/Eigen/Eigen>
 #include <LinearMath/btVector3.h>
-
+#include <LinearMath/btMatrix3x3.h>
 struct CouplingConstraint{
 
   btVector3 localPosition; //local position in the rigid body

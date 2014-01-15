@@ -615,7 +615,24 @@ void FemObject::fracture() {
 			pos[nv] = pos[v];
 			vel[nv] = vel[v];
 			flags[nv] = flags[v];
+
+			//create a new bullet object for the node:
+			particleMotionStates.emplace_back(new btDefaultMotionState{
+				btTransform{btQuaternion::getIdentity(),
+					btVector3{pos[nv](0),
+					  pos[nv](1),
+					  pos[nv](2)}}});
+			particleRigidBodies.emplace_back(new btRigidBody{ mass[nv],
+				  particleMotionStates.back().get(),
+				  particleCollisionShape.get()});
+			particleRigidBodies.back()->setLinearVelocity(btVector3{
+				vel[nv](0), vel[nv](1), vel[nv](2)});
+			bulletWorld->addRigidBody(particleRigidBodies.back().get());
+			
+
 			nv++;
+
+			
 			if (av == nv) {
 				std::cout<<"Warning: we've stopped fracture"<<std::endl;
 				return;
@@ -1036,7 +1053,7 @@ void FemObject::loadNodeEle(const char *fname) {
 			yieldStress[i] = 20.0;
 			plasticModulus[i] = 0.0;
 			flowrate[i] = 100;
-			toughness[i] = DBL_MAX;//50.0;
+			toughness[i] = 50.0;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);

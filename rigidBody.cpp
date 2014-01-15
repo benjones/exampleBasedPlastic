@@ -4,8 +4,13 @@
 #include <fstream>
 #include <vector>
 #include "cppitertools/range.hpp"
+#include <BulletCollision/CollisionShapes/btCollisionShape.h>
+#include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
+#include <BulletCollision/Gimpact/btGImpactShape.h>
+#include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
+#include <iostream>
 
 using iter::range;
 
@@ -71,7 +76,120 @@ void RigidBody::dump(std::string filename){
 
 	break;
   }
+  case RB_TRIMESH:{
+	
+	for(auto i : range(meshVertices.size()/3)){
+	  btVector3 pos{meshVertices[3*i],
+		  meshVertices[3*i +1],
+		  meshVertices[3*i +2]};
+	  pos = transform(pos);
+	  outs << "v " << pos.x() << ' '
+		   << pos.y() << ' '
+		   << pos.z() << std::endl;
+	}
+	for(auto i : range(meshIndices.size()/3)){
+	  outs << "f " << (meshIndices[3*i]  + 1) << ' '
+		   << (meshIndices[3*i + 1] + 1)<< ' '
+		   << (meshIndices[3*i + 2] + 1) << std::endl;
+	}
+	break;
   }
+  }
+
+}
+
+
+void RigidBody::loadTrimesh(std::string filename){
+  std::cout << "reading: " << filename << std::endl;
+  std::ifstream ins(filename);
+  if(!ins){
+	std::cout << "couldn't read: " << filename << std::endl;
+	exit(1);
+  }
+
+	//just in case?
+  meshVertices.clear();
+  meshIndices.clear();  
+  
+  for(std::string line; std::getline(ins, line);){
+
+	std::stringstream linestream(line);
+	std::string lineType;
+	linestream >> lineType;
+
+	if(lineType == "v"){
+	  double data;
+	  linestream >> data;
+	  meshVertices.push_back(data);
+	  linestream >> data;
+	  meshVertices.push_back(data);
+	  linestream >> data;
+	  meshVertices.push_back(data);
+
+	} else if(lineType == "f"){
+	  auto numSlashes = std::count(begin(line), end(line), '/');
+	  if(numSlashes == 0){
+		int data;
+		for(auto i : range(3)){
+		  linestream >> data;
+		  meshIndices.push_back(data -1);
+		}
+	  } else if(numSlashes == 3){
+		int data, trash;
+		char slash;
+		for(auto i : range(3)){
+		  linestream >> data >> slash >> trash;
+		  assert(slash == '/');
+		  meshIndices.push_back(data -1);
+		}
+	  } else if(numSlashes == 6){
+		if(line.find("//") != std::string::npos){
+		  int data, trash;
+		  char slash;
+		  for(auto i : range(3)){
+			linestream >> data >> slash;
+			assert(slash == '/');
+			linestream >> slash >> trash;
+			assert(slash == '/');
+			meshIndices.push_back(data -1);
+		  }
+		} else {
+		  int data, trash1, trash2;
+		  char slash1, slash2;
+		  for(auto i : range(3)){
+			linestream >> data >> slash1 >> trash1 >> slash2 >> trash2;
+			assert(slash1 == '/');
+			assert(slash2 == '/');
+			meshIndices.push_back(data - 1);
+		  }
+		}
+	  } else {
+		std::cout << "ignoring malformed face line: " << line << std::endl;
+	  }
+	} else if(lineType == "vt"){
+	  std::cout << "ignoring texture coord" << std::endl;
+	} else if(lineType == "vn"){
+	  std::cout << "ignoring vertex normal" << std::endl;
+	} else {
+	  std::cout << "unknown line, ignoring it: " << line << std::endl;
+	}
+  }
+
+  triMesh = 
+	std::unique_ptr<btTriangleIndexVertexArray>{
+	new btTriangleIndexVertexArray{
+	  meshIndices.size()/3,
+	  meshIndices.data(),
+	  3*sizeof(int),
+	  meshVertices.size()/3,
+	  meshVertices.data(),
+	  3*sizeof(typename decltype(meshVertices)::value_type)}};
+  
+  shape = std::unique_ptr<btCollisionShape>{
+	new btGImpactMeshShape{triMesh.get()}};
+  dynamic_cast<btGImpactMeshShape*>(shape.get())->updateBound();
+  std::cout << meshVertices.size()/3 << " vertices\n" 
+			<< meshIndices.size()/3 << "triangles" << std::endl;
 
 }
 

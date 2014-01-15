@@ -1,0 +1,30 @@
+{
+    "ground" : true,
+    "dt" : 0.001111111112,
+    
+/*    "femObjects" : [ 
+	{"filename" : "inputFiles/tallbox.1",
+	 "offset" : [0, 1, 0],
+	 "rotation" : {
+		 "axis" : [0, 0, 1],
+		 "angle" : 1.57079632679
+	 }
+	}
+    ],
+  */  
+    "bulletObjects" : [
+		{
+			"mass" : 400,
+			"offset" : [-0.6, 5, 0],
+			"shape" : "mesh",
+			"filename" : "inputFiles/cowFixed.obj"
+		},
+		{
+			"mass" : 4,
+			"extents" : [0.2, 0.2, 0.2],
+			"offset" : [5, 1, 0],
+			"shape" : "box"
+		}
+    ],
+	"regularizerAlpha" : 0.0
+}
