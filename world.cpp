@@ -10,6 +10,7 @@
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btDefaultMotionState.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
 #include "json/json.h"
 #include "cppitertools/range.hpp"
@@ -287,8 +288,7 @@ World::World(std::string filename)
 		   const btDispatcherInfo& dispatcherInfo){
 	constraintCullingCallback(collisionPair, _dispatcher, dispatcherInfo);
   };
-  dispatcher->setNearCallback(collisionCallback);
-
+  btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 }
 
 void World::timeStep(){
