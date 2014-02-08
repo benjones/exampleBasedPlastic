@@ -118,11 +118,20 @@ World::World(std::string filename)
   auto femObjectsIn = root["femObjects"];
   femObjects.reserve(femObjectsIn.size());
   for(auto i : range(femObjectsIn.size())){
-    auto& femObjectIn = femObjectsIn[i];
+		auto& femObjectIn = femObjectsIn[i];
+		MaterialProperties mp;
+		mp.density = femObjectIn.get("density", 1000.0).asDouble();
+		mp.lambda = femObjectIn.get("lambda", 5e3).asDouble();
+		mp.mu = femObjectIn.get("mu", 1e4).asDouble();
+		mp.scale = femObjectIn.get("scale", 1e-2).asDouble();
+		mp.yieldStress = femObjectIn.get("yieldStress", DBL_MAX).asDouble();
+		mp.plasticModulus = femObjectIn.get("plasticModulus", 0.0).asDouble();
+		mp.flowrate = femObjectIn.get("flowrate", 0.0).asDouble();
+		mp.toughness = femObjectIn.get("toughness", DBL_MAX).asDouble();
     auto fnameIn = femObjectIn["filename"];
     femObjects.emplace_back();
 	auto& femObj = femObjects.back();
-    femObj.load(fnameIn.asString().c_str(), &bulletWorld);
+	femObj.load(fnameIn.asString().c_str(), mp, &bulletWorld);
 
 	auto centerOfMass = SlVector3{0, 0, 0};
 	double totalMass = 0.0;

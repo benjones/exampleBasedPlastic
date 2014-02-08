@@ -35,6 +35,7 @@
 using iter::range;
 
 class btDiscreteDynamicsWorld;
+class MaterialProperties;
 
 /*class World;
 
@@ -116,8 +117,8 @@ public:
   
 
 
-  void load(const char *fname, btDiscreteDynamicsWorld* world);
-	void loadNodeEle(const char *fname);
+  void load(const char *fname, const MaterialProperties &mp, btDiscreteDynamicsWorld* world);
+	void loadNodeEle(const char *fname, const MaterialProperties &mp);
 	~FemObject();
 	void clearGlobalMatrix() {gm->clear();};
 	void computeGlobalMatrix(double dt);
@@ -283,6 +284,11 @@ private:
   //DynamicSurface *collisionSurface;
 	//SlInt2 *collisionSurfaceToVertices;
 	//unsigned int nCollisionSurfaceVertices;
+};
+
+class MaterialProperties {
+public:
+	double density, lambda, mu, scale, yieldStress, plasticModulus, flowrate, toughness;
 };
 
 inline void TetMatrix::mvmul (const SlVector3 *x, SlVector3 *y) {

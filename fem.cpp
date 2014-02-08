@@ -874,7 +874,7 @@ char *inputfindfield(char *string)
   return result;
 }
 
-void FemObject::loadNodeEle(const char *fname) {
+void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
   totalMass = 0;
   
   char inputline[1024];
@@ -1046,14 +1046,14 @@ void FemObject::loadNodeEle(const char *fname) {
       }
     }
 		if (neleattributes == 0) {
-			density[i] = 1000;
-			lambda[i] = 5e3;
-			mu[i] = 1e4;
-			scale[i] = 1e-2;
-			yieldStress[i] = 20.0;
-			plasticModulus[i] = 0.0;
-			flowrate[i] = 100;
-			toughness[i] = 50.0;
+			density[i] = mp.density;
+			lambda[i] = mp.lambda;
+			mu[i] = mp.mu;
+			scale[i] = mp.scale;
+			yieldStress[i] = mp.yieldStress;
+			plasticModulus[i] = mp.plasticModulus;
+			flowrate[i] = mp.flowrate;
+			toughness[i] = mp.toughness;
 		} else if (neleattributes == 4) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);
@@ -1063,10 +1063,10 @@ void FemObject::loadNodeEle(const char *fname) {
 			mu[i] = strtod(stringptr, &stringptr);
 			stringptr = inputfindfield(stringptr);
 			scale[i] = strtod(stringptr, &stringptr);
-			yieldStress[i] = DBL_MAX;
-			plasticModulus[i] = 0.0;
-			flowrate[i] = 0.0;
-			toughness[i] = 100.0;
+			yieldStress[i] = mp.yieldStress;
+			plasticModulus[i] = mp.plasticModulus;
+			flowrate[i] = mp.flowrate;
+			toughness[i] = mp.toughness;
 		} else if (neleattributes == 7) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);
@@ -1082,6 +1082,7 @@ void FemObject::loadNodeEle(const char *fname) {
 			plasticModulus[i] = strtod(stringptr, &stringptr);
 			stringptr = inputfindfield(stringptr);
 			flowrate[i] = strtod(stringptr, &stringptr);
+			toughness[i] = mp.toughness;
 		} else if (neleattributes == 8) {
 			stringptr = inputfindfield(stringptr);
 			density[i] = strtod(stringptr, &stringptr);
@@ -1181,10 +1182,10 @@ void FemObject::loadNodeEle(const char *fname) {
 	solver_precon = new SlVector3[av];
 }
 
-void FemObject::load(const char *fname, btDiscreteDynamicsWorld* world) {
+void FemObject::load(const char *fname, const MaterialProperties &mp, btDiscreteDynamicsWorld* world) {
   bulletWorld = world;
 
-	if (!strstr(fname, ".mesh")) return loadNodeEle(fname);
+	if (!strstr(fname, ".mesh")) return loadNodeEle(fname, mp);
 
 	totalMass = 0;
 	std::ifstream in(fname, std::ios::in);
