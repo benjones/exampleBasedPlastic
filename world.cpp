@@ -916,7 +916,7 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	v[1] = in[rbIndex + 4];
 	v[2] = in[rbIndex + 5];
 	
-	CTv += c.crossProductMatrix * v;
+	//CTv += c.crossProductMatrix * v;
 	
 	// compute the mass weighting matrix (C^T M^-1 C)^-1
 	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
@@ -926,7 +926,7 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 		btInvI[1][0], btInvI[1][1], btInvI[1][2],
 		btInvI[2][0], btInvI[2][1], btInvI[2][2];
 	Eigen::Matrix3d CTMinvC = c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
-	//CTMinvC << 0,0,0, 0,0,0, 0,0,0;
+	CTMinvC << 0,0,0, 0,0,0, 0,0,0;
 	CTMinvC(0,0) += sumInvMass; 
 	CTMinvC(1,1) += sumInvMass; 
 	CTMinvC(2,2) += sumInvMass; 
@@ -952,9 +952,9 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
 
 
-	in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
-	in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
-	in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
+	//in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
+	//in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
+	//in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
 	//std::cout<<"after "<<in[femIndex]<<" "<<in[rbIndex]<<std::endl;
 }
 
