@@ -25,6 +25,7 @@ class World{
   void computeConstraints();
   void countConstraints();
 
+	void massScale(double *x, double *y);
 	void solve();
 	void solveMinres();
 	void project(double *in);

@@ -33,6 +33,8 @@ extern "C" {
 using iter::range;
 using iter::enumerate;
 
+//#define PROJECTION 1
+
 void callbackWrapper(btBroadphasePair& collisionPair, 
 					 btCollisionDispatcher& _dispatcher, 
 					 btDispatcherInfo& dispatcherInfo){
@@ -379,6 +381,7 @@ void World::timeStepRigidCollisions(){
 }
 
 
+#if !PROJECTION
 void World::solve() {
 	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
 	double tol=1e-40;
@@ -528,7 +531,7 @@ void World::solve() {
 		dptr1 += 6;
 	}
 }
-
+#endif
 
 void World::computeFemVelocities(){
   
@@ -913,7 +916,7 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	v[1] = in[rbIndex + 4];
 	v[2] = in[rbIndex + 5];
 	
-	//CTv += c.crossProductMatrix * v;
+	CTv += c.crossProductMatrix * v;
 	
 	// compute the mass weighting matrix (C^T M^-1 C)^-1
 	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
@@ -922,14 +925,13 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 		btInvI[0][0], btInvI[0][1], btInvI[0][2],
 		btInvI[1][0], btInvI[1][1], btInvI[1][2],
 		btInvI[2][0], btInvI[2][1], btInvI[2][2];
-	Eigen::Matrix3d CTMinvC; //= c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
-	CTMinvC << 0,0,0, 0,0,0, 0,0,0;
+	Eigen::Matrix3d CTMinvC = c.crossProductMatrix * Iinv * c.crossProductMatrix.transpose();
+	//CTMinvC << 0,0,0, 0,0,0, 0,0,0;
 	CTMinvC(0,0) += sumInvMass; 
 	CTMinvC(1,1) += sumInvMass; 
 	CTMinvC(2,2) += sumInvMass; 
 	
 	Eigen::Vector3d CTMinvCinvCTv = CTMinvC.inverse()*CTv;
-	
 
 	Eigen::Vector3d CCTMinvCinvCTv[3];
 	CCTMinvCinvCTv[0] = CTMinvCinvCTv;
@@ -941,16 +943,23 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	CCTMinvCinvCTv[2] = Iinv * CCTMinvCinvCTv[2];
 	
 
+	//std::cout<<"before "<<in[femIndex]<<" "<<in[rbIndex]<<std::endl;
 	in[femIndex    ] -= CCTMinvCinvCTv[0][0];
 	in[femIndex  +1] -= CCTMinvCinvCTv[0][1];
 	in[femIndex  +2] -= CCTMinvCinvCTv[0][2];
 	in[rbIndex    ] -= CCTMinvCinvCTv[1][0];
 	in[rbIndex  +1] -= CCTMinvCinvCTv[1][1];
 	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
+
+
+	in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
+	in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
+	in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
+	//std::cout<<"after "<<in[femIndex]<<" "<<in[rbIndex]<<std::endl;
 }
 
 void World::project(double *in) {
-	for (unsigned int i=0; i<4; i++) {
+	for (unsigned int i=0; i<10; i++) {
 
 		size_t rbIndex = nfemdof;
 		for(auto& rb : rigidBodies){
@@ -1110,10 +1119,44 @@ void World::solveMinres() {
 	}
 }
 
-#if 0
+#if PROJECTION
+void World::massScale(double *x, double *y) {
+	double *dptr1 = y;
+	double *dptr2 = x;
+	for (unsigned int i=0; i<femObjects.size(); i++) {
+		SlVector3 *vptr = femObjects[i].frc;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+			(*(dptr1++)) = (*(dptr2++)) * femObjects[i].mass[j];
+			(*(dptr1++)) = (*(dptr2++)) * femObjects[i].mass[j];
+			(*(dptr1++)) = (*(dptr2++)) * femObjects[i].mass[j];
+		}
+	}
+	
+	for (unsigned int i=0; i<rigidBodies.size(); i++) {
+		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+		(*(dptr1++)) = mass*(*(dptr2++));
+		(*(dptr1++)) = mass*(*(dptr2++));
+		(*(dptr1++)) = mass*(*(dptr2++));
+				
+		//rotational part, there must be a less hideous way of doing this.
+		double angularvelocity[3];
+		angularvelocity[0] = (*(dptr2++));
+		angularvelocity[1] = (*(dptr2++));
+		angularvelocity[2] = (*(dptr2++));
+		//bulletOverwriteMultiply(angularvelocity, dptr1,
+		//											rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		dptr1 += 3;
+	}
+	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
+				(*(dptr1++)) = 0.0;
+	}
+}
+
+
 void World::solve() {
 	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
-	double tol=1e-40;
+	double tol=1e-12;
 	unsigned int iter=0, max_iter = 10000;
 	nfemdof = 0;
 	nrbdof = 0;
@@ -1204,56 +1247,62 @@ void World::solve() {
 	//cblas_daxpy(n, -1, q, 1, r, 1); 
 	
 	//std::cout<<"project r"<<std::endl;
-	//project(r);
+	project(r);
 
 	// d = p*r
-	dptr1 = d; dptr2 = p; dptr3 = r;
-	for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-		(*dptr1) = (*dptr2) * (*dptr3);
-	}
-	applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+	//dptr1 = d; dptr2 = p; dptr3 = r;
+	//for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+	//(*dptr1) = (*dptr2) * (*dptr3);
+	//}
+	//applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+	cblas_dcopy(n, r, 1, d, 1);
+
 	//applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
 
-	//project(r);
-	//project(d);
-	delta_new = cblas_ddot(n, (double*)r, 1, (double*)d, 1);
+	//massScale(d, q2);
+	delta_new = cblas_ddot(n, r, 1, d, 1);
 	tol *= delta_new;
 
 	if (delta_new > tol) {
 		while (iter++ < max_iter) {
+			//massScale(d, q2);
 			// apply matrix
-			project(d);
+			//std::cout<<"DDDDDDDDDD"<<std::endl;
+			//project(d);			
 			offset = 0;
 			for (unsigned int i=0; i<femObjects.size(); i++) {
 				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
 				offset += 3*femObjects[i].nv;																	
 			}
 			mulRigidMassMatrix(d+offset, q+offset);
-			//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
-			//mulJV(d, q);
-			//mulJTLambda(d, q);
+
 			project(q);
 
+			//massScale(q,q2);
 			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
 			cblas_daxpy(n, alpha, d, 1, x, 1);
 			cblas_daxpy(n, -alpha, q, 1, r, 1);
+
+			//std::cout<<"alpha = "<<alpha<<" "<<delta_new<<" "<<cblas_ddot(n, d, 1, q2, 1)<<std::endl;
 			
 			// apply preconditioner q = P*r
-			dptr1 = q; dptr3 = p; dptr2 = r;
-			for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-				(*dptr1) = (*dptr2) * (*dptr3);
-			}
-			applyRigidPreconditioner(r+nfemdof, q+nfemdof);
-			//applyRegularizerPreconditioner(r+nfemdof+nrbdof, q+nfemdof+nrbdof);
+			//dptr1 = q; dptr3 = p; dptr2 = r;
+			//for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+			//(*dptr1) = (*dptr2) * (*dptr3);
+			//}
+			//applyRigidPreconditioner(r+nfemdof, q+nfemdof);
+			cblas_dcopy(n, (double*)r, 1, (double*)q, 1);
 
 			delta_old = delta_new;
+
+			//massScale(q,q);
+
 			delta_new = cblas_ddot(n, r, 1, q, 1);
-			//project(q);
 			beta = delta_new / delta_old;
 			
 			cblas_daxpy(n, beta, d, 1, q, 1);
 			cblas_dcopy(n, q, 1, d, 1);
-			//project(d);
+
 			std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
 			if (delta_new < tol) break;// || delta_new > delta_old) break;
 			
