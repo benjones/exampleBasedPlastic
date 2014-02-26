@@ -193,6 +193,9 @@ void FemObject::filtergrips(SlVector3 *v){
 	}
 }
 
+
+//actually setting up rhs
+//frc = v_old + f_grav/m *dt
 void FemObject::setForces(double dt, const SlVector3 &gravity) {
 	SlVector3 *vptr = frc;
 	double *dptr = mass;
@@ -949,7 +952,8 @@ void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
 	unbalancedTensLoad = new SlVector3[av];
 	unbalancedCompLoad = new SlVector3[av];
 
-	SlVector3 bbMin(DBL_MAX), bbMax(-DBL_MAX);
+	bbMin.set(DBL_MAX); 
+	bbMax.set(-DBL_MAX);
 	std::cout<<"number of vertices: "<<nv<< std::endl;
   for (unsigned int i = 0; i < nv; i++) {
     stringptr = inputtextline(inputline, infile, nodefilename);
@@ -1238,7 +1242,8 @@ void FemObject::load(const char *fname, const MaterialProperties &mp, btDiscrete
 
 	//frcOffsets = new FrcOffsets[ntets];
 
-	SlVector3 bbMin(DBL_MAX), bbMax(-DBL_MAX);
+	bbMin.set(DBL_MAX);
+	bbMax.set(-DBL_MAX);
 	std::cout<<"number of vertices: "<<nv<<"; number of tets: "<<ntets<<std::endl;
 
 	in.open(fname, std::ios::in);

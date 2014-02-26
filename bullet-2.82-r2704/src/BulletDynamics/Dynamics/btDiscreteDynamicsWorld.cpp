@@ -471,7 +471,7 @@ int	btDiscreteDynamicsWorld::stepSimulation( btScalar timeStep,int maxSubSteps, 
 void btDiscreteDynamicsWorld::preCoupledSolve(btScalar timeStep){
 
   saveKinematicState(timeStep);
-  applyGravity();
+  //  applyGravity();
   
 
 }

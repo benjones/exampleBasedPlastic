@@ -33,7 +33,7 @@ extern "C" {
 using iter::range;
 using iter::enumerate;
 
-//#define PROJECTION 1
+#define PROJECTION 1
 
 void callbackWrapper(btBroadphasePair& collisionPair, 
 					 btCollisionDispatcher& _dispatcher, 
@@ -142,13 +142,13 @@ World::World(std::string filename)
 	  totalMass += femObj.mass[vInd];
 	}
 	centerOfMass /= totalMass;
-
 	//center the object about its COM to make rotation make sense
 	femObj.bbMin -= centerOfMass;
 	femObj.bbMax -= centerOfMass;
 	for(auto  vInd : range(femObj.nv)){
 	  femObj.pos[vInd] -= centerOfMass;
 	}
+	std::cout << femObj.bbMin << femObj.bbMax << std::endl;
 
 	if(!femObjectIn["rotation"].isNull()){
 	  SlVector3 axis;
@@ -170,12 +170,12 @@ World::World(std::string filename)
 	  for(auto vInd : range(femObj.nv)){
 		femObj.pos[vInd] = rot*femObj.pos[vInd];
 		for(auto j : range(3)){
-		  femObj.bbMin(j) = std::min(femObj.bbMin(j), femObj.pos[vInd](j));
-		  femObj.bbMax(j) = std::max(femObj.bbMax(j), femObj.pos[vInd](j));
+		  femObj.bbMin[j] = std::min(femObj.bbMin[j], femObj.pos[vInd][j]);
+		  femObj.bbMax[j] = std::max(femObj.bbMax[j], femObj.pos[vInd][j]);
 		}
 	  }
-	  
-	}
+	}	  
+
 	
 
     if(!femObjectIn["offset"].isNull()){
@@ -299,6 +299,9 @@ World::World(std::string filename)
 		   const btDispatcherInfo& dispatcherInfo){
 	constraintCullingCallback(collisionPair, _dispatcher, dispatcherInfo);
   };
+
+  dispatcher.get()->setNearCallback(collisionCallback);
+
   btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 }
 
@@ -312,6 +315,8 @@ void World::timeStep(){
 
   computeFemVelocities(); // this is really just forces
   //bulletWorld.stepSimulationVelocitiesOnly(dt); 
+  
+
 
   
 
@@ -322,8 +327,14 @@ void World::timeStep(){
 
   //apply constant forces:
   for(auto& rb : rigidBodies){
+	//TODO, THESE SHOULD MAYBE BE IMPULSES...
 	rb.bulletBody->applyCentralForce(rb.constantForce);
+
+	//apply gravity as an impulse
+	rb.bulletBody->applyCentralImpulse(dt*bulletWorld.getGravity()/rb.bulletBody->getInvMass());
   }
+
+
 
   //std::cout << "pre solve" << std::endl;
   //for(auto& fem: femObjects) {fem.dump();}
@@ -595,60 +606,62 @@ void World::computeConstraints(){
 
   for( auto rbInd : range(rigidBodies.size())){
     auto& rb = rigidBodies[rbInd];
+	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     auto mass = 1.0/rb.bulletBody->getInvMass();
     for(auto femInd : range(femObjects.size())){
       auto& fem = femObjects[femInd];
-
+	  
       //cull based on BB overlap
       btVector3 rbBoundMin, rbBoundMax;
       rb.bulletBody->getAabb(rbBoundMin, rbBoundMax);
+
       
       if(!(rbBoundMin.x() > fem.bbMax.x() ||
-	   rbBoundMax.x() < fem.bbMin.x() ||
-	   rbBoundMin.y() > fem.bbMax.y() ||
-	   rbBoundMax.y() < fem.bbMin.y() ||
-	   rbBoundMin.z() > fem.bbMax.z() ||
-	   rbBoundMax.z() < fem.bbMin.z())){
-	std::cout << "aabb overlap" << std::endl;
-	for(auto i : range(fem.nv)){
+		   rbBoundMax.x() < fem.bbMin.x() ||
+		   rbBoundMin.y() > fem.bbMax.y() ||
+		   rbBoundMax.y() < fem.bbMin.y() ||
+		   rbBoundMin.z() > fem.bbMax.z() ||
+		   rbBoundMax.z() < fem.bbMin.z())){
+		std::cout << "aabb overlap" << std::endl;
+		for(auto i : range(fem.nv)){
 
-	  auto worldPos = btVector3(fem.pos[i].x(),
-				    fem.pos[i].y(),
-				    fem.pos[i].z());
-	  btVector3 relPos = rb.bulletBody->getWorldTransform().inverse()*worldPos;
+		  auto worldPos = btVector3(fem.pos[i].x(),
+									fem.pos[i].y(),
+									fem.pos[i].z());
+		  btVector3 relPos = rb.bulletBody->getWorldTransform().inverse()*worldPos;
 
-	  //check if the relPos is in the object
+		  //check if the relPos is in the object
 	  
-	  if(rb.rbType == RigidBody::RB_BOX){
-	    const btBoxShape *box = dynamic_cast<btBoxShape*>(rb.bulletBody->getCollisionShape());
-	    auto extents = box->getHalfExtentsWithMargin();
-	    if( relPos.x() >= -extents.x()  &&
-		relPos.x() <= extents.x() &&
-		relPos.y() >= -extents.y() &&
-		relPos.y() <= extents.y() &&
-		relPos.z() >= -extents.z() &&
-		relPos.z() <= extents.z()){
+		  if(rb.rbType == RigidBody::RB_BOX){
+			const btBoxShape *box = dynamic_cast<btBoxShape*>(rb.bulletBody->getCollisionShape());
+			auto extents = box->getHalfExtentsWithMargin();
+			if( relPos.x() >= -extents.x()  &&
+				relPos.x() <= extents.x() &&
+				relPos.y() >= -extents.y() &&
+				relPos.y() <= extents.y() &&
+				relPos.z() >= -extents.z() &&
+				relPos.z() <= extents.z()){
 	      
-	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), 1.0});//std::min(fem.mass[i], mass)-1e-6});
-				fem.grip(femInd);
-	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
-	    }
+			  rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), 1.0});//std::min(fem.mass[i], mass)-1e-6});
+			  fem.grip(femInd);
+			  std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
+			}
 	    
 
-	  } else if(rb.rbType == RigidBody::RB_PLANE){
-	    const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
-	    if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
-	      rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), std::min(fem.mass[i], mass)-1e-6});
-				fem.grip(femInd);
-	      std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
-	    }
+		  } else if(rb.rbType == RigidBody::RB_PLANE){
+			const auto* plane = dynamic_cast<btStaticPlaneShape*>(rb.bulletBody->getCollisionShape());
+			if(relPos.dot(plane->getPlaneNormal()) <= plane->getPlaneConstant()){
+			  rb.constraints.push_back({relPos, femInd, i, rbInd, Eigen::Matrix3d::Zero(), std::min(fem.mass[i], mass)-1e-6});
+			  fem.grip(femInd);
+			  std::cout << "added constraint: " << relPos << ' ' << femInd << ' ' << i << std::endl;
+			}
 	    
 
-	  }else {
-	    std::cout << "unknown RB type" << std::endl;
-	    exit(1);
-	  }
-	}
+		  }else {
+			std::cout << "unknown RB type" << std::endl;
+			exit(1);
+		  }
+		}
       }
     }
   }
@@ -671,7 +684,7 @@ void World::constraintCullingCallback(btBroadphasePair& collisionPair,
 
   auto it1 = std::find_if(rigidBodies.begin(), rigidBodies.end(),predicate);
   if(it1 != rigidBodies.end()){
-	//std::cout << "found a RB" << std::endl;
+	//	std::cout << "found a RB" << std::endl;
 	//one of them is a rigid body
 	auto it2 = std::find_if(it1 + 1, rigidBodies.end(), predicate);
 	if(it2 != rigidBodies.end()){
@@ -959,6 +972,7 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 }
 
 void World::project(double *in) {
+  return;
 	for (unsigned int i=0; i<10; i++) {
 
 		size_t rbIndex = nfemdof;
@@ -1155,175 +1169,183 @@ void World::massScale(double *x, double *y) {
 
 
 void World::solve() {
-	double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
-	double tol=1e-12;
-	unsigned int iter=0, max_iter = 10000;
-	nfemdof = 0;
-	nrbdof = 0;
-	unsigned int nrbs = 0;
+  double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
+  double tol=1e-12;
+  unsigned int iter=0, max_iter = 10000;
+  nfemdof = 0;
+  nrbdof = 0;
 
-	unsigned int n = 0; 
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		femObjects[i].firstNodeIndex = n/3;
-		n += 3*femObjects[i].nv;
-		nfemdof += 3*femObjects[i].nv;
-	}
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		n += 6;
-		nrbs++;
-		nrbdof += 6;
-	}
-	n += 3*totalNumConstraints;	
+  //count degrees of freedom and bodies
+  unsigned int nrbs = 0;
+  unsigned int n = 0; 
+  for (unsigned int i=0; i<femObjects.size(); i++) {
+	femObjects[i].firstNodeIndex = n/3;
+	n += 3*femObjects[i].nv;
+	nfemdof += 3*femObjects[i].nv;
+  }
+  for (unsigned int i=0; i<rigidBodies.size(); i++) {
+	if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+	n += 6;
+	nrbs++;
+	nrbdof += 6;
+  }
+  n += 3*totalNumConstraints;	
 
-	double *work = new double [5*n + nfemdof];
-	double *x = work;     // solution
-	double *r = work+n;   // residual
-	double *q = work+2*n; // temp storage
-	double *d = work+3*n; // search direction
-	double *q2 = work+3*n; // search direction
-	double *p = work+4*n; // preconditioner
+  double *work = new double [5*n + nfemdof];
+  double *x = work;     // solution
+  double *r = work+n;   // residual
+  double *q = work+2*n; // temp storage
+  double *d = work+3*n; // search direction
+  double *q2 = work+3*n; // search direction
+  double *p = work+4*n; // preconditioner
+
+  //set all vectors to 0
+  for (unsigned int i=0; i<5*n+nfemdof; i++) work[i] = 0.0;
+
+  //setup precon
+  int offset = 0;
+  for (unsigned int i=0; i<femObjects.size(); i++) {
+	femObjects[i].gm->setPrecon(p+offset);
+	offset += 3*femObjects[i].nv;
+  }
+
+
 	
-	for (unsigned int i=0; i<5*n+nfemdof; i++) work[i] = 0.0;
+  dptr1 = r;
+  dptr2 = x;
+  //solution = 0, again?
+  for (unsigned int i=0; i<n; i++, dptr2++) (*dptr2) = 0.0;
 
-	int offset = 0;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		femObjects[i].gm->setPrecon(p+offset);
-		offset += 3*femObjects[i].nv;
+  //r = forces /m
+  for (unsigned int i=0; i<femObjects.size(); i++) {
+	SlVector3 *vptr = femObjects[i].frc;
+	for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+	  (*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+	  //(*(dptr2++)) = (*vptr)[0] / femObjects[i].mass[j];
+	  //(*(dptr2++)) = (*vptr)[1] / femObjects[i].mass[j];
+	  //(*(dptr2++)) = (*vptr)[2] / femObjects[i].mass[j];
+	  //std::cout<<(*vptr)[1]/femObjects[i].mass[j]<<" "<<(*(dptr2++))<<" "<<femObjects[i].mass[j]<<std::endl;
 	}
+  }
 
-	dptr1 = r;
-	dptr2 = x;
-	for (unsigned int i=0; i<n; i++, dptr2++) (*dptr2) = 0.0;
-
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].frc;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
-			//(*(dptr2++)) = (*vptr)[0] / femObjects[i].mass[j];
-			//(*(dptr2++)) = (*vptr)[1] / femObjects[i].mass[j];
-			//(*(dptr2++)) = (*vptr)[2] / femObjects[i].mass[j];
-			//std::cout<<(*vptr)[1]/femObjects[i].mass[j]<<" "<<(*(dptr2++))<<" "<<femObjects[i].mass[j]<<std::endl;
-		}
-	}
-
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+  //r = forward euler'd rigid body velocities 
+  for (unsigned int i=0; i<rigidBodies.size(); i++) {
+	if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+	double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
     (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
     (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
     (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
-		//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
+	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
+	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
+	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
 
     //rotational part, there must be a less hideous way of doing this.
-		double angularvelocity[3];
-		angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
-		angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
-		angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
+	double angularvelocity[3];
+	angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
+	angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
+	angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
     bulletOverwriteMultiply(angularvelocity, dptr1,
-			    rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
-		dptr1 += 3;
-		//(*(dptr2++)) = angularvelocity[0];
-		//(*(dptr2++)) = angularvelocity[1];
-		//(*(dptr2++)) = angularvelocity[2];
-	}
-	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
-		(*(dptr1++)) = 0.0;
-		//(*(dptr2++)) = 0.0;
-	}
+							rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+	dptr1 += 3;
+	//(*(dptr2++)) = angularvelocity[0];
+	//(*(dptr2++)) = angularvelocity[1];
+	//(*(dptr2++)) = angularvelocity[2];
+  }
+  for (unsigned int i=0; i<3*totalNumConstraints; i++) {
+	(*(dptr1++)) = 0.0;
+	//(*(dptr2++)) = 0.0;
+  }
 
-	//offset = 0;
-	//for (unsigned int i=0; i<femObjects.size(); i++) {
-	//	femObjects[i].gm->mvmul((SlVector3 *)(x+offset),(SlVector3*) (q+offset));
-	//	offset += 3*femObjects[i].nv;																	
-	//}
-	//mulRigidMassMatrix(x+offset, q+offset);
-	//applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
-	//mulJV(d, q);
-	//mulJTLambda(d, q);
+  //offset = 0;
+  //for (unsigned int i=0; i<femObjects.size(); i++) {
+  //	femObjects[i].gm->mvmul((SlVector3 *)(x+offset),(SlVector3*) (q+offset));
+  //	offset += 3*femObjects[i].nv;																	
+  //}
+  //mulRigidMassMatrix(x+offset, q+offset);
+  //applyRegularizer(d+offset+nrbdof, q+offset+nrbdof);
+  //mulJV(d, q);
+  //mulJTLambda(d, q);
 	
-	//cblas_daxpy(n, -1, q, 1, r, 1); 
+  //cblas_daxpy(n, -1, q, 1, r, 1); 
 	
-	//std::cout<<"project r"<<std::endl;
-	project(r);
+  //std::cout<<"project r"<<std::endl;
+  project(r);
 
-	// d = p*r
-	//dptr1 = d; dptr2 = p; dptr3 = r;
-	//for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-	//(*dptr1) = (*dptr2) * (*dptr3);
-	//}
-	//applyRigidPreconditioner(r+nfemdof, d+nfemdof);
-	cblas_dcopy(n, r, 1, d, 1);
+  // d = p*r
+  //dptr1 = d; dptr2 = p; dptr3 = r;
+  //for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+  //(*dptr1) = (*dptr2) * (*dptr3);
+  //}
+  //applyRigidPreconditioner(r+nfemdof, d+nfemdof);
+  cblas_dcopy(n, r, 1, d, 1);
 
-	//applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
+  //applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
 
-	//massScale(d, q2);
-	delta_new = cblas_ddot(n, r, 1, d, 1);
-	tol *= delta_new;
+  //massScale(d, q2);
+  delta_new = cblas_ddot(n, r, 1, d, 1);
+  tol *= delta_new;
 
-	if (delta_new > tol) {
-		while (iter++ < max_iter) {
-			//massScale(d, q2);
-			// apply matrix
-			//std::cout<<"DDDDDDDDDD"<<std::endl;
-			//project(d);			
-			offset = 0;
-			for (unsigned int i=0; i<femObjects.size(); i++) {
-				femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
-				offset += 3*femObjects[i].nv;																	
-			}
-			mulRigidMassMatrix(d+offset, q+offset);
+  if (delta_new > tol) {
+	while (iter++ < max_iter) {
+	  //massScale(d, q2);
+	  // apply matrix
+	  //std::cout<<"DDDDDDDDDD"<<std::endl;
+	  //project(d);			
+	  offset = 0;
+	  for (unsigned int i=0; i<femObjects.size(); i++) {
+		femObjects[i].gm->mvmul((SlVector3 *)(d+offset),(SlVector3*) (q+offset));
+		offset += 3*femObjects[i].nv;																	
+	  }
+	  mulRigidMassMatrix(d+offset, q+offset);
 
-			project(q);
+	  project(q);
 
-			//massScale(q,q2);
-			alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
-			cblas_daxpy(n, alpha, d, 1, x, 1);
-			cblas_daxpy(n, -alpha, q, 1, r, 1);
+	  //massScale(q,q2);
+	  alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
+	  cblas_daxpy(n, alpha, d, 1, x, 1);
+	  cblas_daxpy(n, -alpha, q, 1, r, 1);
 
-			//std::cout<<"alpha = "<<alpha<<" "<<delta_new<<" "<<cblas_ddot(n, d, 1, q2, 1)<<std::endl;
+	  //std::cout<<"alpha = "<<alpha<<" "<<delta_new<<" "<<cblas_ddot(n, d, 1, q2, 1)<<std::endl;
 			
-			// apply preconditioner q = P*r
-			//dptr1 = q; dptr3 = p; dptr2 = r;
-			//for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
-			//(*dptr1) = (*dptr2) * (*dptr3);
-			//}
-			//applyRigidPreconditioner(r+nfemdof, q+nfemdof);
-			cblas_dcopy(n, (double*)r, 1, (double*)q, 1);
+	  // apply preconditioner q = P*r
+	  //dptr1 = q; dptr3 = p; dptr2 = r;
+	  //for (unsigned int i=0; i<nfemdof; i++, dptr1++, dptr2++, dptr3++) {
+	  //(*dptr1) = (*dptr2) * (*dptr3);
+	  //}
+	  //applyRigidPreconditioner(r+nfemdof, q+nfemdof);
+	  cblas_dcopy(n, (double*)r, 1, (double*)q, 1);
 
-			delta_old = delta_new;
+	  delta_old = delta_new;
 
-			//massScale(q,q);
+	  //massScale(q,q);
 
-			delta_new = cblas_ddot(n, r, 1, q, 1);
-			beta = delta_new / delta_old;
+	  delta_new = cblas_ddot(n, r, 1, q, 1);
+	  beta = delta_new / delta_old;
 			
-			cblas_daxpy(n, beta, d, 1, q, 1);
-			cblas_dcopy(n, q, 1, d, 1);
+	  cblas_daxpy(n, beta, d, 1, q, 1);
+	  cblas_dcopy(n, q, 1, d, 1);
 
-			std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
-			if (delta_new < tol) break;// || delta_new > delta_old) break;
+	  //std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
+	  if (delta_new < tol) break;// || delta_new > delta_old) break;
 			
-		}
 	}
+  }
 
-	dptr1 = x;
-	for (unsigned int i=0; i<femObjects.size(); i++) {
-		SlVector3 *vptr = femObjects[i].vel;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*vptr)[0] = (*(dptr1++));// / femObjects[i].mass[j]; 
-			(*vptr)[1] = (*(dptr1++));// / femObjects[i].mass[j]; 
-			(*vptr)[2] = (*(dptr1++));// / femObjects[i].mass[j];
-		}
+  dptr1 = x;
+  for (unsigned int i=0; i<femObjects.size(); i++) {
+	SlVector3 *vptr = femObjects[i].vel;
+	for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
+	  (*vptr)[0] = (*(dptr1++));// / femObjects[i].mass[j]; 
+	  (*vptr)[1] = (*(dptr1++));// / femObjects[i].mass[j]; 
+	  (*vptr)[2] = (*(dptr1++));// / femObjects[i].mass[j];
 	}
-	for (unsigned int i=0; i<rigidBodies.size(); i++) {
-		if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-		rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
-		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
-		dptr1 += 6;
-	}
+  }
+  for (unsigned int i=0; i<rigidBodies.size(); i++) {
+	if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
+	rigidBodies[i].bulletBody->setLinearVelocity(btVector3(dptr1[0], dptr1[1], dptr1[2]));
+	rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
+	dptr1 += 6;
+  }
 }
 #endif
 
