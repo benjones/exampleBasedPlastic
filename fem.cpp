@@ -200,7 +200,8 @@ void FemObject::setForces(double dt, const SlVector3 &gravity) {
 	SlVector3 *vptr = frc;
 	double *dptr = mass;
 	for (unsigned int i=0; i<nv; i++, vptr++, dptr++) {
-		(*vptr) = (*dptr)*(dt*gravity + vel[i]);
+	  //	  (*vptr) = (*dptr)*(dt*gravity + vel[i]);
+	  (*vptr) = (dt*gravity + vel[i]);
 	}
 }
 

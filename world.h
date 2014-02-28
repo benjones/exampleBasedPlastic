@@ -26,9 +26,11 @@ class World{
   void countConstraints();
 
 	void massScale(double *x, double *y);
+  void inverseMassScale(double *x, double *y);
 	void solve();
 	void solveMinres();
 	void project(double *in);
+  void checkVector(double *in);
 	void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
   void timeStep();
   void timeStepRigidCollisions();

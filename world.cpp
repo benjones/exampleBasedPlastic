@@ -123,9 +123,10 @@ World::World(std::string filename)
 		auto& femObjectIn = femObjectsIn[i];
 		MaterialProperties mp;
 		mp.density = femObjectIn.get("density", 1000.0).asDouble();
-		mp.lambda = femObjectIn.get("lambda", 5e3).asDouble();
-		mp.mu = femObjectIn.get("mu", 1e4).asDouble();
-		mp.scale = femObjectIn.get("scale", 1e-2).asDouble();
+		mp.lambda = femObjectIn.get("lambda", 5e4).asDouble();
+		mp.mu = femObjectIn.get("mu", 1e5).asDouble();
+		//		mp.scale = femObjectIn.get("scale", 1e-2).asDouble();
+		mp.scale = femObjectIn.get("scale", 6e-1).asDouble();
 		mp.yieldStress = femObjectIn.get("yieldStress", DBL_MAX).asDouble();
 		mp.plasticModulus = femObjectIn.get("plasticModulus", 0.0).asDouble();
 		mp.flowrate = femObjectIn.get("flowrate", 0.0).asDouble();
@@ -327,11 +328,14 @@ void World::timeStep(){
 
   //apply constant forces:
   for(auto& rb : rigidBodies){
+	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
 	//TODO, THESE SHOULD MAYBE BE IMPULSES...
 	rb.bulletBody->applyCentralForce(rb.constantForce);
 
 	//apply gravity as an impulse
+	std::cout << "velbefore: " << rb.bulletBody->getLinearVelocity() << std::endl;
 	rb.bulletBody->applyCentralImpulse(dt*bulletWorld.getGravity()/rb.bulletBody->getInvMass());
+	std::cout << "velafter: " << rb.bulletBody->getLinearVelocity() << std::endl;
   }
 
 
@@ -849,7 +853,14 @@ void World::mulRigidMassMatrix(double* in, double* out){
 			    out + index + 3,
 			    pr.element.bulletBody->getInvInertiaTensorWorld().inverse());
 
-		index+=6;
+	//zero out angular part
+	/*	out[index + 3] = 0;
+	out[index + 4] = 0;
+	out[index + 5] = 0;
+	*/
+	index+=6;
+	
+
   }
 }
 
@@ -929,7 +940,7 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	v[1] = in[rbIndex + 4];
 	v[2] = in[rbIndex + 5];
 	
-	//CTv += c.crossProductMatrix * v;
+	CTv += c.crossProductMatrix * v;
 	
 	// compute the mass weighting matrix (C^T M^-1 C)^-1
 	const btMatrix3x3 &btInvI = rb.bulletBody->getInvInertiaTensorWorld();
@@ -965,14 +976,18 @@ void World::project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &
 	in[rbIndex  +2] -= CCTMinvCinvCTv[1][2];
 
 
-	//in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
-	//in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
-	//in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
+	in[rbIndex  +3] -= CCTMinvCinvCTv[2][0];
+	in[rbIndex  +4] -= CCTMinvCinvCTv[2][1];
+	in[rbIndex  +5] -= CCTMinvCinvCTv[2][2];
+	
 	//std::cout<<"after "<<in[femIndex]<<" "<<in[rbIndex]<<std::endl;
 }
 
 void World::project(double *in) {
-  return;
+
+  //  std::cout << "before projecting" << std::endl;
+  //  checkVector(in);
+  
 	for (unsigned int i=0; i<10; i++) {
 
 		size_t rbIndex = nfemdof;
@@ -997,6 +1012,36 @@ void World::project(double *in) {
 			rbIndex -= 6;
 		}
 	}
+	//	std::cout << "after projecting" << std::endl;
+	//	checkVector(in);
+}
+
+void World::checkVector(double * in){
+  //check:
+  std::vector<double>(nrbdof + nfemdof, 0.0);
+  auto rbCount = 0;
+  double totalError = 0;
+  for(auto& rb : rigidBodies){
+	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+	//	std::cout << "rb: " << rbCount << std::endl;
+	auto rbStart = nfemdof + 6*rbCount;
+	//	std::cout << "rbstart: " << rbStart << std::endl;
+	btVector3 rigidVel(in[rbStart], in[rbStart +1], in[rbStart +2]);
+	btVector3 angVel(in[rbStart + 3], in[rbStart + 4], in[rbStart +5]);
+	for(auto& c : rb.constraints){
+	  //	  std::cout << "err: ";
+	  auto femStart = 3*(femObjects[c.femIndex].firstNodeIndex + c.nodeIndex);
+	  auto totalRigidVel = rigidVel + angVel.cross(c.localPosition);
+	  for(auto i : range(3)){
+		auto localError = in[femStart + i] - totalRigidVel[i];
+		totalError += localError*localError;
+		//		std::cout << in[femStart + i] << '\t' << totalRigidVel[i] << '\t' << localError << '\n';
+	  }
+	  //	  std::cout << '\n';
+	}
+	rbCount++;
+  }
+  std::cout << "totalError: " << sqrt(totalError) << std::endl;
 }
 
 class Preconditioner {
@@ -1158,8 +1203,8 @@ void World::massScale(double *x, double *y) {
 		angularvelocity[0] = (*(dptr2++));
 		angularvelocity[1] = (*(dptr2++));
 		angularvelocity[2] = (*(dptr2++));
-		//bulletOverwriteMultiply(angularvelocity, dptr1,
-		//											rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+		bulletOverwriteMultiply(angularvelocity, dptr1,
+													rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
 		dptr1 += 3;
 	}
 	for (unsigned int i=0; i<3*totalNumConstraints; i++) {
@@ -1167,6 +1212,35 @@ void World::massScale(double *x, double *y) {
 	}
 }
 
+void World::inverseMassScale(double *x, double *y){
+
+  auto offset = 0;
+  for(auto& fem : femObjects){
+	for(auto j : range(fem.nv)){
+	  y[offset    ] = x[offset    ]/fem.mass[j];
+	  y[offset + 1] = x[offset + 1]/fem.mass[j];
+	  y[offset + 2] = x[offset + 2]/fem.mass[j];
+	  offset += 3;
+	}
+  }
+
+  for(auto& rb : rigidBodies){
+	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+	y[offset    ] = x[offset    ]*rb.bulletBody->getInvMass();
+	y[offset + 1] = x[offset + 1]*rb.bulletBody->getInvMass();
+	y[offset + 2] = x[offset + 2]*rb.bulletBody->getInvMass();
+
+	double angularvelocity[3];
+	bulletOverwriteMultiply(x + offset + 3, y + offset + 3,
+							rb.bulletBody->getInvInertiaTensorWorld());
+	offset += 6;
+  }
+  //why set these to 0?
+  for(; offset < (nrbdof + nfemdof + 3*totalNumConstraints); ++offset){
+	y[offset] = 0;
+  }
+
+}
 
 void World::solve() {
   double delta_new, delta_old, alpha, beta, *dptr1, *dptr2, *dptr3;
@@ -1176,7 +1250,7 @@ void World::solve() {
   nrbdof = 0;
 
   //count degrees of freedom and bodies
-  unsigned int nrbs = 0;
+  //  unsigned int nrbs = 0;
   unsigned int n = 0; 
   for (unsigned int i=0; i<femObjects.size(); i++) {
 	femObjects[i].firstNodeIndex = n/3;
@@ -1186,7 +1260,7 @@ void World::solve() {
   for (unsigned int i=0; i<rigidBodies.size(); i++) {
 	if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
 	n += 6;
-	nrbs++;
+	//	nrbs++;
 	nrbdof += 6;
   }
   n += 3*totalNumConstraints;	
@@ -1216,11 +1290,14 @@ void World::solve() {
   //solution = 0, again?
   for (unsigned int i=0; i<n; i++, dptr2++) (*dptr2) = 0.0;
 
-  //r = forces /m
+  //r = 
   for (unsigned int i=0; i<femObjects.size(); i++) {
 	SlVector3 *vptr = femObjects[i].frc;
 	for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-	  (*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+	  //mass un-weight
+	  (*(dptr1++)) = (*vptr)[0];///femObjects[i].mass[j]; 
+	  (*(dptr1++)) = (*vptr)[1];///femObjects[i].mass[j];  
+	  (*(dptr1++)) = (*vptr)[2];///femObjects[i].mass[j]; 
 	  //(*(dptr2++)) = (*vptr)[0] / femObjects[i].mass[j];
 	  //(*(dptr2++)) = (*vptr)[1] / femObjects[i].mass[j];
 	  //(*(dptr2++)) = (*vptr)[2] / femObjects[i].mass[j];
@@ -1231,10 +1308,20 @@ void World::solve() {
   //r = forward euler'd rigid body velocities 
   for (unsigned int i=0; i<rigidBodies.size(); i++) {
 	if (rigidBodies[i].rbType == RigidBody::RBType::RB_PLANE) continue;
-	double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
-    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+	//	double mass = 1.0 / rigidBodies[i].bulletBody->getInvMass();
+	//    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[0];
+	//    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[1];
+	//    (*(dptr1++)) = mass*rigidBodies[i].bulletBody->getLinearVelocity()[2];
+	
+	//velocity on the RHS, not momentum
+	//    (*(dptr1++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
+	//    (*(dptr1++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
+	//    (*(dptr1++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
+	std::cout << "bullet vel: " << rigidBodies[i].bulletBody->getLinearVelocity() << std::endl;
+    dptr1[0] = rigidBodies[i].bulletBody->getLinearVelocity()[0];
+    dptr1[1] = rigidBodies[i].bulletBody->getLinearVelocity()[1];
+    dptr1[2] = rigidBodies[i].bulletBody->getLinearVelocity()[2];
+	dptr1 += 3;
 	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[0];
 	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[1];
 	//(*(dptr2++)) = rigidBodies[i].bulletBody->getLinearVelocity()[2];
@@ -1244,8 +1331,13 @@ void World::solve() {
 	angularvelocity[0] = rigidBodies[i].bulletBody->getAngularVelocity()[0];
 	angularvelocity[1] = rigidBodies[i].bulletBody->getAngularVelocity()[1];
 	angularvelocity[2] = rigidBodies[i].bulletBody->getAngularVelocity()[2];
-    bulletOverwriteMultiply(angularvelocity, dptr1,
-							rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+	//angular velocity, not angular momentum
+	dptr1[0] = angularvelocity[0];
+	dptr1[1] = angularvelocity[1];
+	dptr1[2] = angularvelocity[2];
+  	//    bulletOverwriteMultiply(angularvelocity, dptr1,
+	//								rigidBodies[i].bulletBody->getInvInertiaTensorWorld().inverse());
+
 	dptr1 += 3;
 	//(*(dptr2++)) = angularvelocity[0];
 	//(*(dptr2++)) = angularvelocity[1];
@@ -1268,6 +1360,12 @@ void World::solve() {
 	
   //cblas_daxpy(n, -1, q, 1, r, 1); 
 	
+  /*  std::cout << "residual" << std::endl;
+  for(auto i : range(nfemdof + nrbdof)){
+	std::cout << r[i] << std::endl;
+  }
+  std::cout << "nfemdof: " << nfemdof << std::endl;
+  */
   //std::cout<<"project r"<<std::endl;
   project(r);
 
@@ -1281,8 +1379,8 @@ void World::solve() {
 
   //applyRegularizerPreconditioner(r+nfemdof+nrbdof, d+nfemdof+nrbdof);
 
-  //massScale(d, q2);
-  delta_new = cblas_ddot(n, r, 1, d, 1);
+  massScale(d, q2);
+  delta_new = cblas_ddot(n, r, 1, q2, 1);//d, 1);
   tol *= delta_new;
 
   if (delta_new > tol) {
@@ -1298,10 +1396,14 @@ void World::solve() {
 	  }
 	  mulRigidMassMatrix(d+offset, q+offset);
 
+	  //un-mass-weight it
+	  inverseMassScale(q, q2);
+	  std::swap(q, q2);
+
 	  project(q);
 
-	  //massScale(q,q2);
-	  alpha = delta_new/cblas_ddot(n, d, 1, q, 1);
+	  massScale(q,q2);
+	  alpha = delta_new/cblas_ddot(n, d, 1, q2, 1);
 	  cblas_daxpy(n, alpha, d, 1, x, 1);
 	  cblas_daxpy(n, -alpha, q, 1, r, 1);
 
@@ -1317,7 +1419,8 @@ void World::solve() {
 
 	  delta_old = delta_new;
 
-	  //massScale(q,q);
+	  massScale(q,q2);
+	  std::swap(q, q2);
 
 	  delta_new = cblas_ddot(n, r, 1, q, 1);
 	  beta = delta_new / delta_old;
@@ -1325,7 +1428,7 @@ void World::solve() {
 	  cblas_daxpy(n, beta, d, 1, q, 1);
 	  cblas_dcopy(n, q, 1, d, 1);
 
-	  //std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
+	  std::cout<<iter<<" "<<delta_new<<" "<<tol<<std::endl;
 	  if (delta_new < tol) break;// || delta_new > delta_old) break;
 			
 	}
