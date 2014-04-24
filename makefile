@@ -1,11 +1,11 @@
 #-----------------------------------------
 #Basic Stuff -----------------------------
-CC          = `which c++` #g++
-cc          = `which c++` #gcc
+CC          = clang++ #`which c++` #g++
+cc          = clang #`which c++` #gcc
 
 #-----------------------------------------
 #Optimization ----------------------------
-OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION -flto#-DPCUBE -DINVENTOR_DEFINED
+OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -DBT_USE_DOUBLE_PRECISION  -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 #-DPCUBE -DINVENTOR_DEFINED
 #OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION
 #OPT   = -g -Wall
 
@@ -13,7 +13,7 @@ OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -D
 #-----------------------------------------
 
 TARGETS = fracture
-OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigidBody.o couplingConstraintSolver.o #collisions.o, punt on this
+OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o rigidBody.o couplingConstraintSolver.o kdTree.o #collisions.o, punt on this
 
 #-----------------------------------------
 

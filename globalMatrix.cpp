@@ -27,6 +27,14 @@ void GlobalMatrix::output() {
 		}
 	}
 
+GlobalMatrix::~GlobalMatrix() {
+	if (colIndices) delete [] colIndices;
+	if (cols) delete [] cols;
+	if (nblocks) delete [] nblocks;
+	if (blocks) delete [] blocks;
+	//if (neighborIndices) delete [] neighborIndices;
+}
+
 GlobalMatrix::GlobalMatrix(unsigned int nvertices, unsigned int ntets, const Tet *tets) {
 		dim = nvertices;
 		colIndices = new unsigned int[dim+1];

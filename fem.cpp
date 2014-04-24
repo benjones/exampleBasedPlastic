@@ -1,19 +1,18 @@
 #include "fem.H"
+#ifdef __APPLE__
+#include <Accelerate/Accelerate.h>
+#else
+#include <cblas.h>
+#endif
 #include "world.h"
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <slIO.H>
 #include <slUtil.H>
-#ifdef __APPLE__
-#include <Accelerate/Accelerate.h>
-#elif linux
-extern "C" {
-#include <cblas.h>
-}
-#endif
 #include <float.h>
 #include <sys/time.h>
-
+#include "kdTree.H"
 #include <eigen3/Eigen/Eigenvalues>
 
 using std::cout;
@@ -200,7 +199,7 @@ void FemObject::setForces(double dt, const SlVector3 &gravity) {
 	SlVector3 *vptr = frc;
 	double *dptr = mass;
 	for (unsigned int i=0; i<nv; i++, vptr++, dptr++) {
-	  //	  (*vptr) = (*dptr)*(dt*gravity + vel[i]);
+		//(*vptr) = (*dptr)*(dt*gravity + vel[i]);
 	  (*vptr) = (dt*gravity + vel[i]);
 	}
 }
@@ -363,6 +362,7 @@ void FemObject::applyPlasticity(int t, double dt, SlMatrix3x3 &stress, SlMatrix3
 	//std::cout<<S;
 	//std::cout<<m<<" "<<yieldStress[t]<<std::endl;
 	if (thresh < 0.0) return;
+	std::cout<<"applying plasticity "<<thresh<<std::endl;
 	SlSymetricEigenDecomp(S, Fhat, V);
 
 	if (Fhat[0] < FEPS || Fhat[1] < FEPS || Fhat[2] < FEPS) return;
@@ -398,6 +398,55 @@ void FemObject::applyPlasticity(int t, double dt, SlMatrix3x3 &stress, SlMatrix3
 	tetNormals[t][3] = 0.5*(cross(SlVector3(B(0,1),B(1,1),B(2,1)),
 																SlVector3(B(0,0),B(1,0),B(2,0))));
 	computeK(t);
+}
+
+void FemObject::collisionForces(double dt) {
+	std::vector<SlVector3> barys;
+	barys.resize(ntets);
+	for (unsigned int i=0; i<ntets; i++) {
+		const Tet &t = tets[i];
+		barys[i] = 0.25*(pos[t(0)] + pos[t(1)] + pos[t(2)] + pos[t(3)]);
+	}
+	KDTree tree(barys);
+	
+	std::vector<int> neighbors;
+	for (unsigned int i=0; i<ntets; i++) {
+		tree.neighbors(barys, barys[i], -1, 0.00025, neighbors);
+		for (unsigned int n=0; n<neighbors.size(); n++) {
+			int j = neighbors[n];
+			if (i == j) continue;
+			const Tet &ti = tets[i];
+			const Tet &tj = tets[j];
+			if (ti(0) == tj(0)) continue;
+			if (ti(0) == tj(1)) continue;
+			if (ti(0) == tj(2)) continue;
+			if (ti(0) == tj(3)) continue;
+			if (ti(1) == tj(0)) continue;
+			if (ti(1) == tj(1)) continue;
+			if (ti(1) == tj(2)) continue;
+			if (ti(1) == tj(3)) continue;
+			if (ti(2) == tj(0)) continue;
+			if (ti(2) == tj(1)) continue;
+			if (ti(2) == tj(2)) continue;
+			if (ti(2) == tj(3)) continue;
+			if (ti(3) == tj(0)) continue;
+			if (ti(3) == tj(1)) continue;
+			if (ti(3) == tj(2)) continue;
+			if (ti(3) == tj(3)) continue;
+			SlVector3 d = barys[i] - barys[j];
+			double m = mag(d);
+			if (m < 1e-24) continue;
+			d *= 10e8*sqr(m-0.00025)/m;
+			frc[ti(0)] += dt*d;
+			frc[ti(1)] += dt*d;
+			frc[ti(2)] += dt*d;
+			frc[ti(3)] += dt*d;
+			frc[tj(0)] -= dt*d;
+			frc[tj(1)] -= dt*d;
+			frc[tj(2)] -= dt*d;
+			frc[tj(3)] -= dt*d;
+		}
+	}
 }
 
 void FemObject::computeForces(double dt) {
@@ -544,6 +593,7 @@ void FemObject::fracture() {
 		SlSymetricEigenDecomp(separationTensor[v], vals, vecs);
 		maxval = vals[0];
 		maxi = 0;
+		int x = 0;
 		if (vals[1] > maxval) {
 			maxval = vals[1];
 			maxi = 1;
@@ -552,6 +602,7 @@ void FemObject::fracture() {
 			maxval = vals[2];
 			maxi = 2;
 		}
+		///if (x > 0) std::cout<<x<<std::endl;
 
 		if (maxval > vertexToughness[v]) {
 			SlVector3 n(vecs(0,maxi),vecs(1,maxi),vecs(2,maxi));
@@ -572,12 +623,12 @@ void FemObject::fracture() {
 					} else if (dot(n, pos[tets[t](j)]) > offset) {
 						pointsaboveplane++;
 						pointabove[j] = 1;
-						massa += tetMass[t];
-						toughnessa += tetMass[t]*toughness[t];
+						massa += 0.25*tetMass[t];
+						toughnessa += 0.25*tetMass[t]*toughness[t];
 					} else {
 						pointabove[j] = -1;
-						massb += tetMass[t];
-						toughnessb += tetMass[t]*toughness[t];
+						massb += 0.25*tetMass[t];
+						toughnessb += 0.25*tetMass[t]*toughness[t];
 					}
 				}
 
@@ -610,16 +661,17 @@ void FemObject::fracture() {
 			vertexToTetMapStart[nv] = below;
 			vertexToTetMapEnd[nv] = vertexToTetMapEnd[v];
 			vertexToughness[nv] = toughnessa / massa;
-			mass[nv] = massa * 0.25;
+			mass[nv] = massa;
 			massInv[nv] = 1.0/mass[nv];
 			vertexToTetMapEnd[v] = below;
 			vertexToughness[v] = toughnessb / massb;
-			mass[v] = massb * 0.25;
+			mass[v] = massb;
 			massInv[v] = 1.0/mass[v];
 			pos[nv] = pos[v];
 			vel[nv] = vel[v];
 			flags[nv] = flags[v];
 
+			// remove this if only doing fem sim, otherwise you run out of memory
 			//create a new bullet object for the node:
 			particleMotionStates.emplace_back(new btDefaultMotionState{
 				btTransform{btQuaternion::getIdentity(),
@@ -908,7 +960,7 @@ void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
 	/*   attributes, and number of boundary markers.                   */
 	stringptr = inputtextline(inputline, infile, nodefilename);
 	nv = (int) strtol(stringptr, &stringptr, 0);
-	av = 2*nv;
+	av = 4*nv;
 
 	stringptr = inputfindfield(stringptr);
 	if (*stringptr == '\0') {
@@ -1036,6 +1088,7 @@ void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
 	alpha = new double[ntets];
 	flowrate = new double[ntets];
 	toughness = new double[ntets];
+	alphaCap = mp.alphaCap;
 
   for (unsigned int i = 0; i < ntets; i++) {
     /* Read the tetrahedron's four vertices. */
@@ -1109,6 +1162,45 @@ void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
   }
   fclose(infile);
 
+	// build vertex to tet map
+	vertexToTetMap = new int[4*ntets];
+	vertexToTetMapStart = new int[av];
+	vertexToTetMapEnd = new int[av];
+	std::vector<int> *tmpVertexToTetMap = new std::vector<int>[nv];
+	for (unsigned int i=0; i<ntets; i++) {
+		tmpVertexToTetMap[tets[i](0)].push_back(i);
+		tmpVertexToTetMap[tets[i](1)].push_back(i);
+		tmpVertexToTetMap[tets[i](2)].push_back(i);
+		tmpVertexToTetMap[tets[i](3)].push_back(i);
+	}
+	int index = 0;
+	for (unsigned int i=0; i<nv; i++) {
+		vertexToTetMapStart[i] = index;
+		for (unsigned int j=0; j<tmpVertexToTetMap[i].size(); j++) {
+			vertexToTetMap[index++] = tmpVertexToTetMap[i][j];
+		}
+		vertexToTetMapEnd[i] = index;
+	}
+	delete [] tmpVertexToTetMap;
+
+	extractSurface(tets, ntets, tris, ntris);
+	dumpObj("extract.obj");
+	//setupBulletMesh();
+	//setupBulletParticles();
+	gm = new GlobalMatrix(nv, ntets, tets);
+	solver_gripped = new bool[av];
+  solver_p = new SlVector3[av];
+	solver_r = new SlVector3[av];
+	solver_z = new SlVector3[av];
+	solver_s = new SlVector3[av];
+	solver_precon = new SlVector3[av];
+}
+
+void FemObject::initializeRestState() {
+  for (unsigned int i = 0; i < nv; i++) {
+		vertexToughness[i] = 0.0;
+	}
+
 	for (unsigned int i=0; i<nv; i++) {
 		vel[i] = 0.0;
 		mass[i] = 0.0;
@@ -1146,45 +1238,11 @@ void FemObject::loadNodeEle(const char *fname, const MaterialProperties &mp) {
 		alpha[t] = 0.0;
 	}
 
+	std::cout<<totalMass<<std::endl;
 	for (unsigned int i=0; i<nv; i++) {
 		massInv[i] = 1.0/mass[i];
 		vertexToughness[i] *= massInv[i];
 	}
-
-	// build vertex to tet map
-	vertexToTetMap = new int[4*ntets];
-	vertexToTetMapStart = new int[2*nv];
-	vertexToTetMapEnd = new int[2*nv];
-	std::vector<int> *tmpVertexToTetMap = new std::vector<int>[nv];
-	for (unsigned int i=0; i<ntets; i++) {
-		tmpVertexToTetMap[tets[i](0)].push_back(i);
-		tmpVertexToTetMap[tets[i](1)].push_back(i);
-		tmpVertexToTetMap[tets[i](2)].push_back(i);
-		tmpVertexToTetMap[tets[i](3)].push_back(i);
-	}
-	int index = 0;
-	for (unsigned int i=0; i<nv; i++) {
-		vertexToTetMapStart[i] = index;
-		for (unsigned int j=0; j<tmpVertexToTetMap[i].size(); j++) {
-			vertexToTetMap[index++] = tmpVertexToTetMap[i][j];
-		}
-		vertexToTetMapEnd[i] = index;
-	}
-	delete [] tmpVertexToTetMap;
-
-	extractSurface(tets, ntets, tris, ntris);
-	dumpObj("extract.obj");
-	//setupBulletMesh();
-	setupBulletParticles();
-
-	gm = new GlobalMatrix(nv, ntets, tets);
-
-	solver_gripped = new bool[av];
-	solver_p = new SlVector3[av];
-	solver_r = new SlVector3[av];
-	solver_z = new SlVector3[av];
-	solver_s = new SlVector3[av];
-	solver_precon = new SlVector3[av];
 }
 
 void FemObject::load(const char *fname, const MaterialProperties &mp, btDiscreteDynamicsWorld* world) {
@@ -1301,7 +1359,7 @@ void FemObject::load(const char *fname, const MaterialProperties &mp, btDiscrete
 	extractSurface(tets, ntets, tris, ntris);
 	dumpObj("extract.obj");
 
-	setupBulletParticles();
+	//setupBulletParticles();
 	//setupBulletMesh();
 
 
@@ -1804,3 +1862,15 @@ SlMatrix3x3 computeInertiaTensor(double mass,
 					  -cPrime, -aPrime, c);
 }
 #endif
+
+std::ostream &operator<<(std::ostream &strm, const MaterialProperties &mp) {
+	strm<<"density: "<<mp.density<<std::endl;
+	strm<<"lambda: "<<mp.lambda<<std::endl;
+	strm<<"mu: "<<mp.mu<<std::endl;
+	strm<<"scale: "<<mp.scale<<std::endl;
+	strm<<"yieldStress: "<<mp.yieldStress<<std::endl;
+	strm<<"plasticModulus: "<<mp.plasticModulus<<std::endl;
+	strm<<"flowrate: "<<mp.flowrate<<std::endl;
+	strm<<"toughness: "<<mp.toughness<<std::endl;
+	return strm;
+};
