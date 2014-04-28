@@ -19,6 +19,7 @@
 #include <slMatrix.H>
 #include <slUtil.H>
 #include <assert.h>
+#include <memory>
 
 //#include <dynamicsurface.h> //ignore collisions for now
 
@@ -119,6 +120,7 @@ public:
 
   void load(const char *fname, const MaterialProperties &mp, btDiscreteDynamicsWorld* world);
 	void loadNodeEle(const char *fname, const MaterialProperties &mp);
+	void initializeRestState();
 	~FemObject();
 	void clearGlobalMatrix() {gm->clear();};
 	void computeGlobalMatrix(double dt);
@@ -128,6 +130,7 @@ public:
 	void applygrips(SlVector3 *dv, double dt); // enforce constraints
 	void filtergrips(SlVector3 *v);  // filtering constraints during implicit solve
 	void computeForces(double dt);
+	void collisionForces(double dt);
 	void collide(double dt);  // collide with the ground
 	void setForces(double dt, const SlVector3 &gravity); // initialize force accumulator
 	void computeBoundingBox(SlVector3 &bbMin, SlVector3 &bbMax);
@@ -288,8 +291,9 @@ private:
 
 class MaterialProperties {
 public:
-	double density, lambda, mu, scale, yieldStress, plasticModulus, flowrate, toughness;
+	double density, lambda, mu, scale, yieldStress, plasticModulus, flowrate, toughness, alphaCap;
 };
+std::ostream &operator<<(std::ostream &strm, const MaterialProperties &mp);
 
 inline void TetMatrix::mvmul (const SlVector3 *x, SlVector3 *y) {
 	y[0] = data[0]*x[0] + transmult(data[1],x[1]) + transmult(data[3],x[2]) + transmult(data[6],x[3]);

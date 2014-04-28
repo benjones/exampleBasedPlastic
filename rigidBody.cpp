@@ -175,6 +175,7 @@ void RigidBody::loadTrimesh(std::string filename){
 	}
   }
 
+	//int meshIndicessizedividedbythree - meshIndices.size()/3;
   triMesh = 
 	std::unique_ptr<btTriangleIndexVertexArray>{
 	new btTriangleIndexVertexArray{

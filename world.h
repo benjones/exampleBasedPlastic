@@ -100,5 +100,7 @@ class World{
   unsigned int nrbdof, nfemdof;
 
   int currentFrame;
-  
+ 
+	bool RIGIDS;
+	bool FEMS;
 };

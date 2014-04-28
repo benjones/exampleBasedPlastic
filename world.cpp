@@ -21,7 +21,7 @@
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
-#elif linux
+#else
 extern "C" {
 #include <cblas.h>
 }
@@ -55,7 +55,9 @@ World::World(std::string filename)
 	       broadphaseInterface.get(), 
 	       bulletSolver.get(), 
 	       collisionConfiguration.get()),
-  currentFrame(0)
+  currentFrame(0),
+	FEMS(false),
+	RIGIDS(false)
 {
 
   std::ifstream ins(filename.c_str());
@@ -70,6 +72,11 @@ World::World(std::string filename)
 	      << reader.getFormattedErrorMessages();
     exit(1);
   }
+
+  auto bulletObjectsIn = root["bulletObjects"];
+  auto femObjectsIn = root["femObjects"];
+  if (bulletObjectsIn.size() > 0) RIGIDS = true;
+  if (femObjectsIn.size() > 0) FEMS = true;
 
   ground = root.get("ground", true).asBool();
 
@@ -117,7 +124,6 @@ World::World(std::string filename)
   regularizerAlpha = root.get("regularizerAlpha", 1.0).asDouble();
 
 
-  auto femObjectsIn = root["femObjects"];
   femObjects.reserve(femObjectsIn.size());
   for(auto i : range(femObjectsIn.size())){
 		auto& femObjectIn = femObjectsIn[i];
@@ -125,31 +131,34 @@ World::World(std::string filename)
 		mp.density = femObjectIn.get("density", 1000.0).asDouble();
 		mp.lambda = femObjectIn.get("lambda", 5e4).asDouble();
 		mp.mu = femObjectIn.get("mu", 1e5).asDouble();
+		mp.alphaCap = femObjectIn.get("alphaCap", 0.0).asDouble();
 		//		mp.scale = femObjectIn.get("scale", 1e-2).asDouble();
-		mp.scale = femObjectIn.get("scale", 6e-1).asDouble();
+		mp.scale = femObjectIn.get("dampingscale", 6e-1).asDouble();
 		mp.yieldStress = femObjectIn.get("yieldStress", DBL_MAX).asDouble();
 		mp.plasticModulus = femObjectIn.get("plasticModulus", 0.0).asDouble();
 		mp.flowrate = femObjectIn.get("flowrate", 0.0).asDouble();
 		mp.toughness = femObjectIn.get("toughness", DBL_MAX).asDouble();
     auto fnameIn = femObjectIn["filename"];
     femObjects.emplace_back();
-	auto& femObj = femObjects.back();
-	femObj.load(fnameIn.asString().c_str(), mp, &bulletWorld);
+		auto& femObj = femObjects.back();
+		femObj.load(fnameIn.asString().c_str(), mp, &bulletWorld);
+		if (RIGIDS) femObj.setupBulletParticles();
 
-	auto centerOfMass = SlVector3{0, 0, 0};
-	double totalMass = 0.0;
-	for(auto vInd : range(femObj.nv)){
-	  centerOfMass += femObj.mass[vInd]*femObj.pos[vInd];
-	  totalMass += femObj.mass[vInd];
-	}
-	centerOfMass /= totalMass;
-	//center the object about its COM to make rotation make sense
-	femObj.bbMin -= centerOfMass;
-	femObj.bbMax -= centerOfMass;
-	for(auto  vInd : range(femObj.nv)){
-	  femObj.pos[vInd] -= centerOfMass;
-	}
-	std::cout << femObj.bbMin << femObj.bbMax << std::endl;
+		auto centerOfMass = SlVector3{0, 0, 0};
+		double totalMass = 0.0;
+		for(auto vInd : range(femObj.nv)){
+			centerOfMass += femObj.mass[vInd]*femObj.pos[vInd];
+			totalMass += femObj.mass[vInd];
+		}
+		centerOfMass /= totalMass;
+		//center the object about its COM to make rotation make sense
+		femObj.bbMin -= centerOfMass;
+		femObj.bbMax -= centerOfMass;
+		for(auto  vInd : range(femObj.nv)){
+			femObj.pos[vInd] -= centerOfMass;
+		}
+		std::cout << femObj.bbMin << femObj.bbMax << std::endl;
+		std::cout<<mp<<std::endl;
 
 	if(!femObjectIn["rotation"].isNull()){
 	  SlVector3 axis;
@@ -169,12 +178,13 @@ World::World(std::string filename)
 	  femObj.bbMin.set(std::numeric_limits<double>::max());
 	  femObj.bbMax.set(std::numeric_limits<double>::lowest());
 	  for(auto vInd : range(femObj.nv)){
-		femObj.pos[vInd] = rot*femObj.pos[vInd];
-		for(auto j : range(3)){
-		  femObj.bbMin[j] = std::min(femObj.bbMin[j], femObj.pos[vInd][j]);
-		  femObj.bbMax[j] = std::max(femObj.bbMax[j], femObj.pos[vInd][j]);
-		}
+			femObj.pos[vInd] = rot*femObj.pos[vInd];
+			for(auto j : range(3)){
+				femObj.bbMin[j] = std::min(femObj.bbMin[j], femObj.pos[vInd][j]);
+				femObj.bbMax[j] = std::max(femObj.bbMax[j], femObj.pos[vInd][j]);
+			}
 	  }
+		std::cout<<"new bounding box "<<femObj.bbMin<<"x"<<femObj.bbMax<<std::endl;
 	}	  
 
 	
@@ -186,10 +196,19 @@ World::World(std::string filename)
 							  femObjectIn["offset"][1].asDouble(),
 							  femObjectIn["offset"][2].asDouble()};
 	  
+			double scale = femObjectIn.get("scale", 1.0).asDouble();
+
       femObj.bbMin += offset;
       femObj.bbMax += offset;
+
+      femObj.bbMin *= scale;
+      femObj.bbMax *= scale;
+
+			std::cout<<"offsetting by: "<<offset<<std::endl;
+			std::cout<<"scaling by: "<<scale<<std::endl;
       for(auto  vInd : range(femObj.nv)){
 				femObj.pos[vInd] += offset;
+				femObj.pos[vInd] *= scale;
       }
       
       if(i == 0){
@@ -199,11 +218,27 @@ World::World(std::string filename)
 					femObjects[i -1].nv;
       }
 
-    }
-    
+			std::cout<<"new bounding box "<<femObj.bbMin<<"x"<<femObj.bbMax<<std::endl;
+		}
+	 
+		femObj.initializeRestState();
+
+
+		if(!femObjectIn["velocity"].isNull()){
+			assert(femObjectIn["velocity"].isArray() &&
+						 femObjectIn["velocity"].size() == 3);
+			auto velocity = SlVector3{femObjectIn["velocity"][0].asDouble(),
+																femObjectIn["velocity"][1].asDouble(),
+																femObjectIn["velocity"][2].asDouble()};
+			
+	      for(auto  vInd : range(femObj.nv)){
+					femObj.vel[vInd] = velocity;
+					//std::cout<<"setting velocity "<<velocity<<std::endl;
+				}
+		}
+		
   }
 
-  auto bulletObjectsIn = root["bulletObjects"];
   for(auto i : range(bulletObjectsIn.size())){
     std::cout << "adding rb: " << i << std::endl;
     auto bo = bulletObjectsIn[i];
@@ -325,19 +360,19 @@ void World::timeStep(){
   
 
   for(auto& fem : femObjects){
-	fem.copyStateToBulletParticles();
+		if (RIGIDS) fem.copyStateToBulletParticles();
   }
-  bulletWorld.preCoupledSolve(dt);
+  if (RIGIDS) bulletWorld.preCoupledSolve(dt);
 
   //apply constant forces:
   for(auto& rb : rigidBodies){
 	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
 	//TODO, THESE SHOULD MAYBE BE IMPULSES...
-	rb.bulletBody->applyCentralForce(rb.constantForce);
+	if (RIGIDS) rb.bulletBody->applyCentralForce(rb.constantForce);
 
 	//apply gravity as an impulse
 	std::cout << "velbefore: " << rb.bulletBody->getLinearVelocity() << std::endl;
-	rb.bulletBody->applyCentralImpulse(dt*bulletWorld.getGravity()/rb.bulletBody->getInvMass());
+	if (RIGIDS) rb.bulletBody->applyCentralImpulse(dt*bulletWorld.getGravity()/rb.bulletBody->getInvMass());
 	std::cout << "velafter: " << rb.bulletBody->getLinearVelocity() << std::endl;
   }
 
@@ -352,16 +387,30 @@ void World::timeStep(){
 	//bulletWorld.stepSimulation(dt);
 
   for(auto& fem : femObjects){
-	fem.copyStateToBulletParticles();
+		if (RIGIDS) fem.copyStateToBulletParticles();
 	//std::cout <<"pre postcopule " << std::endl;
 	//fem.dump();
   }
-  bulletWorld.postCoupledSolve(dt);
+  if (RIGIDS) bulletWorld.postCoupledSolve(dt);
   
   //updateFemPositions();
   for(auto& fem : femObjects){
-	fem.copyVelocitiesFromBulletParticles();
-	fem.updatePositions(dt);
+		if (RIGIDS) fem.copyVelocitiesFromBulletParticles();
+		else {
+			double m = DBL_MAX;
+			for (unsigned int i=0; i<fem.nv; i++) {
+				double x = fem.pos[i][1]+dt*fem.vel[i][1];
+				if (x < m) m = x;
+				if (x < 0.0) {
+					double impulse = -x / dt;
+					double nm=0.0,m = sqrt(sqr(fem.vel[i][0]) + sqr(fem.vel[i][2]));
+					if (m > 0) nm = std::max<double>(m - impulse*friction, 0.0) / m;
+					fem.vel[i].set(nm*fem.vel[i][0], fem.vel[i][1]+impulse, nm*fem.vel[i][2]);
+				}
+			}
+			std::cout<<m<<std::endl;
+		}
+		fem.updatePositions(dt);
 	fem.fracture();
 	//std::cout << "updating pos" << std::endl;
 	//fem.dump();
@@ -446,8 +495,9 @@ void World::solve() {
 	// fill in rhs (momentum + time integrated forces), fem first
 	for (unsigned int i=0; i<femObjects.size(); i++) {
 		SlVector3 *vptr = femObjects[i].frc;
-		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++) {
-			(*(dptr1++)) = (*vptr)[0]; (*(dptr1++)) = (*vptr)[1]; (*(dptr1++)) = (*vptr)[2];
+		dptr2 = femObjects[i].mass;
+		for (unsigned int j=0; j<femObjects[i].nv; j++, vptr++, dptr2++) {
+			(*(dptr1++)) = (*vptr)[0]*(*dptr2); (*(dptr1++)) = (*vptr)[1]*(*dptr2); (*(dptr1++)) = (*vptr)[2]*(*dptr2);
 		}
 	}
 
@@ -548,6 +598,7 @@ void World::solve() {
 		rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
 		dptr1 += 6;
 	}
+	delete [] work;
 }
 #endif
 
@@ -568,6 +619,7 @@ void World::computeFemVelocities(){
 
   for(auto& femObject : femObjects){
     femObject.computeForces(dt);
+		if (!RIGIDS) femObject.collisionForces(dt);
     femObject.clearGlobalMatrix();
     femObject.computeGlobalMatrix(dt);
     //femObject.solveForVelocities(dt);
@@ -1460,6 +1512,7 @@ void World::solve() {
 	rigidBodies[i].bulletBody->setAngularVelocity(btVector3(dptr1[3], dptr1[4], dptr1[5]));
 	dptr1 += 6;
   }
+	delete [] work;
 }
 #endif
 

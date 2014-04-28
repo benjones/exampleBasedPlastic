@@ -26,6 +26,7 @@ public:
 	void output();
 
 	GlobalMatrix(unsigned int nvertices, unsigned int ntets, const Tet *tets);
+	~GlobalMatrix();
 
 	SlMatrix3x3 &find(unsigned int r, unsigned int c) {
 		unsigned int i=colIndices[r];
