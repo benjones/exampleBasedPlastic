@@ -1,6 +1,6 @@
 #include "couplingConstraintSolver.h"
-#include "World.h"
-#include "RigidBody.h"
+#include "world.h"
+#include "rigidBody.h"
 
 #include "cppitertools/enumerate.hpp"
 
