@@ -1384,7 +1384,7 @@ SlMatrix3x3 computeInertiaTensorPoints(double mass,
 }
 
 
-void Tet::setInertiaTerms(SlVector3* pos,
+/*void Tet::setInertiaTerms(SlVector3* pos,
 						  SlVector3* vel,
 						  double density,
 						  btConvexHullShape* shape,
@@ -1521,10 +1521,10 @@ void Tet::setInertiaTerms(SlVector3* pos,
 #endif
   
 }
+*/
 
 
-
-void FemObject::setupBulletMesh(){
+//void FemObject::setupBulletMesh(){
   /*
   bulletVertexArray = 
     std::unique_ptr<btTriangleIndexVertexArray>{new btTriangleIndexVertexArray{ntris,
@@ -1541,7 +1541,7 @@ void FemObject::setupBulletMesh(){
 
   //create a rigid body per tet
 
-  bulletTetShapes.reserve(ntets);
+  /*bulletTetShapes.reserve(ntets);
   bulletTetShapes.resize(0);
   for(auto i : range(ntets)){
 	bulletTetShapes.push_back(std::unique_ptr<btConvexHullShape>{new btConvexHullShape{}});
@@ -1571,11 +1571,11 @@ void FemObject::setupBulletMesh(){
 	bulletWorld->addRigidBody(bulletTetBodies.back().get());
 	
 
-  }
+	}*/
 
-}
+//}
 
-void FemObject::updateBulletShapes(){
+/*void FemObject::updateBulletShapes(){
   for(auto i : range(ntets)){
 	auto& t = tets[i];
 	//compute moment of inertia, and set linear/angular velocities
@@ -1585,10 +1585,10 @@ void FemObject::updateBulletShapes(){
 
   }
 
-}
+  }*/
 
 
-void FemObject::setupRigidProperties(){
+//void FemObject::setupRigidProperties(){
 
   /*  btVector3 localInertia(0,0,0);
   bulletMeshShape->updateBound();
@@ -1600,10 +1600,10 @@ void FemObject::setupRigidProperties(){
 			  btVector3{0,0,0}}}};
 	  
   */
-}
+//}
 
 //do simple mass weighted averaging of the vertex positions
-void FemObject::stitchTets(){
+/*void FemObject::stitchTets(){
   
   std::fill(pos, pos + nv, SlVector3{0.0});
   //std::fill(vel, vel + nv, SlVector3{0.0});
@@ -1627,7 +1627,7 @@ void FemObject::stitchTets(){
 	//vel[pInd] /= mass[pInd];
   }
   
-}
+  }*/
 
 
  void FemObject::setupBulletParticles(){

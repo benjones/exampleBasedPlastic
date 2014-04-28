@@ -68,18 +68,18 @@ void SlMomentToPosMatrix(const SlVector3 &v, SlMatrix3x3 &m) {
   // from Graphics Gems Vol I, page 466
   // With a transpose!
 
-  register double p = mag(v);
+   double p = mag(v);
 
   if (p!=0.0) {
 
-    register double d = 1.0/p;
-    register double x = v[0] * d;
-    register double y = v[1] * d;
-    register double z = v[2] * d;
+     double d = 1.0/p;
+     double x = v[0] * d;
+     double y = v[1] * d;
+     double z = v[2] * d;
 
-    register double s = sin(p);
-    register double c = cos(p);
-    register double t = 1.0-c;
+     double s = sin(p);
+     double c = cos(p);
+     double t = 1.0-c;
 
     m(0,0) = t*x*x+c;
     m(1,0) = t*x*y+s*z;
@@ -136,12 +136,12 @@ void SlPosMatrixToMoment(const SlMatrix3x3 &m, SlVector3 &v) {
   // up.  So while it works, I can not prove it WILL
   // always work....
 
-  register double cosT = (m(0,0)+m(1,1)+m(2,2)-1)*0.5;
+   double cosT = (m(0,0)+m(1,1)+m(2,2)-1)*0.5;
   if (cosT >  1) cosT =  1;
   if (cosT < -1) cosT = -1;
-  register double t = acos(cosT);
+   double t = acos(cosT);
   if (t!=t) t = 0.0;
-  register double sinT2 = 2*sin(t);
+   double sinT2 = 2*sin(t);
 
   if ((sinT2<1e-6) && (sinT2>-1e-6)) {
     if ((t<1e-6) && (t>-1e-6)) {
@@ -157,7 +157,7 @@ void SlPosMatrixToMoment(const SlMatrix3x3 &m, SlVector3 &v) {
       v *= t / mag(v);
     }
   }else{
-    register double adj = t/sinT2;
+     double adj = t/sinT2;
     v[0] = (m(2,1)-m(1,2))*adj; 
     v[1] = (m(0,2)-m(2,0))*adj; 
     v[2] = (m(1,0)-m(0,1))*adj;

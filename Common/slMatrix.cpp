@@ -71,7 +71,7 @@ istream &operator>>(istream &strm, SlMatrix3x3 &m) {
 	ios::fmtflags orgFlags = strm.setf(ios::skipws);
 	eatChar('[',strm);
 
-	register int r,c;
+	 int r,c;
 
 	for(r=0;r<3;r++) {
 		eatChar('[',strm);
@@ -89,7 +89,7 @@ istream &operator>>(istream &strm, SlMatrix3x3 &m) {
 
 ostream &operator<<(ostream &strm,const SlMatrix3x3 &m) {
 	strm << "[";
-	register int r,c;
+	 int r,c;
 
 	for(r=0;r<3;r++) {
 		strm << "[ ";
@@ -112,7 +112,7 @@ ostream &operator<<(ostream &strm,const SlMatrix3x3 &m) {
 SlMatrix3x3 &SlMatrix3x3::inplaceMultPre (const SlMatrix3x3 &that) {
 	SlVector3 tmp;
 
-	register int i;
+	 int i;
 
 	for(i=0;i<3;i++) {
 
@@ -142,7 +142,7 @@ SlMatrix3x3 &SlMatrix3x3::inplaceMultPre (const SlMatrix3x3 &that) {
 SlMatrix3x3 &SlMatrix3x3::inplaceMultPost(const SlMatrix3x3 &that) {
 	SlVector3 tmp;
 
-	register int i;
+	 int i;
 
 	for(i=0;i<3;i++) {
 
@@ -175,7 +175,7 @@ static inline double smFabs(double x) {
 }
 
 static void rowswap(SlMatrix3x3 &m, int i, int j) {
-	register double tmp;
+	 double tmp;
 	SWAP(m(i,0),m(j,0));
 	SWAP(m(i,1),m(j,1));
 	SWAP(m(i,2),m(j,2));
@@ -198,7 +198,7 @@ SlMatrix3x3 inverse(const SlMatrix3x3 &a) {
 			cerr << "Inverse of singular matrix\n" << flush;
 			abort();
 		}
-		register double div = 1.0/_a(j,j);
+		 double div = 1.0/_a(j,j);
 		_b(j,0) *= div;
 		_b(j,1) *= div;
 		_b(j,2) *= div;
@@ -207,7 +207,7 @@ SlMatrix3x3 inverse(const SlMatrix3x3 &a) {
 		_a(j,2) *= div;
 		for(i=0;i<3;i++) {
 			if (i != j) {
-				register double tmp = _a(i,j);
+				 double tmp = _a(i,j);
 				_b(i,0) -= tmp*_b(j,0);
 				_b(i,1) -= tmp*_b(j,1);
 				_b(i,2) -= tmp*_b(j,2);
@@ -1071,7 +1071,7 @@ istream &operator>>(istream &strm, SlMatrix2x2 &m) {
 	ios::fmtflags orgFlags = strm.setf(ios::skipws);
 	eatChar('[',strm);
 
-	register int r,c;
+	 int r,c;
 
 	for(r=0;r<2;r++) {
 		eatChar('[',strm);
@@ -1089,7 +1089,7 @@ istream &operator>>(istream &strm, SlMatrix2x2 &m) {
 
 ostream &operator<<(ostream &strm,const SlMatrix2x2 &m) {
 	strm << "[";
-	register int r,c;
+	 int r,c;
 
 	for(r=0;r<2;r++) {
 		strm << "[ ";
@@ -1108,7 +1108,7 @@ ostream &operator<<(ostream &strm,const SlMatrix2x2 &m) {
 
 SlMatrix2x2 &SlMatrix2x2::inplaceMultPre (const SlMatrix2x2 &that) {
 	SlVector2 tmp;
-	register int i;
+	 int i;
 
 	for(i=0;i<2;i++) {
 		tmp[0] = ( that.data[0][0] * data[0][i] +
@@ -1126,7 +1126,7 @@ SlMatrix2x2 &SlMatrix2x2::inplaceMultPre (const SlMatrix2x2 &that) {
 
 SlMatrix2x2 &SlMatrix2x2::inplaceMultPost(const SlMatrix2x2 &that) {
 	SlVector2 tmp;
-	register int i;
+	 int i;
 	for(i=0;i<2;i++) {
 		tmp[0] = ( data[i][0] * that.data[0][0] +
 				  data[i][1] * that.data[1][0] );
@@ -1142,7 +1142,7 @@ SlMatrix2x2 &SlMatrix2x2::inplaceMultPost(const SlMatrix2x2 &that) {
 //-------------------------------------------------------------------
 
 static void rowswap(SlMatrix2x2 &m, int i, int j) {
-	register double tmp;
+	 double tmp;
 	SWAP(m(i,0),m(j,0));
 	SWAP(m(i,1),m(j,1));
 }

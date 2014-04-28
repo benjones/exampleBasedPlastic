@@ -735,7 +735,7 @@ inline double sqrMag(const SlVector3 &a) {
 }
 
 inline double normalize(SlVector3 &a) {
-  register double m = mag(a);
+   double m = mag(a);
   if (m != 0) a /= m;
   return m;
 }
@@ -743,7 +743,7 @@ inline double normalize(SlVector3 &a) {
 //-------------------------------------------------------------------
 
 inline unsigned int dominantAxis(const SlVector3 &v) {
-  register double x,y,z;
+   double x,y,z;
   if (v[0]>0) x = v[0]; else x = -v[0];
   if (v[1]>0) y = v[1]; else y = -v[1];
   if (v[2]>0) z = v[2]; else z = -v[2];
@@ -751,7 +751,7 @@ inline unsigned int dominantAxis(const SlVector3 &v) {
 }
 
 inline unsigned int subinantAxis(const SlVector3 &v) {
-  register double x,y,z;
+   double x,y,z;
   if (v[0]>0) x = v[0]; else x = -v[0];
   if (v[1]>0) y = v[1]; else y = -v[1];
   if (v[2]>0) z = v[2]; else z = -v[2];
@@ -759,13 +759,13 @@ inline unsigned int subinantAxis(const SlVector3 &v) {
 }
 
 inline unsigned int midinantAxis(const SlVector3 &v) {
-  register double x,y,z;
+   double x,y,z;
   if (v[0]>0) x = v[0]; else x = -v[0];
   if (v[1]>0) y = v[1]; else y = -v[1];
   if (v[2]>0) z = v[2]; else z = -v[2];
-  register unsigned int d = ( x > y ) ? (( x > z ) ? 0 : 2) : (( y > z ) ? 1 : 2 );
-  register unsigned int s = ( x < y ) ? (( x < z ) ? 0 : 2) : (( y < z ) ? 1 : 2 );
-  register unsigned int m;
+   unsigned int d = ( x > y ) ? (( x > z ) ? 0 : 2) : (( y > z ) ? 1 : 2 );
+   unsigned int s = ( x < y ) ? (( x < z ) ? 0 : 2) : (( y < z ) ? 1 : 2 );
+   unsigned int m;
   if (d==0) {
     if (s!= 1) m = 1; else m = 2;
   }else if (d==1) {
@@ -1101,7 +1101,7 @@ inline double sqrMag(const SlVector2 &a) {
 }
 
 inline double normalize(SlVector2 &a) {
-  register double m = mag(a);
+   double m = mag(a);
   if (m != 0) a /= m;
   return m;
 }
@@ -1109,14 +1109,14 @@ inline double normalize(SlVector2 &a) {
 //-------------------------------------------------------------------
 
 inline unsigned int dominantAxis(const SlVector2 &v) {
-  register double x,y;
+   double x,y;
   if (v[0]>0) x = v[0]; else x = -v[0];
   if (v[1]>0) y = v[1]; else y = -v[1];
   return ( x > y ) ? 0 : 1;
 }
 
 inline unsigned int subinantAxis(const SlVector2 &v) {
-  register double x,y;
+   double x,y;
   if (v[0]>0) x = v[0]; else x = -v[0];
   if (v[1]>0) y = v[1]; else y = -v[1];
   return ( x < y ) ? 0 : 1;

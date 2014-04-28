@@ -8,7 +8,7 @@
 #include <BulletCollision/BroadphaseCollision/btDbvtBroadphase.h>
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
 #include <LinearMath/btVector3.h>
-#include <LinearMath/btDefaultMotionState.h>
+
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
 #include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
@@ -289,6 +289,9 @@ World::World(std::string filename)
     
   }
   std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
+
+  loadPlasticObjects(root);
+
   computeConstraints();
   countConstraints();
   
@@ -383,14 +386,14 @@ void World::timeStepRigidCollisions(){
   solve();
 
 	//bulletWorld.stepSimulation(dt);
-  for(auto& fem : femObjects){
-	fem.updateBulletShapes();
-  }
+  //  for(auto& fem : femObjects){
+  //	fem.updateBulletShapes();
+  //  }
   bulletWorld.postCoupledSolve(dt);
 
   //updateFemPositions();
   for(auto& fem : femObjects){
-	fem.stitchTets();
+	//	fem.stitchTets();
 	fem.fracture();
   }
 }
@@ -600,6 +603,14 @@ void World::dumpFrame(){
     rigidBody.dump(fname);
 	objectCount++;
   }
+  
+  for(auto& plasticObject : plasticObjects){
+	sprintf(fname, framestring, objectCount, currentFrame);
+	plasticObject.dump(fname);
+	objectCount++;
+  }
+
+
   currentFrame++;
 
 }
@@ -709,7 +720,7 @@ void World::constraintCullingCallback(btBroadphasePair& collisionPair,
 						   });
 	  if(it3 != rb.constraints.end()){
 		//they're joined, so don't process the collision
-		//std::cout << "not colliding constrained tet with rb" << std::endl;
+		std::cout << "not colliding constrained tet with rb" << std::endl;
 	  } else {
 		//there is no constraint, handle them naturally
 		dispatcher->defaultNearCallback(collisionPair, _dispatcher, dispatcherInfo);
@@ -1452,3 +1463,118 @@ void World::solve() {
 }
 #endif
 
+
+
+
+void World::loadPlasticObjects(const Json::Value& root){
+
+  plasticObjects.clear();
+  auto plasticObjectsIn = root["plasticObjects"];
+  for(auto i : range(plasticObjectsIn.size())){
+	auto& poi = plasticObjectsIn[i];
+	
+	plasticObjects.emplace_back();
+	auto& po = plasticObjects.back();
+	//load meshes
+	po.loadFromFiles(poi["directory"].asString());
+
+	po.density = poi.get("density", 1000).asDouble();
+	
+	
+	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
+											Eigen::NoChange);
+	
+	std::cout << "vertex array data: " << po.currentBulletVertexPositions.data() << std::endl;
+	//make space for the vertex array
+	po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
+	  new btTriangleIndexVertexArray{
+		static_cast<int>(po.tetmeshTriangles.rows()),
+		po.tetmeshTriangles.data(),
+		3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
+		static_cast<int>(po.currentBulletVertexPositions.rows()),
+		po.currentBulletVertexPositions.data(),
+		3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
+	  }
+	};
+	
+	/*for(auto row : range(po.tetmeshTriangles.rows())){
+	  std::cout  << "row: " << row << " ";
+	  for(auto col : range(po.tetmeshTriangles.cols())){
+		
+		std::cout << po.tetmeshTriangles.data()[row*3 + col] << ' ';
+	  }
+	  std::cout << std::endl;
+	  }*/
+
+	//apply COM offset stuff
+	Eigen::Vector3d offset(0.0,0.0,0.0); //default to no offset
+	auto offsetIn = poi["offset"];
+	if(!offsetIn.isNull() && offsetIn.isArray()){
+	  assert(offsetIn.size() == 3);
+	  offset = Eigen::Vector3d(offsetIn[0].asDouble(),
+							   offsetIn[1].asDouble(),
+							   offsetIn[2].asDouble());
+	}
+	
+	auto rotation = Eigen::Quaterniond::Identity();
+	auto rotationIn = poi["rotation"];
+	if(!rotationIn.isNull()){
+	  Eigen::Vector3d axis{rotationIn["axis"][0].asDouble(),
+		  rotationIn["axis"][0].asDouble(),
+		  rotationIn["axis"][0].asDouble()};
+	  rotation = Eigen::Quaterniond{
+		Eigen::AngleAxis<double>{ rotationIn["angle"].asDouble(),
+								  axis}};
+	  
+		
+	}
+
+	//place it where it should go
+	//this isn't mass weighted, but is probably close if the mesh
+	//close to uniform
+	Eigen::Vector3d centerOfMass = 
+	  po.tetmeshVertices.colwise().sum().transpose()/
+	  po.tetmeshVertices.rows();
+	
+
+	for(auto i : range(po.currentBulletVertexPositions.rows())){
+	  po.currentBulletVertexPositions.row(i) =
+		(rotation*(po.tetmeshVertices.row(i).transpose() -
+				   centerOfMass) +
+		 offset).transpose();
+	}
+	
+	//compute node masses and volume
+	po.computeMassesAndVolume();
+
+	po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
+	  new btGImpactMeshShape{po.btTriMesh.get()}};
+	
+	po.motionState = 
+	  std::unique_ptr<btDefaultMotionState>{
+	  new btDefaultMotionState{}};
+	
+
+	po.bulletBody = std::unique_ptr<btRigidBody>{
+	  new btRigidBody{po.mass,
+					  po.motionState.get(),
+					  po.bulletShape.get()}
+	};
+
+	//aliasing issues?
+	po.updateBulletProperties(po.currentBulletVertexPositions,
+							  po.tetmeshTets);
+	
+	po.bulletShape->updateBound();
+	
+	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
+
+
+	bulletWorld.addRigidBody(po.bulletBody.get());
+  }
+  
+}
+
+void World::timeStepDynamicSprites(){
+  bulletWorld.stepSimulation(dt);
+}

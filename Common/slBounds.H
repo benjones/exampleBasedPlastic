@@ -652,7 +652,7 @@ void SlBoundTree::updateTree() {
 
 inline    
 void SlBoundTree::updateAbove(unsigned short level) {
-  register unsigned short i;
+   unsigned short i;
   for(i=level;;i--) {
     updateLevel(i);
     if (i==0) break;
@@ -683,7 +683,7 @@ inline SlBoundOverlapServer::overlapChunk::overlapChunk(unsigned int size) {
   this->size  = size;
   chunk = new SlBoundOverlapServer::overlap[size];
 
-  register unsigned int i;
+   unsigned int i;
 
   for(i=1;i<size;i++) {
     chunk[i-1].next = &(chunk[i]);
@@ -697,7 +697,7 @@ inline SlBoundOverlapServer::overlapChunk::~overlapChunk() {
 
 
 int SlBoundOverlapServer::pushPend(int allowGrowth) {
-  register int ret;
+   int ret;
 
   if (( _freeListHead == NULL ) && (allowGrowth)) {
 		std::cout<<"adding chunk"<<std::endl;
@@ -720,7 +720,7 @@ int SlBoundOverlapServer::pushPend(int allowGrowth) {
 }
   
 int SlBoundOverlapServer::popPend() {
-  register int ret;
+   int ret;
   if ( _pendListHead == NULL ) {
     ret = 0;
   }else{
@@ -736,7 +736,7 @@ int SlBoundOverlapServer::popPend() {
 }
 
 int SlBoundOverlapServer::addToCache(int allowGrowth) {
-  register int ret;
+   int ret;
 
   if (( _freeListHead == NULL ) && (allowGrowth)) {
     addChunk();

@@ -25,7 +25,7 @@
 //bullet stuff
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
-#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
+//#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <LinearMath/btDefaultMotionState.h>
@@ -61,13 +61,13 @@ public:
 
 
   //also sets linear and angular momentum
-  void setInertiaTerms(SlVector3* pos,
+  /*void setInertiaTerms(SlVector3* pos,
 					   SlVector3* vel,
 					   double density,
 					   btConvexHullShape* shape,
 					   btRigidBody* body);
 					   
-
+  */
 };
 
 #include "globalMatrix.H"
@@ -188,11 +188,11 @@ public:
   SlVector3 bbMin, bbMax;
 
 
-  void setupBulletMesh();
-  void setupRigidProperties();
-  void updateBulletShapes();
+  //void setupBulletMesh();
+  //  void setupRigidProperties();
+  //void updateBulletShapes();
 
-  void stitchTets(); //stitch tets together after doing bullet collision stuff
+  //  void stitchTets(); //stitch tets together after doing bullet collision stuff
 
 
   void setupBulletParticles();
@@ -238,7 +238,7 @@ public:
   std::unique_ptr<btDefaultMotionState> bulletMotionState;
   */
 
-  std::vector<std::unique_ptr<btConvexHullShape>> bulletTetShapes;
+  //  std::vector<std::unique_ptr<btConvexHullShape>> bulletTetShapes;
   std::vector<std::unique_ptr<btRigidBody>> bulletTetBodies;
   std::vector<std::unique_ptr<btDefaultMotionState>> bulletMotionStates;
   //std::vector<std::unique_ptr<BulletProxyHolder>> bulletCollisionProxies;

@@ -166,7 +166,7 @@ SlBoundTree::SlBoundTree(const SlBoundTree &that){
 }
 
 SlBoundTree::~SlBoundTree(){
-  register unsigned short i;
+   unsigned short i;
 
   for(i=0;i<_numInnerLevels;i++) 
     delete [] _innerLevels[i];
@@ -182,8 +182,8 @@ SlBoundTree &SlBoundTree::operator=(const SlBoundTree &that) {
   setNumInnerLevels(that._numInnerLevels);
   setLeafLevelSize (that._leafLevelSize );
   
-  register unsigned int   j;
-  register unsigned short i;
+   unsigned int   j;
+   unsigned short i;
   for(i=0;i<_numInnerLevels;i++) {
     setInnerLevelSize(i,that._innerLevelSizes[i]);
     for(j=0;j<_innerLevelSizes[i];j++) {
@@ -200,20 +200,20 @@ SlBoundTree &SlBoundTree::operator=(const SlBoundTree &that) {
 
 
 void SlBoundTree::updateLevel(unsigned short level) {
-  register unsigned int p,pl=_innerLevelSizes[level];
+   unsigned int p,pl=_innerLevelSizes[level];
 
   for(p=0;p<pl;p++) {
 
-    register innerNode &parent = _innerLevels[level][p];
+     innerNode &parent = _innerLevels[level][p];
 
     if (parent.childCount == 0) {
       parent.bound.min =  (DBL_MAX);
       parent.bound.max = -(DBL_MAX);
     }else{
-      register unsigned short cLevel = parent.childLevel;
-      register unsigned int   cStart = parent.childStart;
-      register unsigned int   cStop  = parent.childCount + cStart;
-      register unsigned int   cMark  ;
+       unsigned short cLevel = parent.childLevel;
+       unsigned int   cStart = parent.childStart;
+       unsigned int   cStop  = parent.childCount + cStart;
+       unsigned int   cMark  ;
 			
       if (cLevel==_numInnerLevels) {
 				// leaf level
@@ -234,7 +234,7 @@ void SlBoundTree::updateLevel(unsigned short level) {
 	  
 
 void SlBoundTree::setNumInnerLevels(unsigned short numLevels) {
-  register unsigned int i;
+   unsigned int i;
   for(i=0;i<_numInnerLevels;i++) {
     delete [] _innerLevels[i];
   }
@@ -416,8 +416,8 @@ ostream &operator<<(ostream &buf,const SlBoundTree &t) {
 
 SlVector3 *SlCreateCenterList(const SlInt3 *tris, int nt, const SlVector3 *pts) {
 
-  register unsigned int  t;
-  register SlVector3 *retList = new SlVector3[nt];
+   unsigned int  t;
+   SlVector3 *retList = new SlVector3[nt];
 
   for(t=0; t<nt; t++) {
     retList[t] = (pts[tris[t][0]] +
@@ -435,15 +435,15 @@ void SlUpdateTree(const SlInt3 *tris, const SlVector3 *pos, const SlVector3 *vel
 									SlBoundTree &btree, double dt) {
   SlBoundTree::leafNode *leaves = btree.beginLeafUpdate();
 
-  register unsigned int l,numL = btree.leafLevelSize();
+   unsigned int l,numL = btree.leafLevelSize();
 
   for(l=0;l<numL;l++) {
     
-    register unsigned int mapIndex = leaves->mapIndex;
+     unsigned int mapIndex = leaves->mapIndex;
 
-    register const SlVector3 &pos0 = pos[tris[mapIndex][0]];
-    register const SlVector3 &pos1 = pos[tris[mapIndex][1]];
-    register const SlVector3 &pos2 = pos[tris[mapIndex][2]];
+     const SlVector3 &pos0 = pos[tris[mapIndex][0]];
+     const SlVector3 &pos1 = pos[tris[mapIndex][1]];
+     const SlVector3 &pos2 = pos[tris[mapIndex][2]];
 
     leaves->bound.max = pos0;
     leaves->bound.min = pos0;
@@ -482,7 +482,7 @@ void SlUpdateTree(const SlInt3 *tris, const SlVector3 *pos, const SlVector3 *vel
 
 static 
 unsigned int findEnd(short *kList) {
-  register unsigned int ret;
+   unsigned int ret;
   for(ret=0;kList[ret]<0;ret++);
   return ret;
 }
@@ -497,7 +497,7 @@ void findCV(const SlVector3 *cList,
 						SlVector3       &cnt  ,
 						SlVector3       &var) {
   
-  register unsigned int i;
+   unsigned int i;
 
   cnt = 0.0;
   var = 0.0;
@@ -511,7 +511,7 @@ void findCV(const SlVector3 *cList,
   cnt /= (segE-segB);
 
   for(i=segB;i<segE;i++) {
-    register SlVector3 tmp = cnt - cList[iList[i]];
+     SlVector3 tmp = cnt - cList[iList[i]];
     var[0] += tmp[0] * tmp[0];
     var[1] += tmp[1] * tmp[1];
     var[2] += tmp[2] * tmp[2];
@@ -559,10 +559,10 @@ int splitLevel(const SlVector3 *cList,
 	e = chunkEnd-1;
 
 	while(b<=e) {
-	  register int testB = cnt[split] >= cList[iList[b]][split];
-	  register int testE = cnt[split] <= cList[iList[e]][split];
+	   int testB = cnt[split] >= cList[iList[b]][split];
+	   int testE = cnt[split] <= cList[iList[e]][split];
 	  if ((!testB) && (!testE)) {
-	    register unsigned int tmp = iList[b];
+	     unsigned int tmp = iList[b];
 	    iList[b] = iList[e];
 	    iList[e] = tmp     ;
 	    b++;
@@ -616,8 +616,8 @@ void buildInnerLevels(short        *kList,
 
   kList ++;
 
-  register unsigned int childStart;
-  register unsigned int nodePlace ;
+   unsigned int childStart;
+   unsigned int nodePlace ;
 
   unsigned int numBreaks = totalSplits;
   unsigned int listLen   = numItems   ;
@@ -666,7 +666,7 @@ void SlBuildTree(const SlVector3   *cList, unsigned int numItems    ,
 
   //--------------------------------------------------------
 
-  register unsigned int i;
+   unsigned int i;
 
   //--------------------------------------------------------
     
@@ -732,7 +732,7 @@ int SlBoundOverlapServer::isInUse() const {
 //----------------------------------------------------------
 
 void SlBoundOverlapServer::addChunk() {
-  register SlBoundOverlapServer::overlapChunk *newChunk 
+   SlBoundOverlapServer::overlapChunk *newChunk 
     = new SlBoundOverlapServer::overlapChunk;
 
   newChunk->chunk[newChunk->size-1].next = _freeListHead;
@@ -746,7 +746,7 @@ void SlBoundOverlapServer::addChunk() {
 
 void SlBoundOverlapServer::blowChunks(){
   while(_chunkList!=NULL) {
-    register SlBoundOverlapServer::overlapChunk *tmp = _chunkList;
+     SlBoundOverlapServer::overlapChunk *tmp = _chunkList;
     _chunkList = _chunkList->next;
     delete tmp;
   }
@@ -853,10 +853,10 @@ int SlBoundOverlapServer::traverseCache(SlLeafOverlapCB cb,
   int result = 0;
 
   while ((pos != NULL) && ((*pos) != NULL)) {
-    register unsigned short l1 = (*pos)->level1;
-    register unsigned short l2 = (*pos)->level2;
-    register unsigned int   n1 = (*pos)-> node1;
-    register unsigned int   n2 = (*pos)-> node2;
+     unsigned short l1 = (*pos)->level1;
+     unsigned short l2 = (*pos)->level2;
+     unsigned int   n1 = (*pos)-> node1;
+     unsigned int   n2 = (*pos)-> node2;
     
     if ((treeOne.numInnerLevels() != l1) ||
 				(treeTwo.numInnerLevels() != l2)) {
@@ -894,10 +894,10 @@ int SlBoundOverlapServer::traverseSelfCache(SlSelfOverlapCB cb,
   int result = 0;
 
   while ((pos != NULL) && ((*pos) != NULL)) {
-    register unsigned short l1 = (*pos)->level1;
-    register unsigned short l2 = (*pos)->level2;
-    register unsigned int   n1 = (*pos)-> node1;
-    register unsigned int   n2 = (*pos)-> node2;
+     unsigned short l1 = (*pos)->level1;
+     unsigned short l2 = (*pos)->level2;
+     unsigned int   n1 = (*pos)-> node1;
+     unsigned int   n2 = (*pos)-> node2;
     
     if ((tree.numInnerLevels() != l1) ||
 				(tree.numInnerLevels() != l2)) {
@@ -948,8 +948,8 @@ int SlBoundOverlapServer::doTraversal(SlLeafOverlapCB cb,
 				      const SlBoundTree &treeTwo, void *uprmTwo) {
 
   int result = 0;
-  register unsigned int a,aMax,aMin,lA;
-  register unsigned int b,bMax,bMin,lB;
+   unsigned int a,aMax,aMin,lA;
+   unsigned int b,bMax,bMin,lB;
   //--------------------------------------------------------
 	
   if (!isReady()) {
@@ -982,10 +982,10 @@ int SlBoundOverlapServer::doTraversal(SlLeafOverlapCB cb,
   
   while(popPend()) {
     
-    register unsigned short l1 = _freeListHead->level1;
-    register unsigned short l2 = _freeListHead->level2;
-    register unsigned int   n1 = _freeListHead-> node1;
-    register unsigned int   n2 = _freeListHead-> node2;
+     unsigned short l1 = _freeListHead->level1;
+     unsigned short l2 = _freeListHead->level2;
+     unsigned int   n1 = _freeListHead-> node1;
+     unsigned int   n2 = _freeListHead-> node2;
     if (treeOne.numInnerLevels() == l1) {
       if (treeTwo.numInnerLevels() == l2) {  
 				//--------------------------------------------------
@@ -1053,8 +1053,8 @@ int SlBoundOverlapServer::doTraversal(SlLeafOverlapCB cb,
 int SlBoundOverlapServer::doSelfTraversal(SlSelfOverlapCB cb, 
 																					const SlBoundTree &tree, void *uprm) {
   int result = 0;
-  register unsigned int a,aMax,aMin,lA;
-  register unsigned int b,bMax,bMin,lB;
+   unsigned int a,aMax,aMin,lA;
+   unsigned int b,bMax,bMin,lB;
   //--------------------------------------------------------
 
   if (!isReady()) {
@@ -1084,10 +1084,10 @@ int SlBoundOverlapServer::doSelfTraversal(SlSelfOverlapCB cb,
   
   while(popPend()) {
     
-    register unsigned short l1 = _freeListHead->level1;
-    register unsigned short l2 = _freeListHead->level2;
-    register unsigned int   n1 = _freeListHead-> node1;
-    register unsigned int   n2 = _freeListHead-> node2;
+     unsigned short l1 = _freeListHead->level1;
+     unsigned short l2 = _freeListHead->level2;
+     unsigned int   n1 = _freeListHead-> node1;
+     unsigned int   n2 = _freeListHead-> node2;
 
     if ((l1 != l2) || (n2>=n1)) {
       if (tree.numInnerLevels() == l1) {

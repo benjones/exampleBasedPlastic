@@ -9,8 +9,9 @@
 
 #include "rigidBody.h"
 #include "fem.H"
+#include "plasticObject.h"
 
-
+namespace Json{ class Value;}
 
 class World{
   public:
@@ -22,18 +23,24 @@ class World{
   World& operator=(World&& other) = delete;
   World& operator=(const World& other) = delete;
 
+
+  void loadPlasticObjects(const Json::Value& root);
+
   void computeConstraints();
   void countConstraints();
 
-	void massScale(double *x, double *y);
+  void massScale(double *x, double *y);
   void inverseMassScale(double *x, double *y);
-	void solve();
-	void solveMinres();
-	void project(double *in);
+  void solve();
+  void solveMinres();
+  void project(double *in);
   void checkVector(double *in);
-	void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
+  void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
   void timeStep();
   void timeStepRigidCollisions();
+
+  void timeStepDynamicSprites();
+
   void dumpFrame();
 
   void computeFemVelocities();
@@ -41,8 +48,8 @@ class World{
 
   void computeCrossProductMatrices();
 
-	void mulSpringMatrix(double *in, double *out);
-	void applySpringPreconditioner(double *in, double *out);
+  void mulSpringMatrix(double *in, double *out);
+  void applySpringPreconditioner(double *in, double *out);
 
   void constraintCullingCallback(btBroadphasePair& collisionPair, 
 								 btCollisionDispatcher& _dispatcher, 
@@ -88,8 +95,9 @@ class World{
 
   std::vector<RigidBody> rigidBodies;
   std::vector<FemObject> femObjects;
+  std::vector<PlasticObject> plasticObjects;
 
-	unsigned int nrbdof, nfemdof;
+  unsigned int nrbdof, nfemdof;
 
   int currentFrame;
   

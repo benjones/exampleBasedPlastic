@@ -3,6 +3,7 @@
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btQuaternion.h>
 #include <LinearMath/btTransform.h>
+#include <Eigen/Dense>
 
 template <typename T>
 inline T sqr(const T& t){
@@ -34,3 +35,17 @@ inline std::ostream& operator<<(std::ostream& outs, const btTransform& t){
   return outs;
 }
 
+
+inline Eigen::Matrix3d bulletToEigen(const btMatrix3x3& mat){
+  Eigen::Matrix3d ret;
+  ret << 
+	mat[0][0], mat[0][1], mat[0][2],
+	mat[1][0], mat[1][1], mat[1][2],
+	mat[2][0], mat[2][1], mat[2][2];
+  return ret;
+}
+
+
+inline Eigen::Vector3d bulletToEigen(const btVector3& vec){
+  return Eigen::Vector3d{vec[0], vec[1], vec[2]};
+}

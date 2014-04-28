@@ -1,0 +1,11 @@
+{
+	"ground" : true,
+	"dt" : 0.01,
+
+	"plasticObjects" : [
+		{
+			"directory" : "/var/tmp/.skinning_temp/",
+			"offset" : [0,1,0]
+		}
+	]
+}

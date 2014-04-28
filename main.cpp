@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
       world.dumpFrame();
 
     }
-    world.timeStep();
+    world.timeStepDynamicSprites();
 
     /*    simulator.computeVelocities(dt, gravity);
     
