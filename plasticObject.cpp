@@ -5,6 +5,10 @@
 
 #include <skeleton.h>
 #include <read_BF.h>
+#include <lbs_matrix.h>
+#include <gather_transformations.h>
+#include <columnize.h>
+
 #include <igl/readDMAT.h>
 #include <igl/readOBJ.h>
 #include <igl/writeOBJ.h>
@@ -17,7 +21,8 @@ using iter::range;
 
 void PlasticObject::loadFromFiles(std::string directory){
   
-  if(!read_BF((directory + "/bone_roots.bf").c_str(), &skeleton, skeleton.roots)){
+  if(!read_BF((directory + "/bone_roots.bf").c_str(), 
+			  &skeleton, skeleton.roots)){
 	std::cout << "couldn't read bone roots: " << std::endl;
 	exit(1);
   }
@@ -28,7 +33,9 @@ void PlasticObject::loadFromFiles(std::string directory){
   }
   
   exampleGraph.load(directory + "/exampleGraph.txt");
-
+  exampleGraph.parent = &skeleton;
+  egTraverser = EGTraverser{&exampleGraph};
+  
   if(!igl::readOBJ(directory + "/mesh.obj", 
 				   trimeshVertices,
 				   trimeshTriangles)){
@@ -45,6 +52,13 @@ void PlasticObject::loadFromFiles(std::string directory){
   std::cout << "tetmesh has: " << tetmeshVertices.rows() << " verts" << std::endl
 			<< "and " << tetmeshTets.rows() << " tets" << std::endl;
 
+  if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
+	std::cout << "couldn't read skinning weights" << std::endl;
+	exit(1);
+  }
+
+  lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
+
 
 }
 
@@ -54,8 +68,8 @@ void PlasticObject::computeMassesAndVolume(){
   volume = 0;
   mass = 0;
   //compute object centerOfMass
-  
-  tetmeshVertexMasses.assign(tetmeshVertices.rows(), 0.0);
+  tetmeshVertexMasses.resize(tetmeshVertices.rows());
+  tetmeshVertexMasses.setZero();
 
   Eigen::Matrix3d basis(3,3);
   for(auto tetInd : range(tetmeshTets.rows())){
@@ -72,7 +86,7 @@ void PlasticObject::computeMassesAndVolume(){
 	double nodeMass = 0.25*tetVolume*density;
 	mass += 4*nodeMass;
 	for(auto j : {0,1,2,3}){
-	  tetmeshVertexMasses[tetmeshTets(tetInd,j)] += nodeMass;
+	  tetmeshVertexMasses(tetmeshTets(tetInd,j)) += nodeMass;
 	}
   }
   
@@ -80,18 +94,25 @@ void PlasticObject::computeMassesAndVolume(){
 
 
 void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
-										  const RMMatrix4i& tets){
+										   const RMMatrix4i& tets){
+  
+  //the world part of the transform before we do this
+  worldTransform = bulletBody->getCenterOfMassTransform()*
+	inertiaAligningTransform.inverse();
+
 
   Eigen::Vector3d centerOfMass = 
-	vertices.colwise().sum().transpose()/vertices.rows();
-  
+	(tetmeshVertexMasses.asDiagonal()*vertices).colwise().sum().transpose()/
+	mass;
+  //  std::cout << " com: " << centerOfMass << std::endl;
+
   inertiaTensor.setZero();
   
   for(auto i : range(vertices.rows())){
 	Eigen::Vector3d r = 
 	  vertices.row(i).transpose() - 
 	  centerOfMass;
-	inertiaTensor += tetmeshVertexMasses[i]*
+	inertiaTensor += tetmeshVertexMasses(i)*
 	  (r.squaredNorm()*Eigen::Matrix3d::Identity() -
 	   r*r.transpose());
   }
@@ -104,6 +125,9 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
 	evecs.col(2) *= -1;
   }
 
+  std::cout << "rotation: " << evecs << std::endl;
+    std::cout << "evals: " << evals << std::endl;
+
   //translate and then rotate each vertex so that
   //the object is centered at the origin and aligned with the 
   //princial moments of inertia
@@ -111,21 +135,27 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
   for(auto i : range(vertices.rows())){
 	
 	currentBulletVertexPositions.row(i) = (evecs.transpose()*
-										   (vertices.row(i).transpose() - 
-											centerOfMass)
-										   ).transpose();
+											   (vertices.row(i).transpose() - 
+												centerOfMass)
+											   ).transpose();
 	
   }
   
-  bulletBody->setCenterOfMassTransform(btTransform{
+  inertiaAligningTransform = btTransform{eigenToBullet(evecs),
+  										 eigenToBullet(centerOfMass)};
+
+  bulletBody->setCenterOfMassTransform(worldTransform*
+									   inertiaAligningTransform);
+
+  /*bulletBody->setCenterOfMassTransform(btTransform{
 	  btMatrix3x3{
 		evecs(0,0),evecs(0,1),evecs(0,2),
 		  evecs(1,0),evecs(1,1),evecs(1,2),
 		  evecs(2,0),evecs(2,1),evecs(2,2)},
 		btVector3{centerOfMass(0), centerOfMass(1), centerOfMass(2)}
 	});
-  
-  bulletBody->setMassProps(mass, btVector3{evals(0), evals(1), evals(2)});
+  */
+  bulletBody->setMassProps(mass, eigenToBullet(evals));
   
 }
 
@@ -145,5 +175,38 @@ void PlasticObject::dump(std::string filename){
 				transformedVertices,
 				tetmeshTriangles);
   
+  
+}
+
+
+void PlasticObject::skinMesh(){
+
+  exampleGraph.setInterpolatedTransform(egTraverser.currentPosition.simplex,
+										egTraverser.currentPosition.coords);
+
+  
+  currentTransformMatrix.resize(3, 4*boneWeights.cols());
+  if(!gather_transformations(skeleton.roots, false, 
+							 currentTransformMatrix)){
+	std::cout << "couldn't gather transforms" << std::endl;
+  }
+
+  //do as the FAST skinners do
+  
+  Eigen::MatrixXd TCol;
+  columnize<double, 
+			Eigen::Dynamic>(currentTransformMatrix.block(0,0,3, 
+														 currentTransformMatrix.cols()).eval(),
+							currentTransformMatrix.cols()/4, 2, TCol);
+
+
+  Eigen::MatrixXd U3 = LBSMatrix*TCol.cast<double>().eval();
+  
+  currentBulletVertexPositions.col(0) = U3.block(0,0, 
+												 currentBulletVertexPositions.rows(),1);
+  currentBulletVertexPositions.col(1) = U3.block(currentBulletVertexPositions.rows(), 0,
+												 currentBulletVertexPositions.rows(), 1);
+  currentBulletVertexPositions.col(2) = U3.block(2*currentBulletVertexPositions.rows(), 0,
+												 currentBulletVertexPositions.rows(), 1);
   
 }

@@ -49,3 +49,21 @@ inline Eigen::Matrix3d bulletToEigen(const btMatrix3x3& mat){
 inline Eigen::Vector3d bulletToEigen(const btVector3& vec){
   return Eigen::Vector3d{vec[0], vec[1], vec[2]};
 }
+
+inline btMatrix3x3 eigenToBullet(const Eigen::Matrix3d& mat){
+  return btMatrix3x3{mat(0,0), mat(0,1), mat(0,2),
+	  mat(1,0), mat(1,1), mat(1, 2),
+	  mat(2,0), mat(2,1), mat(2,2)};
+}
+
+inline btVector3 eigenToBullet(const Eigen::Vector3d& v){
+  return btVector3{v(0), v(1), v(2)};
+}
+
+
+template <typename T>
+inline std::pair<T,T> makeSortedPair(T a, T b){
+  return (a < b) ?
+	std::pair<T,T>(a, b) :
+	std::pair<T,T>(b,a);
+}

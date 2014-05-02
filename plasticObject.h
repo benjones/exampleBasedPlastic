@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <exampleGraph.h>
+#include "egTraverser.h"
 #include <Skeleton.cpp> //templates...
 #include <Bone.h>
 
@@ -19,7 +20,10 @@ using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
 class PlasticObject{
 public:
   PlasticObject(){}
-  
+  ~PlasticObject() = default;
+  PlasticObject(PlasticObject&&) = default;
+  PlasticObject(const PlasticObject&) = delete;
+
   void writeOutputFiles(std::string filename);
   
   void loadFromFiles(std::string directory);
@@ -30,9 +34,12 @@ public:
 							  const RMMatrix4i& tets);
   
 
+  void skinMesh();
+
   void dump(std::string filename);
 
   ExampleGraph exampleGraph;
+  EGTraverser egTraverser;
   std::unique_ptr<btRigidBody> bulletBody;
   std::unique_ptr<btGImpactMeshShape> bulletShape;
   std::unique_ptr<btDefaultMotionState> motionState;
@@ -54,13 +61,19 @@ public:
   double volume;
   Eigen::Matrix3d inertiaTensor;
   
-  std::vector<double> tetmeshVertexMasses;
+  Eigen::VectorXd tetmeshVertexMasses;
   
   Skeleton<Bone> skeleton;
   std::vector<Bone*> boneRoots;
   
   Eigen::MatrixXd boneWeights;
+  Eigen::MatrixXd currentTransformMatrix;
   
+  Eigen::MatrixXd LBSMatrix;
+
+  btTransform inertiaAligningTransform; //align the skinned position so that it's 
+  //centered at its COM and aligned with the principal axes of inertia
   
-  
+  btTransform worldTransform; //the transform bullet gets is the product of these 2
+
 };

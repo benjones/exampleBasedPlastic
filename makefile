@@ -26,7 +26,7 @@ OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUB
 TARGETS = fracture
 
 OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o \
-rigidBody.o couplingConstraintSolver.o plasticObject.o kdTree.o
+rigidBody.o couplingConstraintSolver.o plasticObject.o kdTree.o egTraverser.o
 #collisions.o, punt on this
 
 #-----------------------------------------

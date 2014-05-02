@@ -1531,11 +1531,13 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//load meshes
 	po.loadFromFiles(poi["directory"].asString());
 
+
+
 	po.density = poi.get("density", 1000).asDouble();
 	
-	
-	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
-											Eigen::NoChange);
+	po.currentBulletVertexPositions = po.tetmeshVertices;
+	//	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
+	//											Eigen::NoChange);
 	
 	std::cout << "vertex array data: " << po.currentBulletVertexPositions.data() << std::endl;
 	//make space for the vertex array
@@ -1550,6 +1552,8 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  }
 	};
 	
+	std::cout << "first 3 vertices: " << 
+	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
 	/*for(auto row : range(po.tetmeshTriangles.rows())){
 	  std::cout  << "row: " << row << " ";
 	  for(auto col : range(po.tetmeshTriangles.cols())){
@@ -1559,25 +1563,29 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  std::cout << std::endl;
 	  }*/
 
+
+
+
+
+
 	//apply COM offset stuff
-	Eigen::Vector3d offset(0.0,0.0,0.0); //default to no offset
+	btVector3 offset(0.0,0.0,0.0); //default to no offset
 	auto offsetIn = poi["offset"];
 	if(!offsetIn.isNull() && offsetIn.isArray()){
 	  assert(offsetIn.size() == 3);
-	  offset = Eigen::Vector3d(offsetIn[0].asDouble(),
-							   offsetIn[1].asDouble(),
-							   offsetIn[2].asDouble());
+	  offset = btVector3{offsetIn[0].asDouble(),
+						 offsetIn[1].asDouble(),
+						 offsetIn[2].asDouble()};
 	}
 	
-	auto rotation = Eigen::Quaterniond::Identity();
+	auto rotation = btQuaternion::getIdentity();
 	auto rotationIn = poi["rotation"];
 	if(!rotationIn.isNull()){
-	  Eigen::Vector3d axis{rotationIn["axis"][0].asDouble(),
+	  btVector3 axis{rotationIn["axis"][0].asDouble(),
 		  rotationIn["axis"][0].asDouble(),
 		  rotationIn["axis"][0].asDouble()};
-	  rotation = Eigen::Quaterniond{
-		Eigen::AngleAxis<double>{ rotationIn["angle"].asDouble(),
-								  axis}};
+	  rotation = btQuaternion{axis,
+							  rotationIn["angle"].asDouble()};
 	  
 		
 	}
@@ -1585,7 +1593,9 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//place it where it should go
 	//this isn't mass weighted, but is probably close if the mesh
 	//close to uniform
-	Eigen::Vector3d centerOfMass = 
+
+	//actually, just jam this into the worldTransform 
+	/*Eigen::Vector3d centerOfMass = 
 	  po.tetmeshVertices.colwise().sum().transpose()/
 	  po.tetmeshVertices.rows();
 	
@@ -1596,9 +1606,10 @@ void World::loadPlasticObjects(const Json::Value& root){
 				   centerOfMass) +
 		 offset).transpose();
 	}
-	
-	//compute node masses and volume
-	po.computeMassesAndVolume();
+	*/
+
+
+
 
 	po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
 	  new btGImpactMeshShape{po.btTriMesh.get()}};
@@ -1614,9 +1625,20 @@ void World::loadPlasticObjects(const Json::Value& root){
 					  po.bulletShape.get()}
 	};
 
+	//compute node masses and volume
+	po.computeMassesAndVolume();
+
+
+	//apply the transform now
+	po.inertiaAligningTransform.setIdentity();
+	po.worldTransform = btTransform{rotation, offset};
+	po.bulletBody->setCenterOfMassTransform(po.worldTransform);
+											
+	
 	//aliasing issues?
 	po.updateBulletProperties(po.currentBulletVertexPositions,
 							  po.tetmeshTets);
+
 	
 	po.bulletShape->updateBound();
 	
@@ -1624,10 +1646,22 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 
 	bulletWorld.addRigidBody(po.bulletBody.get());
+	
+	po.egTraverser.restPosition = EGPosition{0, {0,1}};
+	po.egTraverser.currentPosition = EGPosition{0, {1,0}};
+	po.egTraverser.restSpringStrength = 0.01;
+
   }
   
 }
 
 void World::timeStepDynamicSprites(){
   bulletWorld.stepSimulation(dt);
+  for(auto& po : plasticObjects){
+	po.egTraverser.traverse();
+	po.skinMesh();
+	//po.currentBulletVertexPositions = po.tetmeshVertices;
+	po.updateBulletProperties(po.currentBulletVertexPositions,
+							  po.tetmeshTets);
+  }
 }
