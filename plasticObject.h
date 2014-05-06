@@ -34,6 +34,12 @@ public:
 							  const RMMatrix4i& tets);
   
 
+  void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
+
+  Eigen::Vector3d getBarycentricCoordinates(btVector3 localPoint, int triangleIndex);
+  int getNearestVertex(Eigen::Vector3d localPoint);
+  
+  
   void skinMesh();
 
   void dump(std::string filename);
@@ -69,6 +75,16 @@ public:
   Eigen::MatrixXd boneWeights;
   Eigen::MatrixXd currentTransformMatrix;
   
+  //an extra term to add to the translation of each handle based on
+  //collision impacts
+  Eigen::MatrixXd collisionHandleAdjustments;
+  //only deform once things cross this point
+  double plasticityImpulseYield;
+  //scale*(mag(impulse) - yield) gets distributed to handles
+  double plasticityImpulseScale;
+
+
+
   Eigen::MatrixXd LBSMatrix;
 
   btTransform inertiaAligningTransform; //align the skinned position so that it's 

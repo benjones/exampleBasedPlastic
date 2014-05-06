@@ -58,6 +58,9 @@ int main(int argc, char *argv[]) {
 			}
 			frame++;*/
       world.dumpFrame();
+	  //	  for(auto& po : world.plasticObjects){
+	  //		std::cout << "plastic: " << std::endl << po.collisionHandleAdjustments << std::endl;
+	  //	  }
 
     }
     world.timeStepDynamicSprites();

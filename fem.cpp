@@ -684,7 +684,7 @@ void FemObject::fracture() {
 			particleRigidBodies.back()->setLinearVelocity(btVector3{
 				vel[nv](0), vel[nv](1), vel[nv](2)});
 			bulletWorld->addRigidBody(particleRigidBodies.back().get());
-			
+			particleRigidBodies.back()->setUserIndex(-1);
 
 			nv++;
 
@@ -1702,6 +1702,7 @@ SlMatrix3x3 computeInertiaTensorPoints(double mass,
 		   particleMotionStates.back().get(), //no motion state
 		   particleCollisionShape.get()});//share the same shape
 	 //don't include a moment of inertia, I assume it's set to infinity?
+	 particleRigidBodies.back()->setUserIndex(-1);
 	 bulletWorld->addRigidBody(particleRigidBodies.back().get());
    }
 

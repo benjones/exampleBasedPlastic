@@ -99,6 +99,7 @@ World::World(std::string filename)
 								 RB.shape.get(),
 								 btVector3(0,0,0)));
 								 
+	RB.bulletBody->setUserIndex(-1);
     bulletWorld.addRigidBody(RB.bulletBody.get());
 
   }
@@ -319,7 +320,7 @@ World::World(std::string filename)
 					  RB.shape.get(),
 					  inertiaTensor}};
 	
-	
+	RB.bulletBody->setUserIndex(-1);
     bulletWorld.addRigidBody(RB.bulletBody.get());
     
   }
@@ -1535,6 +1536,10 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 	po.density = poi.get("density", 1000).asDouble();
 	
+	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 10).asDouble();
+	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0.00015).asDouble();
+
+
 	po.currentBulletVertexPositions = po.tetmeshVertices;
 	//	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
 	//											Eigen::NoChange);
@@ -1552,8 +1557,8 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  }
 	};
 	
-	std::cout << "first 3 vertices: " << 
-	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
+	//	std::cout << "first 3 vertices: " << 
+	//	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
 	/*for(auto row : range(po.tetmeshTriangles.rows())){
 	  std::cout  << "row: " << row << " ";
 	  for(auto col : range(po.tetmeshTriangles.cols())){
@@ -1646,10 +1651,12 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 
 	bulletWorld.addRigidBody(po.bulletBody.get());
+	//user index holds index into the plasticObjects array
+	po.bulletBody->setUserIndex(plasticObjects.size() -1);
 	
 	po.egTraverser.restPosition = EGPosition{0, {0,1}};
 	po.egTraverser.currentPosition = EGPosition{0, {1,0}};
-	po.egTraverser.restSpringStrength = 0.01;
+	po.egTraverser.restSpringStrength = 0.00;//1;
 
   }
   
@@ -1657,11 +1664,35 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 void World::timeStepDynamicSprites(){
   bulletWorld.stepSimulation(dt);
+
+  deformBasedOnImpulses();
+
   for(auto& po : plasticObjects){
+	
+
+
 	po.egTraverser.traverse();
 	po.skinMesh();
 	//po.currentBulletVertexPositions = po.tetmeshVertices;
 	po.updateBulletProperties(po.currentBulletVertexPositions,
 							  po.tetmeshTets);
+  }
+}
+
+
+void World::deformBasedOnImpulses(){
+  //  std::cout << "num contacts this frame: " << 
+  //	dispatcher->getNumManifolds() << std::endl;
+  for(auto i : range(dispatcher->getNumManifolds())){
+	auto* man = dispatcher->getManifoldByIndexInternal(i);
+	
+	auto* rb1 = btRigidBody::upcast(man->getBody0());
+	auto* rb2 = btRigidBody::upcast(man->getBody1());
+	if(rb1 && rb1->getUserIndex() >= 0){
+	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulses(man, true);
+	}
+	if(rb2 && rb2->getUserIndex() >= 0){
+	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulses(man, false);
+	}
   }
 }
