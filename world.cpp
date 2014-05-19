@@ -1524,6 +1524,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 
   plasticObjects.clear();
   auto plasticObjectsIn = root["plasticObjects"];
+  plasticObjects.reserve(plasticObjectsIn.size());
   for(auto i : range(plasticObjectsIn.size())){
 	auto& poi = plasticObjectsIn[i];
 	
@@ -1533,14 +1534,18 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.loadFromFiles(poi["directory"].asString());
 
 
-
+	po.dt = dt;
 	po.density = poi.get("density", 1000).asDouble();
 	
-	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 10).asDouble();
-	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0.00015).asDouble();
+	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 0.00001).asDouble();
+	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 10.0).asDouble();
 
+	po.scaleFactor = poi.get("scaleFactor", 1).asDouble();
 
-	po.currentBulletVertexPositions = po.tetmeshVertices;
+	po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
+
+	po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.tetmeshVertices.rows(), 3);
+	
 	//	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
 	//											Eigen::NoChange);
 	
@@ -1665,17 +1670,27 @@ void World::loadPlasticObjects(const Json::Value& root){
 void World::timeStepDynamicSprites(){
   bulletWorld.stepSimulation(dt);
 
-  deformBasedOnImpulses();
+  collectImpulses();
+
+  for(auto& po : plasticObjects){
+	
+	//po.projectImpulsesOntoExampleManifold();
+  }
+ 
+  
+  //deformBasedOnImpulses();
+
+  
 
   for(auto& po : plasticObjects){
 	
 
 
-	po.egTraverser.traverse();
-	po.skinMesh();
+	//po.egTraverser.traverse();
+	//po.skinMesh();
 	//po.currentBulletVertexPositions = po.tetmeshVertices;
-	po.updateBulletProperties(po.currentBulletVertexPositions,
-							  po.tetmeshTets);
+	//po.updateBulletProperties(po.currentBulletVertexPositions,
+	//							  po.tetmeshTets);
   }
 }
 
@@ -1689,10 +1704,38 @@ void World::deformBasedOnImpulses(){
 	auto* rb1 = btRigidBody::upcast(man->getBody0());
 	auto* rb2 = btRigidBody::upcast(man->getBody1());
 	if(rb1 && rb1->getUserIndex() >= 0){
+	  std::cout << "first" << std::endl;
 	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulses(man, true);
 	}
 	if(rb2 && rb2->getUserIndex() >= 0){
+	  std::cout << "second" << std::endl;
 	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulses(man, false);
+	}
+  }
+}
+
+void World::collectImpulses(){
+  for(auto& po : plasticObjects){
+	po.manifoldPoints.clear();
+  }
+
+  for(auto i : range(dispatcher->getNumManifolds())){
+	auto* man = dispatcher->getManifoldByIndexInternal(i);
+
+	auto* rb1 = btRigidBody::upcast(man->getBody0());
+	auto* rb2 = btRigidBody::upcast(man->getBody1());
+
+
+	for(auto j : range(man->getNumContacts())){
+	  auto& manPoint = man->getContactPoint(j);
+	  if(rb1 && rb1->getUserIndex() >= 0){
+		plasticObjects[rb1->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
+																					true));
+	  }
+	  if(rb2 && rb2->getUserIndex() >= 0){
+		plasticObjects[rb2->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
+																					false));
+	  }
 	}
   }
 }

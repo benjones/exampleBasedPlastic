@@ -1,5 +1,7 @@
 #include "plasticObject.h"
 
+#include "kernels.h"
+
 #include <iostream>
 #include <cstdlib>
 
@@ -14,6 +16,8 @@
 #include <igl/writeOBJ.h>
 #include <igl/readMESH.h>
 
+#include <Eigen/QR>
+
 #include "utils.h"
 
 #include "cppitertools/range.hpp"
@@ -21,21 +25,27 @@ using iter::range;
 
 void PlasticObject::loadFromFiles(std::string directory){
   
+  skeleton = std::unique_ptr<Skeleton<Bone>>{new Skeleton<Bone>{}};
   if(!read_BF((directory + "/bone_roots.bf").c_str(), 
-			  &skeleton, skeleton.roots)){
+			  skeleton.get(), skeleton->roots)){
 	std::cout << "couldn't read bone roots: " << std::endl;
 	exit(1);
   }
 
-  if(!igl::readDMAT(directory + "/weights.dmat", boneWeights)){
+  /*  if(!igl::readDMAT(directory + "/weights.dmat", boneWeights)){
 	std::cout << "couldn't read dmat file: " << std::endl;
 	exit(1);
   }
-  
+  */
+  exampleGraph.parent = skeleton.get();  
   exampleGraph.load(directory + "/exampleGraph.txt");
-  exampleGraph.parent = &skeleton;
+
   egTraverser = EGTraverser{&exampleGraph};
   
+
+  std::cout << "eg parent: " << exampleGraph.parent << " roots " 
+			<< exampleGraph.parent->roots << std::endl;
+
   if(!igl::readOBJ(directory + "/mesh.obj", 
 				   trimeshVertices,
 				   trimeshTriangles)){
@@ -84,7 +94,11 @@ void PlasticObject::computeMassesAndVolume(){
 	  tetmeshVertices.row(tetmeshTets(tetInd, 0));
 
 	//shouldn't be necessary, but whatever
-	double tetVolume = fabs(basis.determinant())/6.0;
+	double tetVolume = -basis.determinant()/6.0;
+	if(tetVolume < 0){
+	  std::cout << "inverted tet!!!!!!" << std::endl;
+	  std::cout << " at tet: " << tetInd << " vol " << tetVolume << std::endl;
+	}
 	volume += tetVolume;
 	double nodeMass = 0.25*tetVolume*density;
 	mass += 4*nodeMass;
@@ -189,7 +203,7 @@ void PlasticObject::skinMesh(){
 
   
   currentTransformMatrix.resize(3, 4*boneWeights.cols());
-  if(!gather_transformations(skeleton.roots, false, 
+  if(!gather_transformations(skeleton->roots, false, 
 							 currentTransformMatrix)){
 	std::cout << "couldn't gather transforms" << std::endl;
   }
@@ -209,7 +223,7 @@ void PlasticObject::skinMesh(){
 							currentTransformMatrix.cols()/4, 2, TCol);
 
 
-  Eigen::MatrixXd U3 = LBSMatrix*TCol.cast<double>().eval();
+  Eigen::MatrixXd U3 = scaleFactor*(LBSMatrix*TCol.cast<double>().eval());
   
   currentBulletVertexPositions.col(0) = U3.block(0,0, 
 												 currentBulletVertexPositions.rows(),1);
@@ -218,6 +232,9 @@ void PlasticObject::skinMesh(){
   currentBulletVertexPositions.col(2) = U3.block(2*currentBulletVertexPositions.rows(), 0,
 												 currentBulletVertexPositions.rows(), 1);
   
+  //add the extra offsets
+  currentBulletVertexPositions += localImpulseBasedOffsets;
+
 }
 
 
@@ -225,7 +242,10 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
   for(auto j : range(man->getNumContacts())){
 	auto& manPoint = man->getContactPoint(j);
 	
-	btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
+	auto impulseToApply = bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
+
+
+	/*	btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
 	if(!isObject0){impulseGlobal *= -1;}
 	
 	//rotate this into the unskinned space
@@ -236,7 +256,7 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 	if(impulseLocal.norm() < plasticityImpulseYield){
 	  continue; //not enough impulse here to deform anything
 	}
-
+	*/
 	auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
 	auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	
@@ -252,7 +272,7 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 						  bcCoords(1)*boneWeights.row(tri(1)) +
 						  bcCoords(2)*boneWeights.row(tri(2))).transpose();
 	}
-
+	/*
 	//	std::cout << "weigths at contact: " << std::endl
 	//			  << weightsAtContact << std::endl;
 	auto normalizedImpulse = impulseLocal.normalized();
@@ -261,7 +281,7 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 	auto impulseToApply = bulletToEigen(plasticityImpulseScale*
 										(impulseLocal - 
 										 plasticityImpulseYield*normalizedImpulse));
-	
+	*/
 	//add the outer product (scale impulse by the weights at contact)
 	collisionHandleAdjustments += impulseToApply*weightsAtContact.transpose();
 	
@@ -317,5 +337,189 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 	  best = i;
 	}
   }
+  //  std::cout << "nearest vertex: " << best << " dist: " << bestDist << std::endl;
   return best;
+}
+
+
+void PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0){
+
+
+    for(auto j : range(man->getNumContacts())){
+	  auto& manPoint = man->getContactPoint(j);
+	  
+	  auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
+	  auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
+	  //	  std::cout << "local point: " << localPoint << std::endl;
+	  auto impulseToApply = bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
+	  if(impulseToApply.squaredNorm() <= 0){continue;} //ignore 0 impulses
+
+	  Eigen::VectorXd weightsAtContact;
+	  if(triangleIndex < 0){
+		//		std::cout << "using vertex: " << std::endl;
+		auto vIndex = getNearestVertex(bulletToEigen(localPoint));
+		weightsAtContact = boneWeights.row(vIndex).transpose();
+	  } else {
+		//		std::cout << "using triangle: " << std::endl;
+		auto bcCoords = getBarycentricCoordinates(localPoint, triangleIndex);
+		auto tri = tetmeshTriangles.row(triangleIndex);
+		weightsAtContact = (bcCoords(0)*boneWeights.row(tri(0)) +
+							bcCoords(1)*boneWeights.row(tri(1)) +
+							bcCoords(2)*boneWeights.row(tri(2))).transpose();
+	  }
+	  
+
+	  for(auto i : range(tetmeshVertices.rows())){
+		auto weightSpaceDistance = (weightsAtContact - boneWeights.row(i).transpose()).norm();
+		
+		auto scale = Kernels::simpleCubic(weightSpaceDistance/0.01);
+		localImpulseBasedOffsets.row(i) += scale*impulseToApply.transpose();
+		//		if(scale >0){
+		//		  std::cout << "adding to vertex " << i << " " << scale*impulseToApply << std::endl;
+		//		}
+
+	  }
+
+
+	}
+
+}
+
+btVector3 PlasticObject::getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
+														 bool isObject0){
+
+  btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
+
+  btVector3 displacementGlobal = impulseGlobal*dt/mass;
+  if(!isObject0){displacementGlobal *= -1;}
+  if(displacementGlobal.norm() > 0){std::cout << "global impulse: " << displacementGlobal << std::endl;}
+  //rotate this into the unskinned space
+  
+  auto currentRotation = bulletBody->getCenterOfMassTransform().getRotation()*
+	inertiaAligningTransform.getRotation().inverse();
+  btVector3 displacementLocal = quatRotate(currentRotation.inverse(),displacementGlobal);
+  
+  if(displacementLocal.norm() < plasticityImpulseYield){
+	return btVector3(0,0,0);
+  }
+
+  //	std::cout << "weigths at contact: " << std::endl
+  //			  << weightsAtContact << std::endl;
+  auto normalizedDisplacement = displacementLocal.normalized();
+  //	std::cout << "unnormalized impulse: " << impulseLocal << std::endl;
+  //	std::cout << "normalized impulse: " << normalizedImpulse << std::endl;
+  auto displacementToApply = plasticityImpulseScale*
+	(displacementLocal - 
+	 plasticityImpulseYield*normalizedDisplacement);
+  
+  return displacementToApply;
+}
+
+
+
+void PlasticObject::projectImpulsesOntoExampleManifold(){
+
+  std::vector<int> vertexIndices;
+  std::vector<btVector3> impulses;
+  
+  for(auto& pr : manifoldPoints){
+	auto& manPoint = pr.first;
+	bool isObject0 = pr.second;
+
+	auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
+	auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
+	
+	if(triangleIndex < 0){
+	  auto vInd = getNearestVertex(bulletToEigen(localPoint));
+	  auto it = std::find(vertexIndices.begin(), vertexIndices.end(),
+						  vInd);
+	  
+	  
+	  if(it == vertexIndices.end()){
+		vertexIndices.push_back(vInd);
+		impulses.push_back(getDeformationVectorFromImpulse(manPoint, isObject0));
+	  } else {
+		impulses[std::distance(vertexIndices.begin(), it)] +=
+		  getDeformationVectorFromImpulse(manPoint, isObject0);
+	  }
+	}
+  }
+
+  //copy impulses into an Eigen::vector to do a least squares solve
+  Eigen::VectorXd rhs(3*impulses.size());
+  for(auto i : range(impulses.size())){
+	rhs(3*i    ) = impulses[i].x();
+	rhs(3*i + 1) = impulses[i].y();
+	rhs(3*i + 2) = impulses[i].z();
+  }
+  
+  //compute derivates wrt to skinning weights
+
+  //these are partial (entry of Transformation matrix) wrt skinning weights
+  //this is n*3x simplex.size() matrix
+  Eigen::MatrixXd jacobian;
+  computeTransformationDerivatives(egTraverser.currentPosition,
+								   vertexIndices,
+								   jacobian);
+
+  //do a least squares solve for the change in S
+  Eigen::VectorXd deltaS = jacobian.colPivHouseholderQr().solve(rhs);
+  std::cout << "delta S" << deltaS << std::endl;
+  
+  EGTraverser::zeroWeightsSum(deltaS);
+  std::cout << "zero summed: " << deltaS << std::endl;
+
+  egTraverser.currentPosition = EGTraverser::addBcVector(egTraverser.currentPosition,
+														 deltaS);
+  std::cout <<egTraverser.currentPosition.coords << std::endl;
+}
+
+void PlasticObject::computeTransformationDerivatives(const EGPosition& egPosition, 
+													 const std::vector<int>& indices,
+													 Eigen::MatrixXd& deriv){
+  
+  std::vector<double> currentWeights(exampleGraph.nodes.size(), 0.0);
+  auto& simplex = exampleGraph.simplices[egPosition.simplex];
+  for(auto i : range(simplex.size())){
+	currentWeights[simplex[i]] = egPosition.coords[i];
+  }
+  
+
+
+  deriv = Eigen::MatrixXd::Zero(3*indices.size(), simplex.size());
+  
+  //loop over handles
+  for(auto hInd : range(boneWeights.cols())){
+	
+	auto currentInterpedTransform = 
+	  exampleGraph.interpolateTransform(hInd, currentWeights);
+	
+	Eigen::AngleAxis<double> currentRotation{currentInterpedTransform.rotation};
+
+	
+	//loop over vertices that we care about
+	for(auto vInd : range(indices.size())){
+	  
+	  //loop over simplex nodes
+	  for(auto sInd : range(simplex.size())){
+		
+		auto& node = exampleGraph.nodes[simplex[sInd]];
+		Eigen::AngleAxis<double> nodeRotation{node.transformations[hInd].rotation};		
+		//add in the translational part
+		deriv.block(vInd*3, sInd, 3, 1) += 
+		  boneWeights(vInd, hInd)*node.transformations[hInd].translation;
+		
+		//and the rotational part...
+		//I think this is well approximated by
+		//w_i*angle(Q(sInd))*QTotal.axis x QTotal.rotate(v)
+		
+		deriv.block(vInd*3, sInd, 3, 1) +=
+		  boneWeights(vInd, hInd)*
+		  nodeRotation.angle()*
+		  currentRotation.axis().cross(currentRotation*
+									   tetmeshVertices.row(vInd).transpose());
+	  }
+	}
+  }
+
 }

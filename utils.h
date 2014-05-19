@@ -4,6 +4,7 @@
 #include <LinearMath/btQuaternion.h>
 #include <LinearMath/btTransform.h>
 #include <Eigen/Dense>
+#include <vector>
 
 template <typename T>
 inline T sqr(const T& t){
@@ -26,6 +27,14 @@ inline std::ostream& operator<<(std::ostream& outs, const btMatrix3x3& t){
 	   << '[' << t[1][0] << ' ' << t[1][1] << ' ' << t[1][2] << "]\n"
 	   << '[' << t[2][0] << ' ' << t[2][1] << ' ' << t[2][2] << ']';
 
+  return outs;
+}
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& outs, const std::vector<T>& t){
+  for(auto&& u : t){
+	outs << u << ' ';
+  }
   return outs;
 }
 
@@ -67,3 +76,14 @@ inline std::pair<T,T> makeSortedPair(T a, T b){
 	std::pair<T,T>(a, b) :
 	std::pair<T,T>(b,a);
 }
+
+inline std::vector<double> eigenToStd(const Eigen::VectorXd& v){
+  return std::vector<double>{v.data(), v.data() + v.rows()};
+}
+
+inline Eigen::VectorXd stdToEigen(const std::vector<double>& v){
+  Eigen::VectorXd ret(v.size());
+  std::copy(v.begin(), v.end(), ret.data());
+  return ret;
+}
+

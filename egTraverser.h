@@ -51,4 +51,13 @@ public:
 							  EGPosition& out1,
 							  EGPosition& out2);
 
+  
+  static void zeroWeightsSum(std::vector<double>& weights);
+  static void zeroWeightsSum(Eigen::VectorXd& weights);
+
+
+  static EGPosition addBcVector(const EGPosition& start, const std::vector<double>& direction);
+  static EGPosition addBcVector(const EGPosition& start, const Eigen::VectorXd& direction);
+
 };
+

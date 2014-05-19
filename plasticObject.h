@@ -11,6 +11,7 @@
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
+#include <BulletCollision/NarrowPhaseCollision/btManifoldPoint.h>
 
 
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
@@ -35,10 +36,23 @@ public:
   
 
   void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
+  
+  void deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
+  
+  void projectImpulsesOntoExampleManifold();
+
+
+  btVector3 getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
+											bool isObject0);
+  
 
   Eigen::Vector3d getBarycentricCoordinates(btVector3 localPoint, int triangleIndex);
   int getNearestVertex(Eigen::Vector3d localPoint);
   
+
+  void computeTransformationDerivatives(const EGPosition& egPosition, 
+										const std::vector<int>& indices,
+										Eigen::MatrixXd& deriv);
   
   void skinMesh();
 
@@ -60,8 +74,11 @@ public:
   RMMatrix4i tetmeshTets;
   
   RMMatrix3d currentBulletVertexPositions;
+  RMMatrix3d localImpulseBasedOffsets;
 
+  double scaleFactor;//scale the object's size by this much
 
+  double dt;
   double density;
   double mass;
   double volume;
@@ -69,7 +86,7 @@ public:
   
   Eigen::VectorXd tetmeshVertexMasses;
   
-  Skeleton<Bone> skeleton;
+  std::unique_ptr<Skeleton<Bone>> skeleton;
   std::vector<Bone*> boneRoots;
   
   Eigen::MatrixXd boneWeights;
@@ -82,8 +99,9 @@ public:
   double plasticityImpulseYield;
   //scale*(mag(impulse) - yield) gets distributed to handles
   double plasticityImpulseScale;
-
-
+  
+  //second tells us if po is object0 in the contact
+  std::vector<std::pair<btManifoldPoint, bool>> manifoldPoints;
 
   Eigen::MatrixXd LBSMatrix;
 

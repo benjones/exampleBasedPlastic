@@ -41,6 +41,9 @@ class World{
 
   void timeStepDynamicSprites();
   void deformBasedOnImpulses();
+  
+  void collectImpulses();
+
 
   void dumpFrame();
 

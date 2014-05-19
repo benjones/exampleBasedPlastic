@@ -300,10 +300,12 @@ void specialInput(int key, int x, int y){
     std::cout << "currentFrame: " <<currentFrame << std::endl;
     glutPostRedisplay();
   } else if(key == GLUT_KEY_UP){
-    zoomFactor /= 1.1;
+	//    zoomFactor /= 1.1;
+	eye = eye + 0.1*(center - eye);
     glutPostRedisplay();
   } else if(key == GLUT_KEY_DOWN){
-    zoomFactor *= 1.1;
+    //zoomFactor *= 1.1;
+	eye = eye - 0.1*(center - eye);
     glutPostRedisplay();
   }
 }

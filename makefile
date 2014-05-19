@@ -27,6 +27,7 @@ TARGETS = fracture
 
 OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o \
 rigidBody.o couplingConstraintSolver.o plasticObject.o kdTree.o egTraverser.o
+HEADERS = *.h *.H *.hpp
 #collisions.o, punt on this
 
 #-----------------------------------------
@@ -72,7 +73,7 @@ clean:
 #-----------------------------------------
 #-----------------------------------------
 
-fracture: $(OBJECTS)
+fracture: $(OBJECTS) $(HEADERS)
 	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
 
 

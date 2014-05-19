@@ -212,3 +212,65 @@ void EGTraverser::getCorrespondingPoint(const EGPosition& first,
   
   
 }
+
+
+void EGTraverser::zeroWeightsSum(std::vector<double>& weights){
+
+  auto sum = std::accumulate(weights.begin(), weights.end(), 0);
+  for(auto& w : weights){
+	w -= sum/weights.size();
+  }
+}
+void EGTraverser::zeroWeightsSum(Eigen::VectorXd& weights){
+
+  weights.array() -= weights.sum()/weights.rows();
+  if(fabs(weights.sum()) > 1e-8){
+	std::cout << "zeroWeightsSum failed" << std::endl;
+	exit(1);
+  }
+}
+
+
+
+EGPosition EGTraverser::addBcVector(const EGPosition& start, const std::vector<double>& direction){
+  
+  assert(direction.size() == start.coords.size());
+  
+  EGPosition ret;
+  ret.simplex = start.simplex;
+  ret.coords = start.coords;
+  
+  //find scale
+  double s = 1;
+  for(auto i : range(direction.size())){
+	if(direction[i] < 0){ 
+	  s = std::min(-ret.coords[i]/direction[i], s);
+	}
+	if(direction[i] > 0){
+	  s = std::min((1 - ret.coords[i])/direction[i], s);
+	}
+  }
+  
+  std::transform(ret.coords.begin(), ret.coords.end(), direction.begin(),
+				 ret.coords.begin(),
+				 [s](double a, double b){
+				   return a + s*b;
+				 });
+  if(std::any_of(ret.coords.begin(), ret.coords.end(),
+			  [](double a){return a < 0 || a > 1;})){
+	
+	std::cout << "addBcVector screwed up" << std::endl;
+	std::cout << start.coords << std::endl;
+	std::cout << "dir: " << direction << std::endl;
+	std::cout << "ret: " << ret.coords << std::endl;
+	exit(1);
+	
+  }
+  
+  return ret;
+
+}
+EGPosition EGTraverser::addBcVector(const EGPosition& start, const Eigen::VectorXd& direction){
+  return addBcVector(start, eigenToStd(direction));
+  
+}
