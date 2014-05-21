@@ -1573,8 +1573,8 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  std::cout << std::endl;
 	  }*/
 
-
-
+	
+	
 
 
 
@@ -1624,15 +1624,21 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
 	  new btGImpactMeshShape{po.btTriMesh.get()}};
 	
+
+	po.compoundShape = std::unique_ptr<btCompoundShape>{
+	  new btCompoundShape{}};
+
 	po.motionState = 
 	  std::unique_ptr<btDefaultMotionState>{
 	  new btDefaultMotionState{}};
 	
 
+	
+
 	po.bulletBody = std::unique_ptr<btRigidBody>{
 	  new btRigidBody{po.mass,
 					  po.motionState.get(),
-					  po.bulletShape.get()}
+					  po.compoundShape.get()}
 	};
 
 	//compute node masses and volume
@@ -1643,14 +1649,19 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.inertiaAligningTransform.setIdentity();
 	po.worldTransform = btTransform{rotation, offset};
 	po.bulletBody->setCenterOfMassTransform(po.worldTransform);
-											
+	
+	po.saveBulletSnapshot();
 	
 	//aliasing issues?
 	po.updateBulletProperties(po.currentBulletVertexPositions,
 							  po.tetmeshTets);
 
+	po.updateCompoundShape();
 	
+
 	po.bulletShape->updateBound();
+	//	po.compoundShape->updateBound();
+	
 	
 	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
 
@@ -1668,21 +1679,33 @@ void World::loadPlasticObjects(const Json::Value& root){
 }
 
 void World::timeStepDynamicSprites(){
+
+  for(auto& po : plasticObjects){
+	po.saveBulletSnapshot();
+  }
   bulletWorld.stepSimulation(dt);
 
   collectImpulses();
 
+  //deformBasedOnImpulses();
   for(auto& po : plasticObjects){
 	
 	//po.projectImpulsesOntoExampleManifold();
+
+
+	//po.skinMesh();
+	//po.updateBulletProperties(po.currentBulletVertexPositions, 
+	//						  po.tetmeshTets);
+  //po.restoreBulletSnapshot();
   }
- 
+  //bulletWorld.stepSimulation(dt);
   
+
   //deformBasedOnImpulses();
 
   
 
-  for(auto& po : plasticObjects){
+  //  for(auto& po : plasticObjects){
 	
 
 
@@ -1691,7 +1714,7 @@ void World::timeStepDynamicSprites(){
 	//po.currentBulletVertexPositions = po.tetmeshVertices;
 	//po.updateBulletProperties(po.currentBulletVertexPositions,
 	//							  po.tetmeshTets);
-  }
+  //  }
 }
 
 

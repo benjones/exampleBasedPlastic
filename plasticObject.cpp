@@ -21,6 +21,9 @@
 #include "utils.h"
 
 #include "cppitertools/range.hpp"
+
+#include <BulletCollision/Gimpact/btCompoundFromGimpact.h>
+
 using iter::range;
 
 void PlasticObject::loadFromFiles(std::string directory){
@@ -114,8 +117,10 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
 										   const RMMatrix4i& tets){
   
   //the world part of the transform before we do this
-  worldTransform = bulletBody->getCenterOfMassTransform()*
-	inertiaAligningTransform.inverse();
+  worldTransform = 
+	//bulletBody->getCenterOfMassTransform()*
+	bulletSnapshot.comTransform;//*
+  //inertiaAligningTransform.inverse();
 
 
   Eigen::Vector3d centerOfMass = 
@@ -522,4 +527,48 @@ void PlasticObject::computeTransformationDerivatives(const EGPosition& egPositio
 	}
   }
 
+}
+
+void PlasticObject::saveBulletSnapshot(){
+  bulletSnapshot.linearVelocity = bulletBody->getLinearVelocity();
+  bulletSnapshot.angularVelocity = bulletBody->getAngularVelocity();
+  
+  //keep the inertia part out of it
+  bulletSnapshot.comTransform = bulletBody->getCenterOfMassTransform()*
+	inertiaAligningTransform.inverse();
+}
+
+void PlasticObject::restoreBulletSnapshot(){
+  bulletBody->setLinearVelocity(bulletSnapshot.linearVelocity);
+  bulletBody->setAngularVelocity(bulletSnapshot.angularVelocity);
+  bulletBody->setCenterOfMassTransform(bulletSnapshot.comTransform*inertiaAligningTransform);
+}
+
+
+void PlasticObject::updateCompoundShape(){
+  
+
+
+  //clear the compound children
+  while(compoundShape->getNumChildShapes() > 0){
+	compoundShape->removeChildShapeByIndex(0);
+  }
+
+  btTransform tr;
+  tr.setIdentity();
+  
+
+  btVector3 aabbMin,aabbMax;
+
+  bulletShape->getAabb(tr,aabbMin,aabbMax);
+  auto diff = aabbMax - aabbMin;
+  auto minDist = std::min({diff.x(), diff.y(), diff.z()});  
+
+
+  MyInternalTriangleIndexCallback cb(compoundShape.get(),bulletShape.get(), 0.05*minDist);
+
+  bulletShape->getMeshInterface()->InternalProcessAllTriangles(&cb,aabbMin,aabbMax);
+
+  // compoundShape->updateBounds();
+  
 }

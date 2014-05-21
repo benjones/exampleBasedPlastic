@@ -30,22 +30,22 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = "/Applications/CMake 2.8-9.app/Contents/bin/cmake"
+CMAKE_COMMAND = "/Applications/CMake 2.8-12.app/Contents/bin/cmake"
 
 # The command to remove a file.
-RM = "/Applications/CMake 2.8-9.app/Contents/bin/cmake" -E remove -f
+RM = "/Applications/CMake 2.8-12.app/Contents/bin/cmake" -E remove -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The program to use to edit the cache.
-CMAKE_EDIT_COMMAND = "/Applications/CMake 2.8-9.app/Contents/bin/ccmake"
+CMAKE_EDIT_COMMAND = "/Applications/CMake 2.8-12.app/Contents/bin/ccmake"
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/ben/bullet/bullet-2.82-r2704
+CMAKE_SOURCE_DIR = /Users/ben/projects/destruction/bullet-2.82-r2704/Demos
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/ben/bullet/bullet-2.82-r2704
+CMAKE_BINARY_DIR = /Users/ben/projects/destruction/bullet-2.82-r2704/Demos
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -53,58 +53,17 @@ CMAKE_BINARY_DIR = /Users/ben/bullet/bullet-2.82-r2704
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake cache editor..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/ccmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	"/Applications/CMake 2.8-12.app/Contents/bin/ccmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
 edit_cache/fast: edit_cache
 .PHONY : edit_cache/fast
 
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/cmake" -P cmake_install.cmake
-.PHONY : install
-
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Install the project..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/cmake" -P cmake_install.cmake
-.PHONY : install/fast
-
-# Special rule for the target install/local
-install/local: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing only the local directory..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/cmake" -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local
-
-# Special rule for the target install/local
-install/local/fast: install/local
-.PHONY : install/local/fast
-
-# Special rule for the target install/strip
-install/strip: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Installing the project stripped..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/cmake" -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip
-
-# Special rule for the target install/strip
-install/strip/fast: install/strip
-.PHONY : install/strip/fast
-
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-.PHONY : list_install_components/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	"/Applications/CMake 2.8-9.app/Contents/bin/cmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	"/Applications/CMake 2.8-12.app/Contents/bin/cmake" -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -113,14 +72,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(CMAKE_COMMAND) -E cmake_progress_start /Users/ben/bullet/bullet-2.82-r2704/CMakeFiles /Users/ben/bullet/bullet-2.82-r2704/Demos/HelloWorld/CMakeFiles/progress.marks
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f CMakeFiles/Makefile2 Demos/HelloWorld/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/ben/bullet/bullet-2.82-r2704/CMakeFiles 0
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(CMAKE_COMMAND) -E cmake_progress_start /Users/ben/projects/destruction/bullet-2.82-r2704/Demos/CMakeFiles /Users/ben/projects/destruction/bullet-2.82-r2704/Demos/HelloWorld/CMakeFiles/progress.marks
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f CMakeFiles/Makefile2 HelloWorld/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/ben/projects/destruction/bullet-2.82-r2704/Demos/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f CMakeFiles/Makefile2 Demos/HelloWorld/clean
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f CMakeFiles/Makefile2 HelloWorld/clean
 .PHONY : clean
 
 # The main clean target
@@ -129,46 +88,46 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f CMakeFiles/Makefile2 Demos/HelloWorld/preinstall
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f CMakeFiles/Makefile2 HelloWorld/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f CMakeFiles/Makefile2 Demos/HelloWorld/preinstall
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f CMakeFiles/Makefile2 HelloWorld/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
-Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/rule:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f CMakeFiles/Makefile2 Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
-.PHONY : Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
+HelloWorld/CMakeFiles/AppHelloWorld.dir/rule:
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f CMakeFiles/Makefile2 HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
+.PHONY : HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
 
 # Convenience name for target.
-AppHelloWorld: Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
+AppHelloWorld: HelloWorld/CMakeFiles/AppHelloWorld.dir/rule
 .PHONY : AppHelloWorld
 
 # fast build rule for target.
 AppHelloWorld/fast:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/build
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make HelloWorld/CMakeFiles/AppHelloWorld.dir/build
 .PHONY : AppHelloWorld/fast
 
 # target to build an object file
 HelloWorld.o:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.o
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.o
 .PHONY : HelloWorld.o
 
 # target to preprocess a source file
 HelloWorld.i:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.i
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.i
 .PHONY : HelloWorld.i
 
 # target to generate assembly for a file
 HelloWorld.s:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(MAKE) -f Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.s
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(MAKE) -f HelloWorld/CMakeFiles/AppHelloWorld.dir/build.make HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.s
 .PHONY : HelloWorld.s
 
 # Help Target
@@ -179,10 +138,6 @@ help:
 	@echo "... depend"
 	@echo "... AppHelloWorld"
 	@echo "... edit_cache"
-	@echo "... install"
-	@echo "... install/local"
-	@echo "... install/strip"
-	@echo "... list_install_components"
 	@echo "... rebuild_cache"
 	@echo "... HelloWorld.o"
 	@echo "... HelloWorld.i"
@@ -198,6 +153,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /Users/ben/bullet/bullet-2.82-r2704 && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /Users/ben/projects/destruction/bullet-2.82-r2704/Demos && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

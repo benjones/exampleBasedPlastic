@@ -20,6 +20,14 @@ using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
 
 class PlasticObject{
 public:
+
+
+  struct BulletSnapshot{
+	btVector3 linearVelocity, angularVelocity;
+	btTransform comTransform;
+  };
+  BulletSnapshot bulletSnapshot;
+
   PlasticObject(){}
   ~PlasticObject() = default;
   PlasticObject(PlasticObject&&) = default;
@@ -54,14 +62,24 @@ public:
 										const std::vector<int>& indices,
 										Eigen::MatrixXd& deriv);
   
+
+
+  void updateCompoundShape();
+
   void skinMesh();
 
   void dump(std::string filename);
+
+  void saveBulletSnapshot();
+  void restoreBulletSnapshot();
 
   ExampleGraph exampleGraph;
   EGTraverser egTraverser;
   std::unique_ptr<btRigidBody> bulletBody;
   std::unique_ptr<btGImpactMeshShape> bulletShape;
+
+  std::unique_ptr<btCompoundShape> compoundShape;
+
   std::unique_ptr<btDefaultMotionState> motionState;
   
   

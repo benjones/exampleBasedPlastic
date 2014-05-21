@@ -4,27 +4,17 @@ SET(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 SET(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/ben/bullet/bullet-2.82-r2704/Demos/HelloWorld/HelloWorld.cpp" "/Users/ben/bullet/bullet-2.82-r2704/Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.o"
+  "/Users/ben/projects/destruction/bullet-2.82-r2704/Demos/HelloWorld/HelloWorld.cpp" "/Users/ben/projects/destruction/bullet-2.82-r2704/Demos/HelloWorld/CMakeFiles/AppHelloWorld.dir/HelloWorld.o"
   )
 SET(CMAKE_CXX_COMPILER_ID "Clang")
 
-# Preprocessor definitions for this target.
-SET(CMAKE_TARGET_DEFINITIONS
-  "BT_USE_DOUBLE_PRECISION"
-  "USE_GRAPHICAL_BENCHMARK"
-  )
-
 # Targets to which this target links.
 SET(CMAKE_TARGET_LINKED_INFO_FILES
-  "/Users/ben/bullet/bullet-2.82-r2704/src/BulletDynamics/CMakeFiles/BulletDynamics.dir/DependInfo.cmake"
-  "/Users/ben/bullet/bullet-2.82-r2704/src/BulletCollision/CMakeFiles/BulletCollision.dir/DependInfo.cmake"
-  "/Users/ben/bullet/bullet-2.82-r2704/src/LinearMath/CMakeFiles/LinearMath.dir/DependInfo.cmake"
   )
 
 # The include file search paths:
 SET(CMAKE_C_TARGET_INCLUDE_PATH
-  "/usr/local/include"
-  "src"
+  "/src"
   )
 SET(CMAKE_CXX_TARGET_INCLUDE_PATH ${CMAKE_C_TARGET_INCLUDE_PATH})
 SET(CMAKE_Fortran_TARGET_INCLUDE_PATH ${CMAKE_C_TARGET_INCLUDE_PATH})
