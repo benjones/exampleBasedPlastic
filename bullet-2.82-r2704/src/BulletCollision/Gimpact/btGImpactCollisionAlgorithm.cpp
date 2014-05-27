@@ -31,6 +31,8 @@ Concave-Concave Collision
 #include "btContactProcessing.h"
 #include "LinearMath/btQuickprof.h"
 
+#include <iostream>
+
 
 //! Class for accessing the plane equation
 class btPlaneShape : public btStaticPlaneShape
@@ -273,12 +275,19 @@ void btGImpactCollisionAlgorithm::gimpact_vs_gimpact_find_pairs(
 					  const btGImpactShapeInterface * shape0,
 					  const btGImpactShapeInterface * shape1,btPairSet & pairset)
 {
+  std::cout << "looking for gimpact/gimpact pairs" << std::endl;
 	if(shape0->hasBoxSet() && shape1->hasBoxSet())
 	{
+	  std::cout <<" using box set?" << std::endl;
+	  std::cout << "nnodes: " << shape0->getBoxSet()->getNodeCount() << std::endl;
+	  std::cout << "nnodes2: " << shape1->getBoxSet()->getNodeCount() << std::endl;
 		btGImpactBoxSet::find_collision(shape0->getBoxSet(),trans0,shape1->getBoxSet(),trans1,pairset);
+		std::cout << "pairset size: " << pairset.size() << std::endl;
 	}
 	else
 	{
+
+	  std::cout << "no box set" << std::endl;
 		btAABB boxshape0;
 		btAABB boxshape1;
 		int i = shape0->getNumChildShapes();
@@ -294,6 +303,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_gimpact_find_pairs(
 
 				if(boxshape1.has_collision(boxshape0))
 				{
+				  std::cout << "bounding box overlap" << std::endl;
 					pairset.push_pair(i,j);
 				}
 			}
@@ -337,6 +347,7 @@ void btGImpactCollisionAlgorithm::gimpact_vs_shape_find_pairs(
 
 			if(boxshape.has_collision(boxshape0))
 			{
+
 				collided_primitives.push_back(i);
 			}
 		}
@@ -352,6 +363,8 @@ void btGImpactCollisionAlgorithm::collide_gjk_triangles(const btCollisionObjectW
 				  const btGImpactMeshShapePart * shape1,
 				  const int * pairs, int pair_count)
 {
+
+  std::cout << "gjk" << std::endl;
 	btTriangleShapeEx tri0;
 	btTriangleShapeEx tri1;
 
@@ -359,7 +372,7 @@ void btGImpactCollisionAlgorithm::collide_gjk_triangles(const btCollisionObjectW
 	shape1->lockChildShapes();
 
 	const int * pair_pointer = pairs;
-
+	std::cout << "pair count: " << pair_count << std::endl;
 	while(pair_count--)
 	{
 
@@ -376,6 +389,7 @@ void btGImpactCollisionAlgorithm::collide_gjk_triangles(const btCollisionObjectW
 		//collide two convex shapes
 		if(tri0.overlap_test_conservative(tri1))
 		{
+		  //std::cout << "convex_convex collide check" << std::endl;
 			convex_vs_convex_collision(body0Wrap,body1Wrap,&tri0,&tri1);
 		}
 
@@ -391,6 +405,7 @@ void btGImpactCollisionAlgorithm::collide_sat_triangles(const btCollisionObjectW
 					  const btGImpactMeshShapePart * shape1,
 					  const int * pairs, int pair_count)
 {
+  std::cout << "sat" << std::endl;
 	btTransform orgtrans0 = body0Wrap->getWorldTransform();
 	btTransform orgtrans1 = body1Wrap->getWorldTransform();
 

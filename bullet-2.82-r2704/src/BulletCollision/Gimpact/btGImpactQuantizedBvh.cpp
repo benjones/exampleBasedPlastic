@@ -23,6 +23,7 @@ subject to the following restrictions:
 
 #include "btGImpactQuantizedBvh.h"
 #include "LinearMath/btQuickprof.h"
+#include <iostream>
 
 #ifdef TRI_COLLISION_PROFILING
 btClock g_q_tree_clock;
@@ -183,6 +184,9 @@ void btQuantizedBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY & primitive_boxes, i
 	int curIndex = m_num_nodes;
 	m_num_nodes++;
 
+	//std::cout << "making subtree, start " << startIndex << " , end; " << endIndex << " curr: " << curIndex << std::endl;
+	//std::cout << "num nodes: " << m_num_nodes << std::endl;
+
 	btAssert((endIndex-startIndex)>0);
 
 	if ((endIndex-startIndex)==1)
@@ -198,10 +202,12 @@ void btQuantizedBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY & primitive_boxes, i
 	//split axis
 	int splitIndex = _calc_splitting_axis(primitive_boxes,startIndex,endIndex);
 
+	//std::cout << "split index before: " << splitIndex << std::endl;
 	splitIndex = _sort_and_calc_splitting_index(
 			primitive_boxes,startIndex,endIndex,
 			splitIndex//split axis
 			);
+	//std::cout << "split index after: " << splitIndex << std::endl;
 
 
 	//calc this node bounding box
@@ -213,6 +219,37 @@ void btQuantizedBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY & primitive_boxes, i
 	{
 		node_bound.merge(primitive_boxes[i].m_bound);
 	}
+	/*std::cout << "node bound before set: " << node_bound.m_min.x() << ' ' 
+			  << node_bound.m_min.y() << ' '
+			  << node_bound.m_min.z() <<  "     " 
+			  << node_bound.m_max.x() << ' ' 
+			  << node_bound.m_max.y() << ' '
+			  << node_bound.m_max.z() 
+			  << std::endl;
+	
+	std::cout << "global min: " 
+			  << m_global_bound.m_min.x() << ' '
+			  << m_global_bound.m_min.y() << ' '
+			  << m_global_bound.m_min.z() << std::endl;
+
+	std::cout << "global max: " 
+			  << m_global_bound.m_max.x() << ' '
+			  << m_global_bound.m_max.y() << ' '
+			  << m_global_bound.m_max.z() << std::endl;
+	*/
+	
+	/*for(int i = 0; i < primitive_boxes.size(); ++i){
+	  std::cout << "box i: " << std::endl;
+	  std::cout << primitive_boxes[i].m_bound.m_min.x() << ' ';
+	  std::cout << primitive_boxes[i].m_bound.m_min.y() << ' ';
+	  std::cout << primitive_boxes[i].m_bound.m_min.z() << ' ';
+	  std::cout << "max: ";
+	  std::cout << primitive_boxes[i].m_bound.m_max.x() << ' ';
+	  std::cout << primitive_boxes[i].m_bound.m_max.y() << ' ';
+	  std::cout << primitive_boxes[i].m_bound.m_max.z() << ' ';
+	  std::cout << "data: " << primitive_boxes[i].m_data << std::endl;
+		
+	  }*/
 
 	setNodeBound(curIndex,node_bound);
 
@@ -233,6 +270,8 @@ void btQuantizedBvhTree::_build_sub_tree(GIM_BVH_DATA_ARRAY & primitive_boxes, i
 void btQuantizedBvhTree::build_tree(
 	GIM_BVH_DATA_ARRAY & primitive_boxes)
 {
+  std::cout << "building tree" << std::endl;
+
 	calc_quantization(primitive_boxes);
 	// initialize node count to 0
 	m_num_nodes = 0;
@@ -246,6 +285,7 @@ void btQuantizedBvhTree::build_tree(
 
 void btGImpactQuantizedBvh::refit()
 {
+  std::cout << "Refitting" << std::endl;
 	int nodecount = getNodeCount();
 	while(nodecount--)
 	{

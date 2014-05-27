@@ -198,11 +198,22 @@ void PlasticObject::dump(std::string filename){
 				tetmeshTriangles);
   
   
+
+  
 }
 
 
-void PlasticObject::skinMesh(){
+void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 
+  
+  btTransform trans;
+  trans.setIdentity();
+  btVector3 aabbMin, aabbMax;
+  bulletShape->getAabb(trans, aabbMin,aabbMax);
+  /*std::cout << "before: " //<< trans << std::endl
+			<< "aabbmin" <<aabbMin << std::endl
+			<< "aabbmax" <<aabbMax << std::endl;
+  */
   exampleGraph.setInterpolatedTransform(egTraverser.currentPosition.simplex,
 										egTraverser.currentPosition.coords);
 
@@ -230,6 +241,15 @@ void PlasticObject::skinMesh(){
 
   Eigen::MatrixXd U3 = scaleFactor*(LBSMatrix*TCol.cast<double>().eval());
   
+  
+  auto* dataBefore = currentBulletVertexPositions.data();
+  //std::cout << "data bafore: " << currentBulletVertexPositions.data() << std::endl;
+  /* for(auto i : range(currentBulletVertexPositions.rows())){
+	currentBulletVertexPositions(i, 0) = U3(i);
+	currentBulletVertexPositions(i, 1) = U3(currentBulletVertexPositions.rows() +i);
+	currentBulletVertexPositions(i, 2) = U3(2*currentBulletVertexPositions.rows() + i);
+	}*/
+
   currentBulletVertexPositions.col(0) = U3.block(0,0, 
 												 currentBulletVertexPositions.rows(),1);
   currentBulletVertexPositions.col(1) = U3.block(currentBulletVertexPositions.rows(), 0,
@@ -237,8 +257,57 @@ void PlasticObject::skinMesh(){
   currentBulletVertexPositions.col(2) = U3.block(2*currentBulletVertexPositions.rows(), 0,
 												 currentBulletVertexPositions.rows(), 1);
   
+  //std::cout << "data after: " << currentBulletVertexPositions.data() << std::endl;
+  if(dataBefore != currentBulletVertexPositions.data()){
+	std::cout << "data changed" << std::endl;
+	exit(1);
+  }
   //add the extra offsets
   currentBulletVertexPositions += localImpulseBasedOffsets;
+
+
+  //remove and re-add the bodies
+
+  /*bulletWorld.removeRigidBody(bulletBody.get());
+
+  btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
+	new btTriangleIndexVertexArray{
+	  static_cast<int>(tetmeshTriangles.rows()),
+	  tetmeshTriangles.data(),
+	  3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
+	  static_cast<int>(currentBulletVertexPositions.rows()),
+	  currentBulletVertexPositions.data(),
+	  3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
+	}
+  };
+	
+  bulletShape = std::unique_ptr<btGImpactMeshShape>{
+	new btGImpactMeshShape{btTriMesh.get()}};
+
+  bulletBody = std::unique_ptr<btRigidBody>{
+	new btRigidBody{mass,
+					motionState.get(),
+					bulletShape.get()}
+	//po.compoundShape.get()}
+  };
+
+  bulletWorld.addRigidBody(bulletBody.get());
+
+
+  //
+  */
+  bulletShape->postUpdate();
+  bulletShape->updateBound();
+  bulletBody->setActivationState(DISABLE_DEACTIVATION);
+  /*bulletShape->getAabb(trans, aabbMin,aabbMax);
+  std::cout << "after: " << std::endl//<< trans << std::endl
+			<< "aabbmin" <<aabbMin << std::endl
+			<< "eigen  " << "[" << currentBulletVertexPositions.colwise().minCoeff() << "]\n"
+			<< "aabbmax" << aabbMax << std::endl
+			<< "eigen  " << "[" << currentBulletVertexPositions.colwise().maxCoeff() << "]" 
+			<< std::endl;
+  */
+
 
 }
 
@@ -554,7 +623,78 @@ void PlasticObject::updateCompoundShape(){
 	compoundShape->removeChildShapeByIndex(0);
   }
 
-  btTransform tr;
+
+  //use HACD to split up the object...
+
+  hacdVertices.resize(currentBulletVertexPositions.rows());
+  for(auto i : range(hacdVertices.size())){
+	hacdVertices[i] = HACD::Vec3<double>{currentBulletVertexPositions(i,0),
+										 currentBulletVertexPositions(i,1),
+										 currentBulletVertexPositions(i,2)};
+  }
+  hacdTriangles.resize(tetmeshTriangles.rows());
+  for(auto i : range(hacdTriangles.size())){
+	hacdTriangles[i] = HACD::Vec3<long>(tetmeshTriangles(i,0),
+										tetmeshTriangles(i,1),
+										tetmeshTriangles(i,2));
+  }
+
+  HACD::HACD hacd;
+  hacd.SetPoints(hacdVertices.data());
+  hacd.SetNPoints(hacdVertices.size());
+  hacd.SetTriangles(hacdTriangles.data());
+  hacd.SetNTriangles(hacdTriangles.size());
+  hacd.SetCompacityWeight(0.1);
+  hacd.SetVolumeWeight(0.0);
+  
+  
+  size_t nClusters = 5;
+  double concavity = 100;
+  bool invert = false;
+  bool addExtraDistPoints = false;
+  bool addNeighboursDistPoints = false;
+  bool addFacesPoints = false;       
+  
+  hacd.SetNClusters(nClusters);                     // minimum number of clusters
+  hacd.SetNVerticesPerCH(100);                      // max of 100 vertices per convex-hull
+  hacd.SetConcavity(concavity);                     // maximum concavity
+  hacd.SetAddExtraDistPoints(addExtraDistPoints);   
+  hacd.SetAddNeighboursDistPoints(addNeighboursDistPoints);   
+  hacd.SetAddFacesPoints(addFacesPoints); 
+  
+  hacd.Compute();
+  nClusters = hacd.GetNClusters();	
+  
+  convexHulls.clear();
+  convexHulls.reserve(nClusters);
+
+  std::cout << "nclusters: " << nClusters << std::endl;
+  for(auto cluster : range(nClusters)){
+	convexHulls.emplace_back(new btConvexHullShape{});
+	convexHulls.back()->setMargin(0.00001);//tiny
+	//reuse these vectors
+	hacdVertices.resize(hacd.GetNPointsCH(cluster));
+	hacdTriangles.resize(hacd.GetNTrianglesCH(cluster));
+	hacd.GetCH(cluster, hacdVertices.data(), hacdTriangles.data());
+
+	for(auto& vertex : hacdVertices){
+	  convexHulls.back()->addPoint(btVector3{vertex.X(),vertex.Y(), vertex.Z()});
+	  
+	}
+	btTransform trans;
+	trans.setIdentity();
+	compoundShape->addChildShape(trans,convexHulls.back().get());
+	
+  }
+  
+  
+
+  //hacd.Save("output.wrl", false);
+
+  
+
+  
+  /*btTransform tr;
   tr.setIdentity();
   
 
@@ -568,7 +708,7 @@ void PlasticObject::updateCompoundShape(){
   MyInternalTriangleIndexCallback cb(compoundShape.get(),bulletShape.get(), 0.05*minDist);
 
   bulletShape->getMeshInterface()->InternalProcessAllTriangles(&cb,aabbMin,aabbMax);
-
+  */
   // compoundShape->updateBounds();
   
 }

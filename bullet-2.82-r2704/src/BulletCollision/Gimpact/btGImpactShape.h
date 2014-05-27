@@ -38,7 +38,7 @@ subject to the following restrictions:
 #include "LinearMath/btAlignedObjectArray.h"
 
 #include "btGImpactQuantizedBvh.h" // box tree class
-
+#include <iostream>
 
 //! declare Quantized trees, (you can change to float based trees)
 typedef btGImpactQuantizedBvh btGImpactBoxSet;
@@ -122,7 +122,9 @@ public:
 	*/
     SIMD_FORCE_INLINE void updateBound()
     {
+	  std::cout << "update bound" << std::endl;
     	if(!m_needs_update) return;
+		std::cout << "recalcing aabb in gimpactshape" << std::endl;
     	calcLocalAABB();
     	m_needs_update  = false;
     }
@@ -925,10 +927,12 @@ protected:
 	//! use this function for perfofm refit in bounding boxes
     virtual void calcLocalAABB()
     {
+	  std::cout << "localAABB" << std::endl;
     	m_localAABB.invalidate();
     	int i = m_mesh_parts.size();
     	while(i--)
     	{
+		  std::cout << "mesh part: " << i << std::endl;
     		m_mesh_parts[i]->updateBound();
     		m_localAABB.merge(m_mesh_parts[i]->getLocalBox());
     	}

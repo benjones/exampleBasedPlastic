@@ -1,27 +1,27 @@
 {
 	"ground" : true,
-	"dt" : 0.01,
+	"dt" : 0.005,
 
 	"plasticObjects" : [
 		{
 			"directory" : "inputFiles/barrel/",
 			"offset" : [0,1,0],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 500,
+			"plasticityImpulseScale" : 500,//500,
 			"plasticityImpulseThreshold" : 0.001
 		},
 		{
 			"directory" : "inputFiles/barrel/",
 			"offset" : [1,2,2],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 500,
+			"plasticityImpulseScale" : 500,//500,
 			"plasticityImpulseThreshold" : 0.001
 		},
 		{
 			"directory" : "inputFiles/barrel/",
-			"offset" : [0,4,0],
+			"offset" : [0,4,0.1],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 500,
+			"plasticityImpulseScale" : 500,//500,
 			"plasticityImpulseThreshold" : 0.001
 		}
 	]

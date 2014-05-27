@@ -13,7 +13,7 @@ FLAGS=-Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++\
 #OPT   = -O3 -g #-flto for more speed
  #ignore glut deprecation warnings
 #-DPCUBE -DINVENTOR_DEFINED
-OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION
+OPT = -O0 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION -DBULLET_TRIANGLE_COLLISION
 
 #OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -DBT_USE_DOUBLE_PRECISION  -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 #-DPCUBE -DINVENTOR_DEFINED
 #OPT   = -g -Wall
@@ -33,12 +33,13 @@ HEADERS = *.h *.H *.hpp
 #-----------------------------------------
 
 LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath \
+-L./bullet-2.82-r2704/build/Extras/HACD \
 -L./bullet-2.82-r2704/build/src/BulletCollision \
 -L./bullet-2.82-r2704/build/src/BulletDynamics \
 -lslcommon -llapack -lblas -lBulletDynamics \
--lBulletCollision -lLinearMath  \
+-lBulletCollision -lLinearMath -lHACD \
 -framework OpenGL #./eltopo/eltopo3d/libeltopo_release.a
-INCS = -I./Common -I./bullet-2.82-r2704/src/ -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
+INCS = -I./Common -I./bullet-2.82-r2704/src/ -I./bullet-2.82-r2704/Extras -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
 
 EIGEN_INCLUDE=-I/usr/local/include/eigen3
 FAST_INCLUDE = -I../fastSkinning

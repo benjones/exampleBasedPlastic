@@ -155,6 +155,38 @@ void drawTriangles(bool changeColor){
   glEnd();
 }
 
+void drawPoints(){
+
+
+  glPointSize(5);
+  glDisable(GL_DEPTH_TEST);
+  glBegin(GL_POINTS);
+  for(auto e : enumerate(globalObjs[currentFrame])){
+	auto redChannel = static_cast<double>(e.index)/globalObjs[currentFrame].size();
+	glColor3d(redChannel, 1, 1);
+	auto& oj = e.element;
+	for(auto& v : oj.pts){
+	  glVertex3d(v[0], v[1], v[2]);
+	}
+  }
+  glEnd();
+  
+
+  glPointSize(8);
+
+  glBegin(GL_POINTS);
+
+  glColor3d(1, 0, 0);
+  auto& oj = globalObjs[currentFrame].back();
+  for(auto& v : oj.pts){
+	glVertex3d(v[0], v[1], v[2]);
+  }
+  
+  glEnd();
+  glEnable(GL_DEPTH_TEST);
+
+}
+
 
 void displayFrame(){
 
@@ -258,7 +290,7 @@ void displayFrame(){
     drawTriangles(false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-
+	drawPoints();
 
     glFlush();
     glutSwapBuffers();

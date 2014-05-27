@@ -661,9 +661,63 @@ void World::dumpFrame(){
 	sprintf(fname, framestring, objectCount, currentFrame);
 	plasticObject.dump(fname);
 	objectCount++;
+
+
+	sprintf(fname, framestring, objectCount, currentFrame);
+	objectCount++;
+	std::ofstream outs(fname);
+	
+	btTransform trans = plasticObject.bulletBody->getCenterOfMassTransform();
+	btVector3 abmin, abmax;
+	plasticObject.bulletShape->getAabb(trans, abmin, abmax);
+	outs << "v " << abmin.x() << ' ' << abmin.y() << ' ' << abmin.z() << '\n'
+		 << "v " << abmax.x() << ' ' << abmin.y() << ' ' << abmin.z() << '\n'
+		 << "v " << abmin.x() << ' ' << abmax.y() << ' ' << abmin.z() << '\n'
+		 << "v " << abmax.x() << ' ' << abmax.y() << ' ' << abmin.z() << '\n'
+		 << "v " << abmin.x() << ' ' << abmin.y() << ' ' << abmax.z() << '\n'
+		 << "v " << abmax.x() << ' ' << abmin.y() << ' ' << abmax.z() << '\n'
+		 << "v " << abmin.x() << ' ' << abmax.y() << ' ' << abmax.z() << '\n'
+		 << "v " << abmax.x() << ' ' << abmax.y() << ' ' << abmax.z() << std::endl;
+	
+	trans.setIdentity();
+	plasticObject.bulletShape->getAabb(trans, abmin, abmax);
+	for(auto i : range(plasticObject.currentBulletVertexPositions.rows())){
+	  
+	  if(plasticObject.currentBulletVertexPositions(i, 0) < abmin.x() ||
+		 plasticObject.currentBulletVertexPositions(i, 1) < abmin.y() ||
+		 plasticObject.currentBulletVertexPositions(i, 2) < abmin.z() ||
+		 plasticObject.currentBulletVertexPositions(i, 0) > abmax.x() ||
+		 plasticObject.currentBulletVertexPositions(i, 1) > abmax.y() ||
+		 plasticObject.currentBulletVertexPositions(i, 2) > abmax.z()){
+		
+		std::cout << "vertex outside of bounding box :( " << std::endl;
+		std::cout << abmin << "\n"
+				  << abmax << "\n"
+				  << plasticObject.currentBulletVertexPositions.row(i) << std::endl;
+		break;
+		//exit(1);
+	  }
+	}
   }
 
-
+  {
+	sprintf(fname, framestring, objectCount, currentFrame);
+	std::ofstream outs(fname);
+	
+	
+	objectCount++;
+	
+	for(auto i : range(dispatcher->getNumManifolds())){
+	  auto* man = dispatcher->getManifoldByIndexInternal(i);
+	  for(auto j : range(man->getNumContacts())){
+		auto& manPoint = man->getContactPoint(j);
+		auto& va = manPoint.getPositionWorldOnA();
+		auto& vb = manPoint.getPositionWorldOnB();
+		outs << "v " << va.x() << ' ' << va.y() << ' ' << va.z() << std::endl;
+		outs << "v " << vb.x() << ' ' << vb.y() << ' ' << vb.z() << std::endl;
+	  }
+	}
+  }
   currentFrame++;
 
 }
@@ -1625,8 +1679,8 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  new btGImpactMeshShape{po.btTriMesh.get()}};
 	
 
-	po.compoundShape = std::unique_ptr<btCompoundShape>{
-	  new btCompoundShape{}};
+	//po.compoundShape = std::unique_ptr<btCompoundShape>{
+	//	  new btCompoundShape{}};
 
 	po.motionState = 
 	  std::unique_ptr<btDefaultMotionState>{
@@ -1634,11 +1688,12 @@ void World::loadPlasticObjects(const Json::Value& root){
 	
 
 	
-
+	po.mass = 1; //save a bit of grief in rb construction
 	po.bulletBody = std::unique_ptr<btRigidBody>{
 	  new btRigidBody{po.mass,
 					  po.motionState.get(),
-					  po.compoundShape.get()}
+					  po.bulletShape.get()}
+					  //po.compoundShape.get()}
 	};
 
 	//compute node masses and volume
@@ -1656,7 +1711,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.updateBulletProperties(po.currentBulletVertexPositions,
 							  po.tetmeshTets);
 
-	po.updateCompoundShape();
+	//po.updateCompoundShape();
 	
 
 	po.bulletShape->updateBound();
@@ -1683,8 +1738,9 @@ void World::timeStepDynamicSprites(){
   for(auto& po : plasticObjects){
 	po.saveBulletSnapshot();
   }
-  bulletWorld.stepSimulation(dt);
 
+  bulletWorld.stepSimulation(dt, 10, dt);
+  
   collectImpulses();
 
   //deformBasedOnImpulses();
@@ -1693,12 +1749,14 @@ void World::timeStepDynamicSprites(){
 	//po.projectImpulsesOntoExampleManifold();
 
 
-	//po.skinMesh();
-	//po.updateBulletProperties(po.currentBulletVertexPositions, 
-	//						  po.tetmeshTets);
-  //po.restoreBulletSnapshot();
+	po.skinMesh(bulletWorld);
+	po.updateBulletProperties(po.currentBulletVertexPositions, 
+							  po.tetmeshTets);
+	//po.updateCompoundShape();
+	po.restoreBulletSnapshot();
   }
-  //bulletWorld.stepSimulation(dt);
+  bulletWorld.stepSimulation(dt, 10, dt);
+  
   
 
   //deformBasedOnImpulses();
@@ -1728,11 +1786,11 @@ void World::deformBasedOnImpulses(){
 	auto* rb2 = btRigidBody::upcast(man->getBody1());
 	if(rb1 && rb1->getUserIndex() >= 0){
 	  std::cout << "first" << std::endl;
-	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulses(man, true);
+	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulseLocal(man, true);
 	}
 	if(rb2 && rb2->getUserIndex() >= 0){
 	  std::cout << "second" << std::endl;
-	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulses(man, false);
+	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulseLocal(man, false);
 	}
   }
 }
@@ -1760,5 +1818,6 @@ void World::collectImpulses(){
 																					false));
 	  }
 	}
+	//man->clearManifold();
   }
 }
