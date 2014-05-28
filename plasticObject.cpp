@@ -163,6 +163,11 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
 	
   }
   
+  bulletShape->postUpdate();
+  bulletShape->updateBound();
+  bulletBody->setActivationState(DISABLE_DEACTIVATION);
+  
+
   inertiaAligningTransform = btTransform{eigenToBullet(evecs),
   										 eigenToBullet(centerOfMass)};
 
@@ -250,13 +255,17 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 	currentBulletVertexPositions(i, 2) = U3(2*currentBulletVertexPositions.rows() + i);
 	}*/
 
+												  
+
   currentBulletVertexPositions.col(0) = U3.block(0,0, 
-												 currentBulletVertexPositions.rows(),1);
+												 currentBulletVertexPositions.rows(),1).eval();
   currentBulletVertexPositions.col(1) = U3.block(currentBulletVertexPositions.rows(), 0,
 												 currentBulletVertexPositions.rows(), 1);
   currentBulletVertexPositions.col(2) = U3.block(2*currentBulletVertexPositions.rows(), 0,
 												 currentBulletVertexPositions.rows(), 1);
   
+
+
   //std::cout << "data after: " << currentBulletVertexPositions.data() << std::endl;
   if(dataBefore != currentBulletVertexPositions.data()){
 	std::cout << "data changed" << std::endl;
@@ -283,7 +292,7 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 	
   bulletShape = std::unique_ptr<btGImpactMeshShape>{
 	new btGImpactMeshShape{btTriMesh.get()}};
-
+  bulletShape->updateBound();
   bulletBody = std::unique_ptr<btRigidBody>{
 	new btRigidBody{mass,
 					motionState.get(),
@@ -292,13 +301,11 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   };
 
   bulletWorld.addRigidBody(bulletBody.get());
-
+  */
 
   //
-  */
-  bulletShape->postUpdate();
-  bulletShape->updateBound();
-  bulletBody->setActivationState(DISABLE_DEACTIVATION);
+  
+
   /*bulletShape->getAabb(trans, aabbMin,aabbMax);
   std::cout << "after: " << std::endl//<< trans << std::endl
 			<< "aabbmin" <<aabbMin << std::endl

@@ -658,10 +658,6 @@ void World::dumpFrame(){
   }
   
   for(auto& plasticObject : plasticObjects){
-	sprintf(fname, framestring, objectCount, currentFrame);
-	plasticObject.dump(fname);
-	objectCount++;
-
 
 	sprintf(fname, framestring, objectCount, currentFrame);
 	objectCount++;
@@ -690,14 +686,30 @@ void World::dumpFrame(){
 		 plasticObject.currentBulletVertexPositions(i, 1) > abmax.y() ||
 		 plasticObject.currentBulletVertexPositions(i, 2) > abmax.z()){
 		
-		std::cout << "vertex outside of bounding box :( " << std::endl;
+		std::cout << "vertex "<< i << " outside of bounding box :( " << std::endl;
 		std::cout << abmin << "\n"
 				  << abmax << "\n"
 				  << plasticObject.currentBulletVertexPositions.row(i) << std::endl;
+
+
+		Eigen::Vector3d realMin = plasticObject.currentBulletVertexPositions.colwise().minCoeff();
+		Eigen::Vector3d realMax = plasticObject.currentBulletVertexPositions.colwise().maxCoeff();
+		
+		std::cout << "eigen: " << realMin << std::endl << realMax << std::endl;
+
+		std::cout << "bb size: " << abmax - abmin << std::endl;
+		std::cout << "eigen: " << realMax - realMin << std::endl;
+
+
 		break;
 		//exit(1);
 	  }
+
 	}
+	sprintf(fname, framestring, objectCount, currentFrame);
+	plasticObject.dump(fname);
+	objectCount++;
+	  
   }
 
   {
@@ -1616,6 +1628,9 @@ void World::loadPlasticObjects(const Json::Value& root){
 	  }
 	};
 	
+	std::cout << "nverts: " << po.currentBulletVertexPositions.rows() << "  ntris: " 
+			  << po.tetmeshTriangles.size() << std::endl;
+
 	//	std::cout << "first 3 vertices: " << 
 	//	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
 	/*for(auto row : range(po.tetmeshTriangles.rows())){
@@ -1746,8 +1761,7 @@ void World::timeStepDynamicSprites(){
   //deformBasedOnImpulses();
   for(auto& po : plasticObjects){
 	
-	//po.projectImpulsesOntoExampleManifold();
-
+	po.projectImpulsesOntoExampleManifold();
 
 	po.skinMesh(bulletWorld);
 	po.updateBulletProperties(po.currentBulletVertexPositions, 
@@ -1756,7 +1770,6 @@ void World::timeStepDynamicSprites(){
 	po.restoreBulletSnapshot();
   }
   bulletWorld.stepSimulation(dt, 10, dt);
-  
   
 
   //deformBasedOnImpulses();
