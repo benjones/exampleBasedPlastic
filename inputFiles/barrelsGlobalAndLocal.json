@@ -1,0 +1,37 @@
+{
+	"ground" : true,
+	"dt" : 0.01,//0.005,
+
+	"plasticObjects" : [
+		{
+			"directory" : "inputFiles/barrel2/",
+			"offset" : [0,1,0],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 80,
+			"plasticityImpulseYield" : 0.001,
+			"localPlasticityImpulseScale" : 3,
+			"localPlasticityImpulseYield" : 0.001
+
+		},
+		{
+			"directory" : "inputFiles/barrel2/",
+			"offset" : [1,2,2],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 80,//500,
+			"plasticityImpulseYield" : 0.001,
+			"localPlasticityImpulseScale" : 3,
+			"localPlasticityImpulseYield" : 0.001
+
+		},
+		{
+			"directory" : "inputFiles/barrel2/",
+			"offset" : [0,4,0.3],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 80,//500,
+			"plasticityImpulseYield" : 0.001,
+			"localPlasticityImpulseScale" : 3,
+			"localPlasticityImpulseYield" : 0.001
+
+		}
+	]
+}

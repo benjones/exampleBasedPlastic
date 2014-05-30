@@ -59,5 +59,7 @@ public:
   static EGPosition addBcVector(const EGPosition& start, const std::vector<double>& direction);
   static EGPosition addBcVector(const EGPosition& start, const Eigen::VectorXd& direction);
 
+  static void projectBackOntoSimplex(std::vector<double>& weights);
+
 };
 

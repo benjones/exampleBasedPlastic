@@ -40,6 +40,7 @@ class World{
   void timeStepRigidCollisions();
 
   void timeStepDynamicSprites();
+  void timeStepDynamicSpritesNoDouble();
   void deformBasedOnImpulses();
   
   void collectImpulses();

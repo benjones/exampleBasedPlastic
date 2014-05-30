@@ -57,6 +57,10 @@ public:
   btVector3 getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
 											bool isObject0);
   
+  btVector3 getLocalDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
+												 bool isObject0);
+  
+
 
   Eigen::Vector3d getBarycentricCoordinates(btVector3 localPoint, int triangleIndex);
   int getNearestVertex(Eigen::Vector3d localPoint);
@@ -127,6 +131,10 @@ public:
   //scale*(mag(impulse) - yield) gets distributed to handles
   double plasticityImpulseScale;
   
+  double localPlasticityImpulseYield;
+  double localPlasticityImpulseScale;
+
+
   //second tells us if po is object0 in the contact
   std::vector<std::pair<btManifoldPoint, bool>> manifoldPoints;
 

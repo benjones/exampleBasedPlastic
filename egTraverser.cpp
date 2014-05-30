@@ -187,7 +187,7 @@ void EGTraverser::getCorrespondingPoint(const EGPosition& first,
 
   auto sum = std::accumulate(weightCorrespondences.begin(),
 							 weightCorrespondences.end(),
-							 0,
+							 0.0,
 							 [&first](double s, std::pair<int, int> p){
 							   return s + first.coords[p.first];
 							 });
@@ -216,18 +216,48 @@ void EGTraverser::getCorrespondingPoint(const EGPosition& first,
 
 void EGTraverser::zeroWeightsSum(std::vector<double>& weights){
 
-  auto sum = std::accumulate(weights.begin(), weights.end(), 0);
-  for(auto& w : weights){
-	w -= sum/weights.size();
+  auto sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+  double diff = sum/weights.size();
+  //std::cout << "sum: " << sum << " size: " << weights.size() << std::endl;
+  std::transform(weights.begin(), weights.end(), weights.begin(),
+				 [diff](double a){return a - diff;});
+
+  /*auto numNonzero = std::count_if(weights.begin(), weights.end(), 
+								  [](double a){ return fabs(a) > 0.0001;});
+  if(!numNonzero){
+	return; //it's all 0's anyway
   }
+  
+  for(auto& w : weights){
+	if(fabs(w) > 0.0001){
+	  w -= sum/numNonzero;
+	}
+	}*/
+  //std::cout << " new sum: " << std::accumulate(weights.begin(), weights.end(), 0.0) << std::endl;
 }
 void EGTraverser::zeroWeightsSum(Eigen::VectorXd& weights){
 
   weights.array() -= weights.sum()/weights.rows();
+  /*int numNonzeros = 0;
+  for(auto i : range(weights.rows())){
+	if(fabs(weights(i)) >= 0.0001){
+	  ++numNonzeros;
+	}
+  }
+  if(!numNonzeros){
+	return;
+  }
+  auto sum = weights.sum();
+  for(auto i : range(weights.rows())){
+	if(fabs(weights(i)) >= 0.0001){
+	  weights(i) -= sum/numNonzeros;
+	}
+  }
   if(fabs(weights.sum()) > 1e-8){
 	std::cout << "zeroWeightsSum failed" << std::endl;
+	std::cout << "sum: " << weights.sum() << std::endl;
 	exit(1);
-  }
+	}*/
 }
 
 
@@ -235,22 +265,47 @@ void EGTraverser::zeroWeightsSum(Eigen::VectorXd& weights){
 EGPosition EGTraverser::addBcVector(const EGPosition& start, const std::vector<double>& direction){
   
   assert(direction.size() == start.coords.size());
-  
+ 
   EGPosition ret;
   ret.simplex = start.simplex;
   ret.coords = start.coords;
+
+  //just add and then project back onto the simplex
+  std::transform(ret.coords.begin(), ret.coords.end(), 
+				 direction.begin(),
+				 ret.coords.begin(),
+				 std::plus<double>{});
+
+
+  projectBackOntoSimplex(ret.coords);
+
+  return ret;
+  //todo handle crossing a simplex boundary, etc
+
+  //this probably won't be in the manifold, so project it onto the manifold
+
+
+
   
   //find scale
-  double s = 1;
+  /*  double s = 1;
+  int worst = 0;
   for(auto i : range(direction.size())){
 	if(direction[i] < 0){ 
 	  s = std::min(-ret.coords[i]/direction[i], s);
+	  if(s == -ret.coords[i]/direction[i]){
+		worst = i;
+	  }
 	}
 	if(direction[i] > 0){
 	  s = std::min((1 - ret.coords[i])/direction[i], s);
+	  if(s == (1 - ret.coords[i])/direction[i]){
+		worst = i;
+	  }
 	}
   }
   
+  std::cout << "s: " << s << " worst: " << worst << std::endl;
   std::transform(ret.coords.begin(), ret.coords.end(), direction.begin(),
 				 ret.coords.begin(),
 				 [s](double a, double b){
@@ -266,11 +321,48 @@ EGPosition EGTraverser::addBcVector(const EGPosition& start, const std::vector<d
 	exit(1);
 	
   }
-  
-  return ret;
 
+  if(s != 1){
+	//zero out the bad direction and try again
+	std::cout << " direction: " << direction << std::endl;
+	std::vector<double> modifiedDirection(direction);
+	modifiedDirection[worst] = 0;
+	std::cout << " modified direction" << modifiedDirection << std::endl;
+	zeroWeightsSum(modifiedDirection);
+	std::cout << "zered modified direction: " << modifiedDirection << std::endl;
+	exit(1);
+	ret = addBcVector(ret, modifiedDirection);
+	
+	
+  }
+  return ret;
+  */
 }
 EGPosition EGTraverser::addBcVector(const EGPosition& start, const Eigen::VectorXd& direction){
   return addBcVector(start, eigenToStd(direction));
   
+}
+
+void EGTraverser::projectBackOntoSimplex(std::vector<double>& weights){
+
+
+  //clamp any negative coords to 0
+  std::transform(weights.begin(), weights.end(),
+				 weights.begin(),
+				 [](double a){return std::max(a, 0.0);});
+
+  auto sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+  
+  if(sum < 0.0001){
+	//punt
+	weights[0] = 1; 
+	sum = 1;
+  }
+  //scale by 1/sum
+  std::transform(weights.begin(), weights.end(),
+				 weights.begin(),
+				 [sum](double a){ return a/sum;});
+
+  
+
 }

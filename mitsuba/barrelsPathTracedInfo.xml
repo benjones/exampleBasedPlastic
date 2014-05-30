@@ -1,0 +1,27 @@
+	<integrator type="path"/>
+
+	<sensor type="perspective">
+		<float name="farClip" value="1241.42"/>
+		<float name="focusDistance" value="10.5293"/>
+		<float name="fov" value="57.8223"/>
+		<string name="fovAxis" value="x"/>
+		<float name="nearClip" value="2.41421"/>
+		<transform name="toWorld">
+
+			<lookat target="6.39091, 4.0888, -0.189916" origin="7.24731, 4.57698, -0.358005" up="-0.479041, 0.872742, 0.0940244"/>
+		</transform>
+
+		<sampler type="ldsampler">
+			<integer name="sampleCount" value="128"/>
+		</sampler>
+
+		<film type="hdrfilm">
+			<integer name="height" value="540"/>
+			<integer name="width" value="960"/>
+
+			<rfilter type="gaussian"/>
+		</film>
+	</sensor>
+
+
+

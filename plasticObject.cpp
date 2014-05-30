@@ -423,38 +423,47 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 }
 
 
-void PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0){
+void PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, 
+											  bool isObject0){
 
 
     for(auto j : range(man->getNumContacts())){
 	  auto& manPoint = man->getContactPoint(j);
 	  
-	  auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
-	  auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
+	  auto triangleIndex = isObject0 ? 
+		manPoint.m_index0 : manPoint.m_index1;
+	  auto localPoint = isObject0 ? 
+		manPoint.m_localPointA : manPoint.m_localPointB;
 	  //	  std::cout << "local point: " << localPoint << std::endl;
-	  auto impulseToApply = bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
+	  auto impulseToApply = 
+		bulletToEigen(getLocalDeformationVectorFromImpulse(manPoint, 
+														   isObject0));
 	  if(impulseToApply.squaredNorm() <= 0){continue;} //ignore 0 impulses
 
 	  Eigen::VectorXd weightsAtContact;
-	  if(triangleIndex < 0){
+	  //if(triangleIndex < 0){
 		//		std::cout << "using vertex: " << std::endl;
 		auto vIndex = getNearestVertex(bulletToEigen(localPoint));
 		weightsAtContact = boneWeights.row(vIndex).transpose();
-	  } else {
+		/*} else {
 		//		std::cout << "using triangle: " << std::endl;
-		auto bcCoords = getBarycentricCoordinates(localPoint, triangleIndex);
+		auto bcCoords = getBarycentricCoordinates(localPoint, 
+												  triangleIndex);
 		auto tri = tetmeshTriangles.row(triangleIndex);
-		weightsAtContact = (bcCoords(0)*boneWeights.row(tri(0)) +
-							bcCoords(1)*boneWeights.row(tri(1)) +
-							bcCoords(2)*boneWeights.row(tri(2))).transpose();
+		weightsAtContact = 
+		  (bcCoords(0)*boneWeights.row(tri(0)) +
+		   bcCoords(1)*boneWeights.row(tri(1)) +
+		   bcCoords(2)*boneWeights.row(tri(2))).transpose();
 	  }
-	  
+		*/
 
 	  for(auto i : range(tetmeshVertices.rows())){
-		auto weightSpaceDistance = (weightsAtContact - boneWeights.row(i).transpose()).norm();
+		auto weightSpaceDistance = (weightsAtContact - 
+									boneWeights.row(i).transpose()).norm();
 		
-		auto scale = Kernels::simpleCubic(weightSpaceDistance/0.01);
-		localImpulseBasedOffsets.row(i) += scale*impulseToApply.transpose();
+		auto scale = Kernels::simpleCubic(weightSpaceDistance/0.5);
+		localImpulseBasedOffsets.row(i) += 
+		  scale*impulseToApply.transpose();
 		//		if(scale >0){
 		//		  std::cout << "adding to vertex " << i << " " << scale*impulseToApply << std::endl;
 		//		}
@@ -473,7 +482,7 @@ btVector3 PlasticObject::getDeformationVectorFromImpulse(const btManifoldPoint& 
 
   btVector3 displacementGlobal = impulseGlobal*dt/mass;
   if(!isObject0){displacementGlobal *= -1;}
-  if(displacementGlobal.norm() > 0){std::cout << "global impulse: " << displacementGlobal << std::endl;}
+  //if(displacementGlobal.norm() > 0){std::cout << "global impulse: " << displacementGlobal << std::endl;}
   //rotate this into the unskinned space
   
   auto currentRotation = bulletBody->getCenterOfMassTransform().getRotation()*
@@ -496,6 +505,38 @@ btVector3 PlasticObject::getDeformationVectorFromImpulse(const btManifoldPoint& 
   return displacementToApply;
 }
 
+btVector3 PlasticObject::getLocalDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
+														 bool isObject0){
+
+  btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
+
+  btVector3 displacementGlobal = impulseGlobal*dt/mass;
+  if(!isObject0){displacementGlobal *= -1;}
+  //if(displacementGlobal.norm() > 0){std::cout << "global impulse: " << displacementGlobal << std::endl;}
+  //rotate this into the unskinned space
+  
+  auto currentRotation = bulletBody->getCenterOfMassTransform().getRotation()*
+	inertiaAligningTransform.getRotation().inverse();
+  btVector3 displacementLocal = quatRotate(currentRotation.inverse(),displacementGlobal);
+  
+
+  if(displacementLocal.norm() < localPlasticityImpulseYield){
+	return btVector3(0,0,0);
+  }
+
+  //std::cout << "displacement local norm: " << displacementLocal.norm() << std::endl;
+
+  //	std::cout << "weigths at contact: " << std::endl
+  //			  << weightsAtContact << std::endl;
+  auto normalizedDisplacement = displacementLocal.normalized();
+  //	std::cout << "unnormalized impulse: " << impulseLocal << std::endl;
+  //	std::cout << "normalized impulse: " << normalizedImpulse << std::endl;
+  auto displacementToApply = localPlasticityImpulseScale*
+	(displacementLocal - 
+	 localPlasticityImpulseYield*normalizedDisplacement);
+  
+  return displacementToApply;
+}
 
 
 void PlasticObject::projectImpulsesOntoExampleManifold(){
@@ -510,7 +551,8 @@ void PlasticObject::projectImpulsesOntoExampleManifold(){
 	auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
 	auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	
-	if(triangleIndex < 0){
+	//always use closest point, even it's actually on a triangle
+	//if(triangleIndex < 0){
 	  auto vInd = getNearestVertex(bulletToEigen(localPoint));
 	  auto it = std::find(vertexIndices.begin(), vertexIndices.end(),
 						  vInd);
@@ -523,7 +565,10 @@ void PlasticObject::projectImpulsesOntoExampleManifold(){
 		impulses[std::distance(vertexIndices.begin(), it)] +=
 		  getDeformationVectorFromImpulse(manPoint, isObject0);
 	  }
-	}
+	  //} else {
+	  
+	  
+	  //}
   }
 
   //copy impulses into an Eigen::vector to do a least squares solve
@@ -545,14 +590,16 @@ void PlasticObject::projectImpulsesOntoExampleManifold(){
 
   //do a least squares solve for the change in S
   Eigen::VectorXd deltaS = jacobian.colPivHouseholderQr().solve(rhs);
-  std::cout << "delta S" << deltaS << std::endl;
-  
-  EGTraverser::zeroWeightsSum(deltaS);
-  std::cout << "zero summed: " << deltaS << std::endl;
-
-  egTraverser.currentPosition = EGTraverser::addBcVector(egTraverser.currentPosition,
-														 deltaS);
-  std::cout <<egTraverser.currentPosition.coords << std::endl;
+  if(deltaS.array().abs().sum() > 0.0001){
+	std::cout << "delta S" << deltaS << std::endl;
+	
+	//EGTraverser::zeroWeightsSum(deltaS);
+	//std::cout << "zero summed: " << deltaS << std::endl;
+	
+	egTraverser.currentPosition = EGTraverser::addBcVector(egTraverser.currentPosition,
+														   deltaS);
+	std::cout <<egTraverser.currentPosition.coords << std::endl;
+  }
 }
 
 void PlasticObject::computeTransformationDerivatives(const EGPosition& egPosition, 

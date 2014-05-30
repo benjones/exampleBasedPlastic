@@ -659,7 +659,7 @@ void World::dumpFrame(){
   
   for(auto& plasticObject : plasticObjects){
 
-	sprintf(fname, framestring, objectCount, currentFrame);
+	/*sprintf(fname, framestring, objectCount, currentFrame);
 	objectCount++;
 	std::ofstream outs(fname);
 	
@@ -705,14 +705,14 @@ void World::dumpFrame(){
 		//exit(1);
 	  }
 
-	}
+	  }*/
 	sprintf(fname, framestring, objectCount, currentFrame);
 	plasticObject.dump(fname);
 	objectCount++;
 	  
   }
 
-  {
+  /*{
 	sprintf(fname, framestring, objectCount, currentFrame);
 	std::ofstream outs(fname);
 	
@@ -729,7 +729,7 @@ void World::dumpFrame(){
 		outs << "v " << vb.x() << ' ' << vb.y() << ' ' << vb.z() << std::endl;
 	  }
 	}
-  }
+	}*/
   currentFrame++;
 
 }
@@ -1604,7 +1604,11 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.density = poi.get("density", 1000).asDouble();
 	
 	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 0.00001).asDouble();
-	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 10.0).asDouble();
+	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
+
+	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 0.00001).asDouble();
+	po.localPlasticityImpulseScale = poi.get("localPlasticityImpulseScale", 0).asDouble();
+
 
 	po.scaleFactor = poi.get("scaleFactor", 1).asDouble();
 
@@ -1740,12 +1744,37 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//user index holds index into the plasticObjects array
 	po.bulletBody->setUserIndex(plasticObjects.size() -1);
 	
-	po.egTraverser.restPosition = EGPosition{0, {0,1}};
-	po.egTraverser.currentPosition = EGPosition{0, {1,0}};
+	po.egTraverser.restPosition = EGPosition{0, {0,1, 0}};
+	po.egTraverser.currentPosition = EGPosition{0, {1,0, 0}};
 	po.egTraverser.restSpringStrength = 0.00;//1;
 
   }
   
+}
+
+void World::timeStepDynamicSpritesNoDouble(){
+
+
+  bulletWorld.stepSimulation(dt, 10, dt);
+  for(auto& po : plasticObjects){
+	po.saveBulletSnapshot();
+  }
+  
+  collectImpulses();
+
+  deformBasedOnImpulses();
+  for(auto& po : plasticObjects){
+	
+	po.projectImpulsesOntoExampleManifold();
+
+	po.skinMesh(bulletWorld);
+	po.updateBulletProperties(po.currentBulletVertexPositions, 
+							  po.tetmeshTets);
+	//po.updateCompoundShape();
+	//	po.restoreBulletSnapshot();
+  }
+  //  bulletWorld.stepSimulation(dt, 10, dt);
+
 }
 
 void World::timeStepDynamicSprites(){
@@ -1758,7 +1787,7 @@ void World::timeStepDynamicSprites(){
   
   collectImpulses();
 
-  //deformBasedOnImpulses();
+  deformBasedOnImpulses();
   for(auto& po : plasticObjects){
 	
 	po.projectImpulsesOntoExampleManifold();

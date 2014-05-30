@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
 
     }
     world.timeStepDynamicSprites();
+    //world.timeStepDynamicSpritesNoDouble();
 
     /*    simulator.computeVelocities(dt, gravity);
     

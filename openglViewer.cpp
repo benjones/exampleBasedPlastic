@@ -47,6 +47,9 @@ void reshape(int width, int height);
 void mouseClicks(int button, int state, int x, int y);
 void mouseMove(int x, int y);
 
+void writeMitsuba();
+
+
 //std::vector<particleInfo> globalPInfo; //Gotta because of glut
 std::vector<std::vector<objStruct>> globalObjs;
 SlVector3 center;//for gluLookat
@@ -290,10 +293,11 @@ void displayFrame(){
     drawTriangles(false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	drawPoints();
+	//	drawPoints();
 
     glFlush();
     glutSwapBuffers();
+	//writeMitsuba();
 }
 
 void keyInput(unsigned char key, int x, int y) {
@@ -379,3 +383,33 @@ void mouseMove(int x, int y){
   
 }
 
+void writeMitsuba(){
+
+  char fname[1024];
+  sprintf(fname, "frames/mitsubaFrame_%04d.xml", currentFrame);
+
+  std::ofstream outs(fname);
+
+  std::cout << "writing: " << fname << std::endl;
+
+  outs << "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+	"<scene version=\"0.5.0\">\n";
+
+  for(size_t i = 0; ; ++i){
+	sprintf(fname, objFormat.c_str(), i, currentFrame);
+	std::ifstream test(fname);
+	if(!test.good()){break;}
+
+	outs << "<shape type=\"obj\">\n"
+	  "<string name=\"filename\" value=\"" 
+		 <<fname 
+		 << "\" />\n"
+	  "</shape>\n";
+
+	
+  }
+  outs << "</scene>" << std::endl;
+
+
+
+}
