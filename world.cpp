@@ -326,7 +326,9 @@ World::World(std::string filename)
   }
   std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
 
+
   loadPlasticObjects(root);
+  makeBarrelPyramid();  
 
   computeConstraints();
   countConstraints();
@@ -1590,7 +1592,9 @@ void World::loadPlasticObjects(const Json::Value& root){
 
   plasticObjects.clear();
   auto plasticObjectsIn = root["plasticObjects"];
-  plasticObjects.reserve(plasticObjectsIn.size());
+
+  std::cout << "slots reserved: " << plasticObjectsIn.size() + getNumBarrels() << std::endl;
+  plasticObjects.reserve(plasticObjectsIn.size() + getNumBarrels());
   for(auto i : range(plasticObjectsIn.size())){
 	auto& poi = plasticObjectsIn[i];
 	
@@ -1603,10 +1607,10 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.dt = dt;
 	po.density = poi.get("density", 1000).asDouble();
 	
-	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 0.00001).asDouble();
+	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
 	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
 
-	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 0.00001).asDouble();
+	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 1e6).asDouble();
 	po.localPlasticityImpulseScale = poi.get("localPlasticityImpulseScale", 0).asDouble();
 
 
@@ -1665,12 +1669,25 @@ void World::loadPlasticObjects(const Json::Value& root){
 	auto rotationIn = poi["rotation"];
 	if(!rotationIn.isNull()){
 	  btVector3 axis{rotationIn["axis"][0].asDouble(),
-		  rotationIn["axis"][0].asDouble(),
-		  rotationIn["axis"][0].asDouble()};
+		  rotationIn["axis"][1].asDouble(),
+		  rotationIn["axis"][2].asDouble()};
 	  rotation = btQuaternion{axis,
 							  rotationIn["angle"].asDouble()};
 	  
-		
+	  std::cout << "rotation: " << rotation << std::endl;
+	}
+
+	auto constantVelocityIn = poi["constantVelocity"];
+	if(!constantVelocityIn.isNull() && 
+	   constantVelocityIn.isArray() && 
+	   constantVelocityIn.size() == 3){
+	  
+	  po.hasConstantVelocity = true;
+	  po.constantVelocity = btVector3{constantVelocityIn[0].asDouble(),
+									  constantVelocityIn[1].asDouble(),
+									  constantVelocityIn[2].asDouble()};
+	  
+
 	}
 
 	//place it where it should go
@@ -1717,6 +1734,15 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 	//compute node masses and volume
 	po.computeMassesAndVolume();
+
+	Eigen::Vector3d com = 
+	  (po.tetmeshVertexMasses.asDiagonal()*
+	   po.currentBulletVertexPositions).colwise().sum()/
+	  po.mass;
+	  
+
+	offset -= quatRotate(rotation, eigenToBullet(com));
+	
 
 
 	//apply the transform now
@@ -1782,12 +1808,14 @@ void World::timeStepDynamicSprites(){
   for(auto& po : plasticObjects){
 	po.saveBulletSnapshot();
   }
-
+  std::cout << "do fist step" << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
-  
+
+  std::cout << "deform" << std::endl;  
   collectImpulses();
 
   deformBasedOnImpulses();
+
   for(auto& po : plasticObjects){
 	
 	po.projectImpulsesOntoExampleManifold();
@@ -1797,9 +1825,24 @@ void World::timeStepDynamicSprites(){
 							  po.tetmeshTets);
 	//po.updateCompoundShape();
 	po.restoreBulletSnapshot();
+	
+	if(po.hasConstantVelocity){
+	  po.bulletBody->setLinearVelocity(btVector3{po.constantVelocity.x(),
+			po.bulletBody->getLinearVelocity().y(),
+			po.constantVelocity.z()});
+	}
   }
+  std::cout << "do second step: " << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
-  
+  std::cout << "step done" << std::endl;
+
+  for(auto& po: plasticObjects){
+	if(po.hasConstantVelocity){
+	  po.bulletBody->setLinearVelocity(btVector3{po.constantVelocity.x(),
+			po.bulletBody->getLinearVelocity().y(),
+			po.constantVelocity.z()});
+	}
+  }
 
   //deformBasedOnImpulses();
 
@@ -1827,11 +1870,13 @@ void World::deformBasedOnImpulses(){
 	auto* rb1 = btRigidBody::upcast(man->getBody0());
 	auto* rb2 = btRigidBody::upcast(man->getBody1());
 	if(rb1 && rb1->getUserIndex() >= 0){
-	  std::cout << "first" << std::endl;
+	  //	  std::cout << "first" << std::endl;
+	  //std::cout << "index: " << rb1->getUserIndex() << std::endl;
 	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulseLocal(man, true);
 	}
 	if(rb2 && rb2->getUserIndex() >= 0){
-	  std::cout << "second" << std::endl;
+	  //	  std::cout << "second" << std::endl;
+	  //std::cout << "index: " << rb2->getUserIndex() << std::endl;
 	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulseLocal(man, false);
 	}
   }
@@ -1852,14 +1897,139 @@ void World::collectImpulses(){
 	for(auto j : range(man->getNumContacts())){
 	  auto& manPoint = man->getContactPoint(j);
 	  if(rb1 && rb1->getUserIndex() >= 0){
+		//std::cout << "index: " << rb1->getUserIndex() << std::endl;
 		plasticObjects[rb1->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
 																					true));
 	  }
 	  if(rb2 && rb2->getUserIndex() >= 0){
+		//std::cout << "index: " << rb2->getUserIndex() << std::endl;
 		plasticObjects[rb2->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
 																					false));
 	  }
 	}
 	//man->clearManifold();
   }
+}
+
+int World::getNumBarrels(){
+  int barrelCount = 0;
+  for(auto i : range(pyramidSize+1)){
+	barrelCount += i*i;
+  }
+  return barrelCount;
+}
+
+void World::makeBarrelPyramid(){
+
+
+  int barrelCount = getNumBarrels();
+  
+  std::cout << "making " << barrelCount << " barrels" << std::endl;
+  
+  //plasticObjects.clear();
+  //plasticObjects.reserve(barrelCount);
+
+  double startHeight = 0.235;
+  double currentHeight = startHeight;
+  double deltaHeight = 0.77;
+
+  double barrelRadius = 0.34;
+  double startX = 0, startZ = 0;
+
+  for(auto l : range(pyramidSize)){
+	auto level = pyramidSize - l;
+	for(auto row : range(level)){
+	  for(auto col : range(level)){
+		
+		plasticObjects.emplace_back();
+		auto& po = plasticObjects.back();
+		
+		po.loadFromFiles("inputFiles/barrel2");
+		po.dt = dt;
+		po.density = 800;
+		
+		po.plasticityImpulseYield = 0.001;
+		po.plasticityImpulseScale = 80;
+		po.localPlasticityImpulseScale = 3;
+		po.localPlasticityImpulseYield = 0.001;
+		
+		po.scaleFactor = 0.01;
+		
+		po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
+
+		po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.tetmeshVertices.rows(), 3);
+
+		po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
+		  new btTriangleIndexVertexArray{
+			static_cast<int>(po.tetmeshTriangles.rows()),
+			po.tetmeshTriangles.data(),
+			3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
+			static_cast<int>(po.currentBulletVertexPositions.rows()),
+			po.currentBulletVertexPositions.data(),
+			3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
+		  }
+		};
+		
+		btVector3 offset{startX + col*2*barrelRadius,
+			currentHeight,
+			startZ + row*2*barrelRadius};
+
+		
+		po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
+		  new btGImpactMeshShape{po.btTriMesh.get()}};
+		po.motionState = 
+		  std::unique_ptr<btDefaultMotionState>{
+		  new btDefaultMotionState{}};
+		
+		po.mass = 1; //save a bit of grief in rb construction
+		po.bulletBody = std::unique_ptr<btRigidBody>{
+		  new btRigidBody{po.mass,
+						  po.motionState.get(),
+						  po.bulletShape.get()}
+		  //po.compoundShape.get()}
+		};
+
+		//compute node masses and volume
+		po.computeMassesAndVolume();
+
+
+		//apply the transform now
+		po.inertiaAligningTransform.setIdentity();
+		po.worldTransform = btTransform{btQuaternion::getIdentity(), 
+										offset};
+		po.bulletBody->setCenterOfMassTransform(po.worldTransform);
+		
+		po.saveBulletSnapshot();
+	
+		//aliasing issues?
+		po.updateBulletProperties(po.currentBulletVertexPositions,
+								  po.tetmeshTets);
+
+		//po.updateCompoundShape();
+	
+
+		po.bulletShape->updateBound();
+
+		
+		bulletWorld.addRigidBody(po.bulletBody.get());
+		//user index holds index into the plasticObjects array
+		po.bulletBody->setUserIndex(plasticObjects.size() -1);
+
+		po.egTraverser.restPosition = 
+		  EGPosition{0, std::vector<double>(po.exampleGraph.simplices[0].size(), 0.0)};
+		po.egTraverser.restPosition.coords[0] = 1;
+		po.egTraverser.currentPosition = po.egTraverser.restPosition;
+		po.egTraverser.restSpringStrength = 0.0;
+		
+
+	  }
+	}
+
+	
+	currentHeight += deltaHeight;
+	startX += barrelRadius;
+	startZ += barrelRadius;
+  }
+
+
 }

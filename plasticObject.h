@@ -135,6 +135,9 @@ public:
   double localPlasticityImpulseScale;
 
 
+  bool hasConstantVelocity = false;
+  btVector3 constantVelocity;
+
   //second tells us if po is object0 in the contact
   std::vector<std::pair<btManifoldPoint, bool>> manifoldPoints;
 

@@ -60,6 +60,12 @@ class World{
 								 btCollisionDispatcher& _dispatcher, 
 								 const btDispatcherInfo& dispatcherInfo);
 
+
+  const int pyramidSize = 4;
+  int getNumBarrels();
+  void makeBarrelPyramid();
+
+
   //multiply the constaint matrix by in and put the result in out.
   //this is the lower left block of the system.
   //make sure that in and out is correctly allocated already

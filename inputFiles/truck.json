@@ -1,0 +1,22 @@
+{
+	"ground" : true,
+	"dt" : 0.005,
+
+	"plasticObjects" : [
+		{
+			"directory" : "inputFiles/truck/",
+			"offset" : [-8,0.55,11],
+			"rotation" : {
+				"angle" : -0.785,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 0.02,
+			"plasticityImpulseScale" : 0,
+			"plasticityImpulseYield" : 1e6,
+			"localPlasticityImpulseScale" : 0.3,
+			"localPlasticityImpulseYield" : 0.01,
+			"constantVelocity" : [3, 0, -3],
+			"density" : 50000
+		}
+	]
+}

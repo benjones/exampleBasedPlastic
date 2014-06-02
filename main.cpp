@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 
   //while (time < 0.2){//5) {
   world.dumpFrame();
-  while (time < 5) {
+  while (time < 15) {
     time += world.dt;
     timeSinceLastFrame += world.dt;
     

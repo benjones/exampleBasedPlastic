@@ -127,6 +127,7 @@ void readFrame(const std::string &objFile, size_t frameNumber){
     std::cout << "num tris: " << oj.tris.size() << std::endl;
     globalObjs.back().push_back(std::move(oj));
 
+
   }
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
@@ -233,7 +234,7 @@ void displayFrame(){
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 100);
+  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 200);
 
     //glLineWidth (2.0);
     //glBegin(GL_LINES);
@@ -293,7 +294,7 @@ void displayFrame(){
     drawTriangles(false);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	//	drawPoints();
+	//drawPoints();
 
     glFlush();
     glutSwapBuffers();

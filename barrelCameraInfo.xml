@@ -1,0 +1,26 @@
+<integrator type="direct">
+                <integer name="bsdfSamples" value="20"/>
+                <integer name="emitterSamples" value="20"/>
+</integrator>
+<sensor type="perspective">
+                <float name="farClip" value="1241.42"/>
+                <float name="focusDistance" value="10.5293"/>
+                <float name="fov" value="57.8224"/>
+                <string name="fovAxis" value="x"/>
+                <float name="nearClip" value="2.41421"/>
+                <transform name="toWorld">
+
+                        <lookat target="6.3909, 4.0888, -0.189915" origin="7.24731, 4.57698, -0.358005" up="-0.479039, 0.872743, 0.094024"/>
+                </transform>
+
+                <sampler type="independent">
+                        <integer name="sampleCount" value="20"/>
+                </sampler>
+
+                <film type="hdrfilm">
+                        <integer name="height" value="720"/>
+                        <integer name="width" value="1280"/>
+
+                        <rfilter type="gaussian"/>
+                </film>
+</sensor>

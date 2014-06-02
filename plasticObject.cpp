@@ -227,6 +227,7 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   if(!gather_transformations(skeleton->roots, false, 
 							 currentTransformMatrix)){
 	std::cout << "couldn't gather transforms" << std::endl;
+	return;
   }
 
   //add the collisionHandleAdjustments to this
@@ -234,6 +235,7 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 	currentTransformMatrix.col(4*i + 3) += collisionHandleAdjustments.col(i);
   }
 
+  //std::cout << "current trans matrix: " << currentTransformMatrix << std::endl;
 
   //do as the FAST skinners do
   
@@ -263,9 +265,12 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 												 currentBulletVertexPositions.rows(), 1);
   currentBulletVertexPositions.col(2) = U3.block(2*currentBulletVertexPositions.rows(), 0,
 												 currentBulletVertexPositions.rows(), 1);
-  
 
 
+  if(isnan(currentBulletVertexPositions(0,0))){
+	std::cout << "post skin: " << currentBulletVertexPositions.row(0) << std::endl;
+	exit(1);
+  }
   //std::cout << "data after: " << currentBulletVertexPositions.data() << std::endl;
   if(dataBefore != currentBulletVertexPositions.data()){
 	std::cout << "data changed" << std::endl;
@@ -273,6 +278,7 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   }
   //add the extra offsets
   currentBulletVertexPositions += localImpulseBasedOffsets;
+
 
 
   //remove and re-add the bodies
@@ -540,7 +546,11 @@ btVector3 PlasticObject::getLocalDeformationVectorFromImpulse(const btManifoldPo
 
 
 void PlasticObject::projectImpulsesOntoExampleManifold(){
-
+  
+  if(plasticityImpulseScale == 0){
+	return;
+  }
+  
   std::vector<int> vertexIndices;
   std::vector<btVector3> impulses;
   
