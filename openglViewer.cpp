@@ -115,19 +115,39 @@ void readFrame(const std::string &objFile, size_t frameNumber){
     char filename[1024];
     sprintf(filename, objFile.c_str(), i, frameNumber);
     
-    std::ifstream test(filename);
-    if(!test.good()){
-      break;
-    }
-    std::cout << "reading " << filename << std::endl;
-    
-    SlVector3 uc, lc;
-    objStruct oj;
-    readObjFile(filename, oj.pts, oj.tris, uc, lc);
-    std::cout << "num tris: " << oj.tris.size() << std::endl;
-    globalObjs.back().push_back(std::move(oj));
+	const std::string objName = std::string(filename) + std::string(".obj");
+    std::ifstream test(objName);
+    if(test.good()){
+	  
+	  std::cout << "reading " << objName << std::endl;
+	  
+	  SlVector3 uc, lc;
+	  objStruct oj;
+	  readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
+	  std::cout << "num tris: " << oj.tris.size() << std::endl;
+	  globalObjs.back().push_back(std::move(oj));
 
+	}
+	else{
+	  const auto& binName = std::string(filename) + std::string(".bin");
+	  std::ifstream ins(binName);
+	  if(ins.good()){
+		std::cout << "reading " << binName << std::endl;
+		size_t numVerts;
+		ins.read(reinterpret_cast<char*>(&numVerts),
+				 sizeof(numVerts));
+		assert(numVerts = globalObjs.front()[i].pts.size());
+		globalObjs.back().emplace_back();
+		globalObjs.back().back().pts.resize(numVerts);
+		ins.read(reinterpret_cast<char*>(globalObjs.back().back().pts.data()),
+				 3*numVerts*sizeof(double));
 
+	  }else{
+		break;
+	  }
+	} 
+	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
+	std::cout << "pt 2: " << globalObjs.back().back().pts[1] << std::endl;
   }
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
@@ -141,10 +161,13 @@ void drawTriangles(bool changeColor){
 		
 		glColor4d(.5,greenChannel,.5,1);
 	}
-    for(size_t i = 0; i < oj.tris.size(); ++i){
-      SlVector3 v1 = oj.pts[oj.tris[i].indices[0]],
-	v2 = oj.pts[oj.tris[i].indices[1]],
-	v3 = oj.pts[oj.tris[i].indices[2]];
+	//std::cout << "using beginning triangles: " << (oj.tris.size() ? "no" : "yes") << std::endl;
+	const auto& tris = (oj.tris.size() ? oj.tris : globalObjs[0][e.index].tris);
+    for(size_t i = 0; i < tris.size(); ++i){
+
+      SlVector3 v1 = oj.pts[tris[i].indices[0]],
+		v2 = oj.pts[tris[i].indices[1]],
+		v3 = oj.pts[tris[i].indices[2]];
       //glBegin(GL_LINE_LOOP);
       SlVector3 normal = cross(v2 - v1, v3 -v1);
       normalize(normal);

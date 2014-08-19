@@ -37,7 +37,6 @@ public:
   PlasticObject(PlasticObject&&) = default;
   PlasticObject(const PlasticObject&) = delete;
 
-  void writeOutputFiles(std::string filename);
   
   void loadFromFiles(std::string directory);
   
@@ -77,6 +76,8 @@ public:
   void skinMesh(btDiscreteDynamicsWorld& bulletWorld);
 
   void dump(std::string filename);
+
+  void dumpVerticesBinary(std::string filename) const;
 
   void saveBulletSnapshot();
   void restoreBulletSnapshot();

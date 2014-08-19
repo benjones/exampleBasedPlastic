@@ -5,6 +5,7 @@
 #include <LinearMath/btTransform.h>
 #include <Eigen/Dense>
 #include <vector>
+#include <fstream>
 
 template <typename T>
 inline T sqr(const T& t){
@@ -85,5 +86,17 @@ inline Eigen::VectorXd stdToEigen(const std::vector<double>& v){
   Eigen::VectorXd ret(v.size());
   std::copy(v.begin(), v.end(), ret.data());
   return ret;
+}
+
+template <typename TType>
+void writeEle(std::string filename, const TType& triangles){
+  std::ofstream outs(filename);
+  assert(triangles.cols() == 3);
+  assert(outs);
+  outs << triangles.rows() << ' ' << 3 << ' ' << "0\n";
+  for(auto i : range(triangles.rows())){
+	outs << i << ' ' << triangles(i,0) << ' ' << triangles(i, 1) << ' ' << triangles(i, 2) << '\n';
+  }
+  
 }
 

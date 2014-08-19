@@ -643,7 +643,9 @@ void World::updateFemPositions(){
 void World::dumpFrame(){
 
   char framestring[80];
+  char binaryString[80];
   sprintf(framestring, "frames/foo-%%03i.%%04i.obj");
+  sprintf(binaryString, "frames/foo-%%03i.%%04i.bin");
   std::cout << "writing frame: " << currentFrame << std::endl;
 
   int objectCount = 0;
@@ -708,8 +710,12 @@ void World::dumpFrame(){
 	  }
 
 	  }*/
-	sprintf(fname, framestring, objectCount, currentFrame);
-	plasticObject.dump(fname);
+	if(currentFrame == 0){
+	  sprintf(fname, framestring, objectCount, currentFrame);
+	  plasticObject.dump(fname);
+	}
+	sprintf(fname, binaryString, objectCount, currentFrame);
+	plasticObject.dumpVerticesBinary(fname);
 	objectCount++;
 	  
   }

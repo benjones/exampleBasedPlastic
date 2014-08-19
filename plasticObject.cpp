@@ -207,6 +207,30 @@ void PlasticObject::dump(std::string filename){
   
 }
 
+void PlasticObject::dumpVerticesBinary(std::string filename) const {
+  auto bulletTrans = bulletBody->getCenterOfMassTransform();
+  auto eigenRot = bulletToEigen(bulletTrans.getBasis());
+  Eigen::Vector3d eigenTrans{bulletToEigen(bulletTrans.getOrigin())};
+  RMMatrix3d transformedVertices(currentBulletVertexPositions);
+  for(auto i : range(transformedVertices.rows())){
+	transformedVertices.row(i) 
+	  = (eigenRot*transformedVertices.row(i).transpose() +
+		 eigenTrans).transpose();
+	
+  }
+
+
+  std::ofstream outs(filename, std::ios_base::out | std::ios_base::binary);
+  
+  size_t nVerts = transformedVertices.rows();
+  outs.write(reinterpret_cast<const char*>(&nVerts), sizeof(nVerts));
+  outs.write(reinterpret_cast<const char*>(transformedVertices.data()),
+			 3*nVerts*sizeof(double));
+
+}
+
+
+
 
 void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 
