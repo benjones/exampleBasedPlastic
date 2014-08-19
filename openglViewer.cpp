@@ -146,8 +146,8 @@ void readFrame(const std::string &objFile, size_t frameNumber){
 		break;
 	  }
 	} 
-	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
-	std::cout << "pt 2: " << globalObjs.back().back().pts[1] << std::endl;
+	//	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
+	//	std::cout << "pt 2: " << globalObjs.back().back().pts[1] << std::endl;
   }
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }

@@ -1813,6 +1813,7 @@ void World::timeStepDynamicSprites(){
 
   for(auto& po : plasticObjects){
 	po.saveBulletSnapshot();
+	po.deformedThisFrame = false;
   }
   std::cout << "do fist step" << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
@@ -1824,11 +1825,15 @@ void World::timeStepDynamicSprites(){
 
   for(auto& po : plasticObjects){
 	
-	po.projectImpulsesOntoExampleManifold();
+	if(po.projectImpulsesOntoExampleManifold()){
+	  po.deformedThisFrame = true;
+	}
 
-	po.skinMesh(bulletWorld);
-	po.updateBulletProperties(po.currentBulletVertexPositions, 
-							  po.tetmeshTets);
+	if(po.deformedThisFrame){
+	  po.skinMesh(bulletWorld);
+	  po.updateBulletProperties(po.currentBulletVertexPositions, 
+								po.tetmeshTets);
+	}
 	//po.updateCompoundShape();
 	po.restoreBulletSnapshot();
 	
@@ -1878,12 +1883,16 @@ void World::deformBasedOnImpulses(){
 	if(rb1 && rb1->getUserIndex() >= 0){
 	  //	  std::cout << "first" << std::endl;
 	  //std::cout << "index: " << rb1->getUserIndex() << std::endl;
-	  plasticObjects[rb1->getUserIndex()].deformBasedOnImpulseLocal(man, true);
+	  if(plasticObjects[rb1->getUserIndex()].deformBasedOnImpulseLocal(man, true)){
+		plasticObjects[rb1->getUserIndex()].deformedThisFrame = true;
+	  }
 	}
 	if(rb2 && rb2->getUserIndex() >= 0){
 	  //	  std::cout << "second" << std::endl;
 	  //std::cout << "index: " << rb2->getUserIndex() << std::endl;
-	  plasticObjects[rb2->getUserIndex()].deformBasedOnImpulseLocal(man, false);
+	  if(plasticObjects[rb2->getUserIndex()].deformBasedOnImpulseLocal(man, false)){
+		plasticObjects[rb2->getUserIndex()].deformedThisFrame = true;
+	  }
 	}
   }
 }

@@ -48,9 +48,9 @@ public:
 
   void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
   
-  void deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
+  bool deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
   
-  void projectImpulsesOntoExampleManifold();
+  bool projectImpulsesOntoExampleManifold();
 
 
   btVector3 getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
@@ -109,6 +109,7 @@ public:
   RMMatrix3d localImpulseBasedOffsets;
 
   double scaleFactor;//scale the object's size by this much
+  bool deformedThisFrame = false;
 
   double dt;
   double density;

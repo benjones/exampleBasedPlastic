@@ -383,6 +383,7 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 						  bcCoords(1)*boneWeights.row(tri(1)) +
 						  bcCoords(2)*boneWeights.row(tri(2))).transpose();
 	}
+
 	/*
 	//	std::cout << "weigths at contact: " << std::endl
 	//			  << weightsAtContact << std::endl;
@@ -396,7 +397,7 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 	//add the outer product (scale impulse by the weights at contact)
 	collisionHandleAdjustments += impulseToApply*weightsAtContact.transpose();
 	
-
+	
   }
 }
 
@@ -453,55 +454,57 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 }
 
 
-void PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, 
+bool PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, 
 											  bool isObject0){
 
-
-    for(auto j : range(man->getNumContacts())){
-	  auto& manPoint = man->getContactPoint(j);
-	  
-	  auto triangleIndex = isObject0 ? 
-		manPoint.m_index0 : manPoint.m_index1;
-	  auto localPoint = isObject0 ? 
-		manPoint.m_localPointA : manPoint.m_localPointB;
-	  //	  std::cout << "local point: " << localPoint << std::endl;
-	  auto impulseToApply = 
-		bulletToEigen(getLocalDeformationVectorFromImpulse(manPoint, 
-														   isObject0));
-	  if(impulseToApply.squaredNorm() <= 0){continue;} //ignore 0 impulses
-
-	  Eigen::VectorXd weightsAtContact;
-	  //if(triangleIndex < 0){
-		//		std::cout << "using vertex: " << std::endl;
-		auto vIndex = getNearestVertex(bulletToEigen(localPoint));
-		weightsAtContact = boneWeights.row(vIndex).transpose();
-		/*} else {
-		//		std::cout << "using triangle: " << std::endl;
-		auto bcCoords = getBarycentricCoordinates(localPoint, 
-												  triangleIndex);
-		auto tri = tetmeshTriangles.row(triangleIndex);
-		weightsAtContact = 
-		  (bcCoords(0)*boneWeights.row(tri(0)) +
-		   bcCoords(1)*boneWeights.row(tri(1)) +
-		   bcCoords(2)*boneWeights.row(tri(2))).transpose();
-	  }
-		*/
-
-	  for(auto i : range(tetmeshVertices.rows())){
-		auto weightSpaceDistance = (weightsAtContact - 
-									boneWeights.row(i).transpose()).norm();
-		
-		auto scale = Kernels::simpleCubic(weightSpaceDistance/0.5);
-		localImpulseBasedOffsets.row(i) += 
-		  scale*impulseToApply.transpose();
-		//		if(scale >0){
-		//		  std::cout << "adding to vertex " << i << " " << scale*impulseToApply << std::endl;
-		//		}
-
-	  }
-
-
+  bool deformed = false;
+  
+  for(auto j : range(man->getNumContacts())){
+	auto& manPoint = man->getContactPoint(j);
+	
+	auto triangleIndex = isObject0 ? 
+	  manPoint.m_index0 : manPoint.m_index1;
+	auto localPoint = isObject0 ? 
+	  manPoint.m_localPointA : manPoint.m_localPointB;
+	//	  std::cout << "local point: " << localPoint << std::endl;
+	auto impulseToApply = 
+	  bulletToEigen(getLocalDeformationVectorFromImpulse(manPoint, 
+														 isObject0));
+	if(impulseToApply.squaredNorm() <= 0){continue;} //ignore 0 impulses
+	deformed = true;
+	Eigen::VectorXd weightsAtContact;
+	//if(triangleIndex < 0){
+	//		std::cout << "using vertex: " << std::endl;
+	auto vIndex = getNearestVertex(bulletToEigen(localPoint));
+	weightsAtContact = boneWeights.row(vIndex).transpose();
+	/*} else {
+	//		std::cout << "using triangle: " << std::endl;
+	auto bcCoords = getBarycentricCoordinates(localPoint, 
+	triangleIndex);
+	auto tri = tetmeshTriangles.row(triangleIndex);
+	weightsAtContact = 
+	(bcCoords(0)*boneWeights.row(tri(0)) +
+	bcCoords(1)*boneWeights.row(tri(1)) +
+	bcCoords(2)*boneWeights.row(tri(2))).transpose();
 	}
+	*/
+	
+	for(auto i : range(tetmeshVertices.rows())){
+	  auto weightSpaceDistance = (weightsAtContact - 
+								  boneWeights.row(i).transpose()).norm();
+	  
+	  auto scale = Kernels::simpleCubic(weightSpaceDistance/0.5);
+	  localImpulseBasedOffsets.row(i) += 
+		scale*impulseToApply.transpose();
+	  //		if(scale >0){
+	  //		  std::cout << "adding to vertex " << i << " " << scale*impulseToApply << std::endl;
+	  //		}
+	  
+	}
+	
+	
+  }
+  return deformed;
 
 }
 
@@ -569,15 +572,16 @@ btVector3 PlasticObject::getLocalDeformationVectorFromImpulse(const btManifoldPo
 }
 
 
-void PlasticObject::projectImpulsesOntoExampleManifold(){
+bool PlasticObject::projectImpulsesOntoExampleManifold(){
   
   if(plasticityImpulseScale == 0){
-	return;
+	return false;
   }
   
   std::vector<int> vertexIndices;
   std::vector<btVector3> impulses;
   
+  bool deformed = false;
   for(auto& pr : manifoldPoints){
 	auto& manPoint = pr.first;
 	bool isObject0 = pr.second;
@@ -625,6 +629,7 @@ void PlasticObject::projectImpulsesOntoExampleManifold(){
   //do a least squares solve for the change in S
   Eigen::VectorXd deltaS = jacobian.colPivHouseholderQr().solve(rhs);
   if(deltaS.array().abs().sum() > 0.0001){
+	deformed = true;
 	std::cout << "delta S" << deltaS << std::endl;
 	
 	//EGTraverser::zeroWeightsSum(deltaS);
@@ -634,6 +639,7 @@ void PlasticObject::projectImpulsesOntoExampleManifold(){
 														   deltaS);
 	std::cout <<egTraverser.currentPosition.coords << std::endl;
   }
+  return deformed;
 }
 
 void PlasticObject::computeTransformationDerivatives(const EGPosition& egPosition, 
