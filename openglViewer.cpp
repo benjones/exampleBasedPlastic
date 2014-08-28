@@ -130,7 +130,7 @@ void readFrame(const std::string &objFile, size_t frameNumber){
 	}
 	else{
 	  const auto& binName = std::string(filename) + std::string(".bin");
-	  std::ifstream ins(binName);
+	  std::ifstream ins(binName, std::ios_base::in | std::ios_base::binary);
 	  if(ins.good()){
 		std::cout << "reading " << binName << std::endl;
 		size_t numVerts;

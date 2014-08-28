@@ -65,7 +65,7 @@ LDOPTS = $(OPT) $(INCS) $(IGL_LIB) $(FAST_LIB) $(MOSEK_LIB) $(ANT_LIB) $(CETRA_L
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS) openglViewer
+default: $(TARGETS) openglViewer remakeObjs
 
 
 clean: 
@@ -81,6 +81,11 @@ fracture: $(OBJECTS) $(HEADERS)
 openglViewer: openglViewer.cpp
 	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp -I./Common -L./Common \
 -lslCommon -framework OpenGL -framework GLUT
+
+remakeObjs: remakeObjs.cpp
+	$(CC) $(CCOPTS) -o remakeObjs remakeObjs.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
+
+
 #-----------------------------------------
 
 .cpp.o: 

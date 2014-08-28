@@ -1966,7 +1966,7 @@ void World::makeBarrelPyramid(){
 		po.plasticityImpulseYield = 0.001;
 		po.plasticityImpulseScale = 80;
 		po.localPlasticityImpulseScale = 3;
-		po.localPlasticityImpulseYield = 0.001;
+		po.localPlasticityImpulseYield = 0.0001;
 		
 		po.scaleFactor = 0.01;
 		
@@ -2016,6 +2016,8 @@ void World::makeBarrelPyramid(){
 		
 		po.saveBulletSnapshot();
 	
+		po.bulletBody->setRestitution(1.0);
+
 		//aliasing issues?
 		po.updateBulletProperties(po.currentBulletVertexPositions,
 								  po.tetmeshTets);
