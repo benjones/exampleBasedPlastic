@@ -100,6 +100,7 @@ World::World(std::string filename)
 								 btVector3(0,0,0)));
 								 
 	RB.bulletBody->setUserIndex(-1);
+	RB.bulletBody->setRestitution(0.5);
     bulletWorld.addRigidBody(RB.bulletBody.get());
 
   }
@@ -1771,6 +1772,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	
 	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
 
+	po.bulletBody->setRestitution(0.8);
 
 	bulletWorld.addRigidBody(po.bulletBody.get());
 	//user index holds index into the plasticObjects array
@@ -1936,7 +1938,7 @@ int World::getNumBarrels(){
 
 void World::makeBarrelPyramid(){
 
-
+  return;
   int barrelCount = getNumBarrels();
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;

@@ -164,7 +164,7 @@ void	BasicDemo::initPhysics()
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
 		btRigidBody* body = new btRigidBody(rbInfo);
-
+		body->setRestitution(0.5);
 		//add the body to the dynamics world
 		m_dynamicsWorld->addRigidBody(body);
 	}
@@ -211,7 +211,7 @@ void	BasicDemo::initPhysics()
 					btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 					btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
 					btRigidBody* body = new btRigidBody(rbInfo);
-					
+					body->setRestitution(1);
 
 					m_dynamicsWorld->addRigidBody(body);
 				}

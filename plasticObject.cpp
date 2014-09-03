@@ -16,6 +16,8 @@
 #include <igl/writeOBJ.h>
 #include <igl/readMESH.h>
 
+#include "plyIO.hpp"
+
 #include <Eigen/QR>
 
 #include "utils.h"
@@ -203,6 +205,16 @@ void PlasticObject::dump(std::string filename){
 				tetmeshTriangles);
   
   
+  std::ofstream plyStream(filename + std::string(".ply"));
+  writePLY(plyStream, transformedVertices, tetmeshTriangles);
+  plyStream.close();
+
+  RMMatrix3d sanityVertices;
+  RMMatrix3i sanityTriangles;
+  std::ifstream plyIns(filename + std::string(".ply"));
+  readPLY(plyIns, sanityVertices, sanityTriangles);
+  assert(sanityVertices.rows() == transformedVertices.rows());
+  assert(sanityTriangles.rows() == tetmeshTriangles.rows());
 
   
 }
