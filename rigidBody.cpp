@@ -11,8 +11,14 @@
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <iostream>
+#include "plyIO.hpp"
 
 using iter::range;
+using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
+using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
+using RMMatrix3i = Eigen::Matrix<int,   Eigen::Dynamic, 3, Eigen::RowMajor>;
+using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
+
 
 //write out an obj for this object
 void RigidBody::dump(std::string filename){
@@ -23,15 +29,35 @@ void RigidBody::dump(std::string filename){
   
   switch(rbType){
   case  RB_BOX:{
-    std::vector<btVector3> vertices(12);
+	
+    //std::vector<btVector3> vertices(12);
+	RMMatrix3f vertices(12, 3);
     
     for(auto i : range(8)){
-      dynamic_cast<btBoxShape*>(shape.get())->getVertex(i, vertices[i]);
-      vertices[i] = transform(vertices[i]);
-      outs << "v " << vertices[i][0] << ' ' << vertices[i][1] << ' ' << vertices[i][2] << std::endl;
+	  btVector3 untransformedVertex;
+      dynamic_cast<btBoxShape*>(shape.get())->getVertex(i, untransformedVertex);
+      btVector3 transformedVertex = transform(untransformedVertex);
+	  vertices(i,0) = transformedVertex[0];
+	  vertices(i,1) = transformedVertex[1];
+	  vertices(i,2) = transformedVertex[2];
+      //outs << "v " << vertices[i][0] << ' ' << vertices[i][1] << ' ' << vertices[i][2] << std::endl;
     }
-
-    outs << "f 1 2 3" << std::endl
+	RMMatrix3i triangles(12, 3);
+	triangles << 
+	  0, 1, 2,
+	  1, 3, 2,
+	  0, 5, 1,
+	  0, 4, 5,
+	  0, 2, 6,
+	  0, 6, 4,
+	  1, 5, 3,
+	  3, 5, 7,
+	  2, 3, 6,
+	  3, 7, 6,
+	  4, 6, 5,
+	  5, 6, 7;
+	/*    outs << 
+	    "f 1 2 3" << std::endl
 	 << "f 2 4 3" << std::endl
 	 << "f 1 6 2" << std::endl
 	 << "f 1 5 6" << std::endl
@@ -43,7 +69,8 @@ void RigidBody::dump(std::string filename){
 	 << "f 4 8 7" << std::endl
 	 << "f 5 7 6" << std::endl
 	 << "f 6 7 8" << std::endl;
-
+	*/
+	writePLY(outs, vertices, triangles);
 	break;
   } 
   case RB_PLANE:{
@@ -56,42 +83,69 @@ void RigidBody::dump(std::string filename){
 	  span1 = normal.cross(btVector3{0, 0, 1});
 	}
 	auto span2 = span1.cross(normal);
-	auto printPoint = [&](const btVector3& p){ outs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << std::endl;};
+	//auto printPoint = [&](const btVector3& p){ 
+	//outs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << std::endl;
+	//};
+	RMMatrix3f vertices(4, 3);
 	
 	auto tmp = localPoint - 100*span1 - 100*span2;
-	printPoint(tmp);
+	//printPoint(tmp);
+	vertices(0,0) = tmp[0];
+	vertices(0,1) = tmp[1];
+	vertices(0,2) = tmp[2];
 	tmp = localPoint + 100*span1 - 100*span2;
-	printPoint(tmp);
-	tmp = localPoint + 100*span1 + 100*span2;
-	printPoint(tmp);
-	tmp = localPoint - 100*span1 + 100*span2;
-	printPoint(tmp);
+	//printPoint(tmp);
+	vertices(1,0) = tmp[0];
+	vertices(1,1) = tmp[1];
+	vertices(1,2) = tmp[2];
 
+	tmp = localPoint + 100*span1 + 100*span2;
+	//printPoint(tmp);
+	vertices(2,0) = tmp[0];
+	vertices(2,1) = tmp[1];
+	vertices(2,2) = tmp[2];
+
+	tmp = localPoint - 100*span1 + 100*span2;
+	//printPoint(tmp);
+	vertices(3,0) = tmp[0];
+	vertices(3,1) = tmp[1];
+	vertices(3,2) = tmp[2];
+
+	RMMatrix3i triangles(2, 3);
 	//check winding, which is probably unnecessary since we know the cross product ordering...
 	if(normal.dot(span1.cross(span2)) > 0){
-	  outs << "f 1 2 3\nf 1 3 4" << std::endl;
+	  //outs << "f 1 2 3\nf 1 3 4" << std::endl;
+	  triangles << 0, 1, 2, 0, 2, 3;
 	} else {
-	  outs << "f 1 3 2\nf 1 4 3" << std::endl;
+	  //outs << "f 1 3 2\nf 1 4 3" << std::endl;
+	  triangles << 0, 2, 1, 0, 3, 2;
 	}
-
+	writePLY(outs, vertices, triangles);
 	break;
   }
   case RB_TRIMESH:{
-	
+	std::vector<float> outputVertices(meshVertices.size());
 	for(auto i : range(meshVertices.size()/3)){
 	  btVector3 pos{meshVertices[3*i],
 		  meshVertices[3*i +1],
 		  meshVertices[3*i +2]};
 	  pos = transform(pos);
-	  outs << "v " << pos.x() << ' '
+	  outputVertices[3*i    ] = pos[0];
+	  outputVertices[3*i + 1] = pos[1];
+	  outputVertices[3*i + 2] = pos[2];
+	  /*	  outs << "v " << pos.x() << ' '
 		   << pos.y() << ' '
 		   << pos.z() << std::endl;
+	  */
 	}
-	for(auto i : range(meshIndices.size()/3)){
+	/*	for(auto i : range(meshIndices.size()/3)){
 	  outs << "f " << (meshIndices[3*i]  + 1) << ' '
 		   << (meshIndices[3*i + 1] + 1)<< ' '
 		   << (meshIndices[3*i + 2] + 1) << std::endl;
-	}
+		   }*/
+
+	writePLY(outs, outputVertices, meshIndices);
+
 	break;
   }
   }

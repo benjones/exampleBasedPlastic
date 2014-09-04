@@ -35,10 +35,10 @@ while True:
     while True:
         if os.path.exists(os.path.join(directory, base % (objectNumber, currentFrame))):
             if objectNumber == 0:
-                outfile.write('<shape type="obj">\n<string name="filename" value="%s" />\n<bsdf type="diffuse"><srgb name="reflectance" value="#eeeeee"/></bsdf></shape>\n' % 
+                outfile.write('<shape type="ply">\n<string name="filename" value="%s" />\n<bsdf type="twosided"><bsdf type="diffuse"><srgb name="reflectance" value="#eeeeee"/></bsdf></bsdf></shape>\n' % 
                               (base % (objectNumber, currentFrame)))
             else:
-                outfile.write('<shape type="obj">\n<string name="filename" value="%s" />\n<bsdf type="diffuse"><srgb name="reflectance" value="#aaaaaa"/></bsdf></shape>\n' % 
+                outfile.write('<shape type="ply">\n<string name="filename" value="%s" />\n<bsdf type="twosided"><bsdf type="diffuse"><srgb name="reflectance" value="#aaaaaa"/></bsdf></bsdf></shape>\n' % 
                               (base % (objectNumber, currentFrame)))
             objectNumber += 1
         else:

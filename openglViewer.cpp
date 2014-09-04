@@ -3,6 +3,7 @@
 #include<fstream>
 #include <cstdlib>
 #include <cassert>
+#include <Eigen/Dense>
 #include "Common/slVector.H"
 #include "Common/slUtil.H"
 
@@ -16,12 +17,24 @@
 #include<GL/glu.h>
 #endif
 
+#include "cppitertools/range.hpp"
 #include "cppitertools/enumerate.hpp"
+using iter::range;
 using iter::enumerate;
 
+#include "plyIO.hpp"
+
+using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
+using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
+using RMMatrix3i = Eigen::Matrix<int,   Eigen::Dynamic, 3, Eigen::RowMajor>;
+using Vector3 = Eigen::Vector3f;
+
 struct objStruct {
-  std::vector<SlVector3> pts;
-  std::vector<SlTri> tris;
+  RMMatrix3f pts;
+  RMMatrix3i tris;
+  //  std::vector<SlVector3> pts;
+  //  std::vector<SlTri> tris;
+  
 };
 
 // struct particleInfo
@@ -39,7 +52,7 @@ double randDouble(){
 }
 
 std::string makeFilename(const std::string &format, unsigned frame);
-void readFrame(const std::string &objFile, size_t frameNumber);
+void readFrame(const std::string &plyFile, size_t frameNumber);
 void displayFrame();
 void keyInput(unsigned char key, int x, int y);
 void specialInput(int key, int x, int y);
@@ -52,9 +65,9 @@ void writeMitsuba();
 
 //std::vector<particleInfo> globalPInfo; //Gotta because of glut
 std::vector<std::vector<objStruct>> globalObjs;
-SlVector3 center;//for gluLookat
-SlVector3 eye;
-SlVector3 upVector;
+Vector3 center;//for gluLookat
+Vector3 eye;
+Vector3 upVector;
 unsigned currentFrame = 0;
 std::string objFormat;
 
@@ -68,8 +81,8 @@ float lightAmbient[4] = {.2f, .2f, .2f, 1.0f};
 
 int main(int argc, char** argv){
   if(argc < 2){
-    std::cout << "Usage: ./openglViewer objFormatString\n"
-              << "(eg frames/foo-%03d.%04d)\n";
+    std::cout << "Usage: ./openglViewer plyFormatString\n"
+              << "(eg frames/foo-%03d.%04d.ply)\n";
     exit(1);
   }
   objFormat = argv[1];
@@ -93,42 +106,37 @@ int main(int argc, char** argv){
   glClearColor(0,0,0,0);
   glEnable(GL_DEPTH_TEST);
 
-  center[0] = center[2] = 0;
-  center[1] = 1; 
-
-  eye[0] = 0;
-  eye[1] = 1;
-  eye[2] = 4;
-
-  upVector[0] = upVector[2] = 0;
-  upVector[1] = 1;  
+  center = Vector3{0, 1, 0};
+  eye = Vector3{0, 1, 4};
+  upVector = Vector3{0, 1, 0};
 
   glutMainLoop();
 }
 
 //number of particles subject to change
 
-void readFrame(const std::string &objFile, size_t frameNumber){
+void readFrame(const std::string &plyFile, size_t frameNumber){
 
   globalObjs.emplace_back();
   for( auto i = 0; ; i++){
     char filename[1024];
-    sprintf(filename, objFile.c_str(), i, frameNumber);
-    
-	const std::string objName = std::string(filename) + std::string(".obj");
-    std::ifstream test(objName);
+    sprintf(filename, plyFile.c_str(), i, frameNumber);
+    std::ifstream test(filename);
     if(test.good()){
 	  
-	  std::cout << "reading " << objName << std::endl;
+	  std::cout << "reading " << filename << std::endl;
 	  
-	  SlVector3 uc, lc;
-	  objStruct oj;
-	  readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
-	  std::cout << "num tris: " << oj.tris.size() << std::endl;
-	  globalObjs.back().push_back(std::move(oj));
+	  globalObjs.back().emplace_back();
+	  auto& oj = globalObjs.back().back();
+	  readPLY(test, oj.pts, oj.tris);
+	  
+	  //SlVector3 uc, lc;
+	  //objStruct oj;
+	  //readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
+	  std::cout << "num tris: " << oj.tris.rows() << std::endl;
 
 	}
-	else{
+	/*else{
 	  const auto& binName = std::string(filename) + std::string(".bin");
 	  std::ifstream ins(binName, std::ios_base::in | std::ios_base::binary);
 	  if(ins.good()){
@@ -142,10 +150,10 @@ void readFrame(const std::string &objFile, size_t frameNumber){
 		ins.read(reinterpret_cast<char*>(globalObjs.back().back().pts.data()),
 				 3*numVerts*sizeof(double));
 
-	  }else{
-		break;
-	  }
-	} 
+				 }*/
+	else{
+	  break;
+	}
 	//	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
 	//	std::cout << "pt 2: " << globalObjs.back().back().pts[1] << std::endl;
   }
@@ -162,19 +170,20 @@ void drawTriangles(bool changeColor){
 		glColor4d(.5,greenChannel,.5,1);
 	}
 	//std::cout << "using beginning triangles: " << (oj.tris.size() ? "no" : "yes") << std::endl;
-	const auto& tris = (oj.tris.size() ? oj.tris : globalObjs[0][e.index].tris);
-    for(size_t i = 0; i < tris.size(); ++i){
-
-      SlVector3 v1 = oj.pts[tris[i].indices[0]],
-		v2 = oj.pts[tris[i].indices[1]],
-		v3 = oj.pts[tris[i].indices[2]];
+	const auto& tris = oj.tris;
+    for(size_t i = 0; i < tris.rows(); ++i){
+      Vector3 v1 = oj.pts.row(tris(i,0)).transpose();
+	  Vector3 v2 = oj.pts.row(tris(i,1)).transpose();
+	  Vector3 v3 = oj.pts.row(tris(i,2)).transpose();
+	  //		v2 = oj.pts[tris[i].indices[1]],
+	  //		v3 = oj.pts[tris[i].indices[2]];
       //glBegin(GL_LINE_LOOP);
-      SlVector3 normal = cross(v2 - v1, v3 -v1);
-      normalize(normal);
-      glNormal3d(normal[0], normal[1], normal[2]);
-      glVertex3d(v1[0], v1[1], v1[2]);
-      glVertex3d(v2[0], v2[1], v2[2]);
-      glVertex3d(v3[0], v3[1], v3[2]);
+      Vector3 normal =(v2 - v1).cross(v3 -v1);
+      normal.normalize();
+      glNormal3fv(normal.data());
+      glVertex3fv(v1.data());
+      glVertex3fv(v2.data());
+      glVertex3fv(v3.data());
       //	glEnd();
       
     }      
@@ -192,8 +201,8 @@ void drawPoints(){
 	auto redChannel = static_cast<double>(e.index)/globalObjs[currentFrame].size();
 	glColor3d(redChannel, 1, 1);
 	auto& oj = e.element;
-	for(auto& v : oj.pts){
-	  glVertex3d(v[0], v[1], v[2]);
+	for(auto i : range(oj.pts.rows())){
+	  glVertex3fv(oj.pts.row(i).data());
 	}
   }
   glEnd();
@@ -205,8 +214,8 @@ void drawPoints(){
 
   glColor3d(1, 0, 0);
   auto& oj = globalObjs[currentFrame].back();
-  for(auto& v : oj.pts){
-	glVertex3d(v[0], v[1], v[2]);
+  for(auto i : range(oj.pts.rows())){
+	glVertex3fv(oj.pts.row(i).data());
   }
   
   glEnd();
@@ -251,9 +260,10 @@ void displayFrame(){
 
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  gluLookAt(eye[0], eye[1], eye[2], center[0], center[1], center[2],
-	    upVector[0], upVector[1], upVector[2]);
-
+  gluLookAt(eye(0), eye(1), eye(2), 
+			center(0), center(1), center(2),
+			upVector(0), upVector(1), upVector(2));
+  
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -383,12 +393,12 @@ void mouseClicks(int button, int state, int x, int y){
 }
 
 void mouseMove(int x, int y){
-  SlVector3 eyeToCenter = center - eye;
-  double dist = mag(eyeToCenter);
-  SlVector3 xDirection = cross(eyeToCenter, upVector);
-  normalize(xDirection);
-  SlVector3 yDirection = cross(xDirection, eyeToCenter);
-  normalize(yDirection);
+  Vector3 eyeToCenter = center - eye;
+  double dist = eyeToCenter.norm();
+  Vector3 xDirection = eyeToCenter.cross(upVector);
+  xDirection.normalize();
+  Vector3 yDirection = xDirection.cross(eyeToCenter);
+  yDirection.normalize();
 
   double dx = x - lastMouseX;
   double dy = y - lastMouseY;
@@ -398,7 +408,7 @@ void mouseMove(int x, int y){
   eyeToCenter -= (-4*dx)/(.5*windWidth) * xDirection + (4*dy)/(.5*windHeight) * yDirection;
 
 
-  normalize(eyeToCenter);
+  eyeToCenter.normalize();
   eyeToCenter = eyeToCenter*dist;
 
 
@@ -407,7 +417,7 @@ void mouseMove(int x, int y){
   
 }
 
-void writeMitsuba(){
+/*void writeMitsuba(){
 
   char fname[1024];
   sprintf(fname, "frames/mitsubaFrame_%04d.xml", currentFrame);
@@ -436,4 +446,4 @@ void writeMitsuba(){
 
 
 
-}
+  }*/

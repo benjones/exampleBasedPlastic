@@ -193,29 +193,32 @@ void PlasticObject::dump(std::string filename){
   auto bulletTrans = bulletBody->getCenterOfMassTransform();
   auto eigenRot = bulletToEigen(bulletTrans.getBasis());
   Eigen::Vector3d eigenTrans{bulletToEigen(bulletTrans.getOrigin())};
-  RMMatrix3d transformedVertices(currentBulletVertexPositions);
+  RMMatrix3f transformedVertices(currentBulletVertexPositions.rows(), 3);
   for(auto i : range(transformedVertices.rows())){
-	transformedVertices.row(i) 
-	  = (eigenRot*transformedVertices.row(i).transpose() +
-		 eigenTrans).transpose();
+	Eigen::Vector3d transformedVertex = 
+	  eigenRot*currentBulletVertexPositions.row(i).transpose() +
+	  eigenTrans;
+	Eigen::Vector3f transFloat = transformedVertex.template cast<float>();
+	transformedVertices.row(i) = transFloat.transpose();
 	
   }
-  igl::writeOBJ(filename,
+  /*  igl::writeOBJ(filename,
 				transformedVertices,
 				tetmeshTriangles);
+  */
   
-  
-  std::ofstream plyStream(filename + std::string(".ply"));
+  std::ofstream plyStream(filename);
   writePLY(plyStream, transformedVertices, tetmeshTriangles);
   plyStream.close();
 
+  /*
   RMMatrix3d sanityVertices;
   RMMatrix3i sanityTriangles;
   std::ifstream plyIns(filename + std::string(".ply"));
   readPLY(plyIns, sanityVertices, sanityTriangles);
   assert(sanityVertices.rows() == transformedVertices.rows());
   assert(sanityTriangles.rows() == tetmeshTriangles.rows());
-
+  */
   
 }
 
