@@ -1757,11 +1757,14 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.worldTransform = btTransform{rotation, offset};
 	po.bulletBody->setCenterOfMassTransform(po.worldTransform);
 	
-	po.saveBulletSnapshot();
+	po.saveBulletSnapshot(); //to get the COM for updateBulletProperties
 	
 	//aliasing issues?
 	po.updateBulletProperties(po.currentBulletVertexPositions,
 							  po.tetmeshTets);
+
+	//once we know the inertia tensor and stuff
+	po.saveBulletSnapshot(); //to save a snapshot with correct inertia
 
 	//po.updateCompoundShape();
 	
@@ -1771,6 +1774,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	
 	
 	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
+	std::cout << "po inertia inverse: " << po.bulletBody->getInvInertiaTensorWorld() << std::endl;
 
 	po.bulletBody->setRestitution(0.8);
 
@@ -1937,7 +1941,6 @@ int World::getNumBarrels(){
 }
 
 void World::makeBarrelPyramid(){
-
   return;
   int barrelCount = getNumBarrels();
   
@@ -2018,7 +2021,7 @@ void World::makeBarrelPyramid(){
 		
 		po.saveBulletSnapshot();
 	
-		po.bulletBody->setRestitution(1.0);
+		po.bulletBody->setRestitution(0.8);
 
 		//aliasing issues?
 		po.updateBulletProperties(po.currentBulletVertexPositions,

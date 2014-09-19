@@ -39,6 +39,7 @@ while True:
                               (base % (objectNumber, currentFrame)))
             else:
                 outfile.write('<shape type="ply">\n<string name="filename" value="%s" />\n<bsdf type="twosided"><bsdf type="diffuse"><srgb name="reflectance" value="#aaaaaa"/></bsdf></bsdf></shape>\n' % 
+                #outfile.write('<shape type="ply">\n<string name="filename" value="%s" />\n<bsdf type="twosided"><bsdf type="diffuse"><texture type="wireframe" name="reflectance" ><srgb name="interiorColor" value="#aaaaaa"/></texture></bsdf></bsdf></shape>\n' % 
                               (base % (objectNumber, currentFrame)))
             objectNumber += 1
         else:

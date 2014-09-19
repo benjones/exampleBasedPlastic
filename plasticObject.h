@@ -28,7 +28,7 @@ public:
 
 
   struct BulletSnapshot{
-	btVector3 linearVelocity, angularVelocity;
+	btVector3 linearVelocity, angularMomentum;
 	btTransform comTransform;
   };
   BulletSnapshot bulletSnapshot;

@@ -7,8 +7,8 @@
 			"directory" : "inputFiles/barrel2/",
 			"offset" : [0,1,0],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 80,
-			"plasticityImpulseYield" : 0.001,
+			"plasticityImpulseScale" : 20,
+			"plasticityImpulseYield" : 0.0001,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 
@@ -17,8 +17,8 @@
 			"directory" : "inputFiles/barrel2/",
 			"offset" : [1,2,2],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 80,//500,
-			"plasticityImpulseYield" : 0.001,
+			"plasticityImpulseScale" : 20,//500,
+			"plasticityImpulseYield" : 0.0001,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 
@@ -27,8 +27,8 @@
 			"directory" : "inputFiles/barrel2/",
 			"offset" : [0,4,0.3],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 80,//500,
-			"plasticityImpulseYield" : 0.001,
+			"plasticityImpulseScale" : 20,//500,
+			"plasticityImpulseYield" : 0.0001,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 

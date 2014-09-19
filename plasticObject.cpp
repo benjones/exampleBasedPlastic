@@ -91,12 +91,12 @@ void PlasticObject::computeMassesAndVolume(){
 
   Eigen::Matrix3d basis(3,3);
   for(auto tetInd : range(tetmeshTets.rows())){
-	basis.row(0) = tetmeshVertices.row(tetmeshTets(tetInd,1)) - 
-	  tetmeshVertices.row(tetmeshTets(tetInd, 0));
-	basis.row(1) = tetmeshVertices.row(tetmeshTets(tetInd,2)) - 
-	  tetmeshVertices.row(tetmeshTets(tetInd, 0));
-	basis.row(2) = tetmeshVertices.row(tetmeshTets(tetInd,3)) - 
-	  tetmeshVertices.row(tetmeshTets(tetInd, 0));
+	basis.row(0) = scaleFactor*(tetmeshVertices.row(tetmeshTets(tetInd,1)) - 
+								tetmeshVertices.row(tetmeshTets(tetInd, 0)));
+	basis.row(1) = scaleFactor*(tetmeshVertices.row(tetmeshTets(tetInd,2)) - 
+								tetmeshVertices.row(tetmeshTets(tetInd, 0)));
+	basis.row(2) = scaleFactor*(tetmeshVertices.row(tetmeshTets(tetInd,3)) - 
+								tetmeshVertices.row(tetmeshTets(tetInd, 0)));
 
 	//shouldn't be necessary, but whatever
 	double tetVolume = -basis.determinant()/6.0;
@@ -111,7 +111,9 @@ void PlasticObject::computeMassesAndVolume(){
 	  tetmeshVertexMasses(tetmeshTets(tetInd,j)) += nodeMass;
 	}
   }
-  
+  std::cout << "volume: " << volume << std::endl;
+  std::cout << "density: " << density << std::endl;
+  std::cout << "mass: " << mass << std::endl;
 }
 
 
@@ -184,7 +186,10 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
 		btVector3{centerOfMass(0), centerOfMass(1), centerOfMass(2)}
 	});
   */
+  std::cout << "inertia tensor computed: " << eigenToBullet(evals) << std::endl;
   bulletBody->setMassProps(mass, eigenToBullet(evals));
+  bulletBody->updateInertiaTensor(); //roate it
+  std::cout << "inertia tensor returned: " << bulletBody->getInvInertiaTensorWorld() << std::endl;
   
 }
 
@@ -709,8 +714,11 @@ void PlasticObject::computeTransformationDerivatives(const EGPosition& egPositio
 
 void PlasticObject::saveBulletSnapshot(){
   bulletSnapshot.linearVelocity = bulletBody->getLinearVelocity();
-  bulletSnapshot.angularVelocity = bulletBody->getAngularVelocity();
-  
+  std::cout << "inertia tensor: " << bulletBody->getInvInertiaTensorWorld() << std::endl;
+  std::cout << "inertia tensor inverse: " << bulletBody->getInvInertiaTensorWorld().inverse() << std::endl;
+  bulletSnapshot.angularMomentum = bulletBody->getInvInertiaTensorWorld().inverse()*
+	bulletBody->getAngularVelocity();
+  std::cout << "angular momentum: " << bulletSnapshot.angularMomentum << std::endl;
   //keep the inertia part out of it
   bulletSnapshot.comTransform = bulletBody->getCenterOfMassTransform()*
 	inertiaAligningTransform.inverse();
@@ -718,7 +726,8 @@ void PlasticObject::saveBulletSnapshot(){
 
 void PlasticObject::restoreBulletSnapshot(){
   bulletBody->setLinearVelocity(bulletSnapshot.linearVelocity);
-  bulletBody->setAngularVelocity(bulletSnapshot.angularVelocity);
+  bulletBody->setAngularVelocity(bulletBody->getInvInertiaTensorWorld()*bulletSnapshot.angularMomentum);
+  std::cout << "angularVelocity: " << bulletBody->getAngularVelocity() << std::endl;
   bulletBody->setCenterOfMassTransform(bulletSnapshot.comTransform*inertiaAligningTransform);
 }
 

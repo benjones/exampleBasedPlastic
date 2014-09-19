@@ -14,7 +14,7 @@
 			"plasticityImpulseScale" : 0,
 			"plasticityImpulseYield" : 1e6,
 			"localPlasticityImpulseScale" : 0.4,
-			"localPlasticityImpulseYield" : 0.1,
+			"localPlasticityImpulseYield" : 0.05,
 			"constantVelocity" : [3, 0, -2.9],
 			"density" : 50000
 		}
