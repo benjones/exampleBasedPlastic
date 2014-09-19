@@ -24,7 +24,6 @@
 
 #include "cppitertools/range.hpp"
 
-#include <BulletCollision/Gimpact/btCompoundFromGimpact.h>
 
 using iter::range;
 
@@ -111,9 +110,7 @@ void PlasticObject::computeMassesAndVolume(){
 	  tetmeshVertexMasses(tetmeshTets(tetInd,j)) += nodeMass;
 	}
   }
-  std::cout << "volume: " << volume << std::endl;
-  std::cout << "density: " << density << std::endl;
-  std::cout << "mass: " << mass << std::endl;
+
 }
 
 
@@ -130,7 +127,6 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
   Eigen::Vector3d centerOfMass = 
 	(tetmeshVertexMasses.asDiagonal()*vertices).colwise().sum().transpose()/
 	mass;
-  //  std::cout << " com: " << centerOfMass << std::endl;
 
   inertiaTensor.setZero();
   
@@ -151,8 +147,6 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
 	evecs.col(2) *= -1;
   }
 
-  //  std::cout << "rotation: " << evecs << std::endl;
-  //    std::cout << "evals: " << evals << std::endl;
 
   //translate and then rotate each vertex so that
   //the object is centered at the origin and aligned with the 
@@ -178,18 +172,8 @@ void PlasticObject::updateBulletProperties(const RMMatrix3d& vertices,
   bulletBody->setCenterOfMassTransform(worldTransform*
 									   inertiaAligningTransform);
 
-  /*bulletBody->setCenterOfMassTransform(btTransform{
-	  btMatrix3x3{
-		evecs(0,0),evecs(0,1),evecs(0,2),
-		  evecs(1,0),evecs(1,1),evecs(1,2),
-		  evecs(2,0),evecs(2,1),evecs(2,2)},
-		btVector3{centerOfMass(0), centerOfMass(1), centerOfMass(2)}
-	});
-  */
-  std::cout << "inertia tensor computed: " << eigenToBullet(evals) << std::endl;
   bulletBody->setMassProps(mass, eigenToBullet(evals));
   bulletBody->updateInertiaTensor(); //roate it
-  std::cout << "inertia tensor returned: " << bulletBody->getInvInertiaTensorWorld() << std::endl;
   
 }
 
@@ -207,10 +191,6 @@ void PlasticObject::dump(std::string filename){
 	transformedVertices.row(i) = transFloat.transpose();
 	
   }
-  /*  igl::writeOBJ(filename,
-				transformedVertices,
-				tetmeshTriangles);
-  */
   
   std::ofstream plyStream(filename);
   writePLY(plyStream, transformedVertices, tetmeshTriangles);
@@ -325,46 +305,6 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 
 
 
-  //remove and re-add the bodies
-
-  /*bulletWorld.removeRigidBody(bulletBody.get());
-
-  btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
-	new btTriangleIndexVertexArray{
-	  static_cast<int>(tetmeshTriangles.rows()),
-	  tetmeshTriangles.data(),
-	  3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
-	  static_cast<int>(currentBulletVertexPositions.rows()),
-	  currentBulletVertexPositions.data(),
-	  3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
-	}
-  };
-	
-  bulletShape = std::unique_ptr<btGImpactMeshShape>{
-	new btGImpactMeshShape{btTriMesh.get()}};
-  bulletShape->updateBound();
-  bulletBody = std::unique_ptr<btRigidBody>{
-	new btRigidBody{mass,
-					motionState.get(),
-					bulletShape.get()}
-	//po.compoundShape.get()}
-  };
-
-  bulletWorld.addRigidBody(bulletBody.get());
-  */
-
-  //
-  
-
-  /*bulletShape->getAabb(trans, aabbMin,aabbMax);
-  std::cout << "after: " << std::endl//<< trans << std::endl
-			<< "aabbmin" <<aabbMin << std::endl
-			<< "eigen  " << "[" << currentBulletVertexPositions.colwise().minCoeff() << "]\n"
-			<< "aabbmax" << aabbMax << std::endl
-			<< "eigen  " << "[" << currentBulletVertexPositions.colwise().maxCoeff() << "]" 
-			<< std::endl;
-  */
-
 
 }
 
@@ -376,18 +316,6 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 	auto impulseToApply = bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
 
 
-	/*	btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
-	if(!isObject0){impulseGlobal *= -1;}
-	
-	//rotate this into the unskinned space
-	
-	auto currentRotation = bulletBody->getCenterOfMassTransform().getRotation();
-	btVector3 impulseLocal = quatRotate(currentRotation.inverse(),impulseGlobal);
-
-	if(impulseLocal.norm() < plasticityImpulseYield){
-	  continue; //not enough impulse here to deform anything
-	}
-	*/
 	auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
 	auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	
@@ -404,16 +332,6 @@ void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObje
 						  bcCoords(2)*boneWeights.row(tri(2))).transpose();
 	}
 
-	/*
-	//	std::cout << "weigths at contact: " << std::endl
-	//			  << weightsAtContact << std::endl;
-	auto normalizedImpulse = impulseLocal.normalized();
-	//	std::cout << "unnormalized impulse: " << impulseLocal << std::endl;
-	//	std::cout << "normalized impulse: " << normalizedImpulse << std::endl;
-	auto impulseToApply = bulletToEigen(plasticityImpulseScale*
-										(impulseLocal - 
-										 plasticityImpulseYield*normalizedImpulse));
-	*/
 	//add the outer product (scale impulse by the weights at contact)
 	collisionHandleAdjustments += impulseToApply*weightsAtContact.transpose();
 	
@@ -460,6 +378,8 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 
   //eigen doesn't have nice iterators so I can't use stdlib algorithms :(
   
+  
+  
   int best = 0;
   double bestDist = (localPoint - currentBulletVertexPositions.row(0).transpose()).squaredNorm();
   for(auto i : range(1l, currentBulletVertexPositions.rows())){
@@ -470,6 +390,7 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 	}
   }
   //  std::cout << "nearest vertex: " << best << " dist: " << bestDist << std::endl;
+
   return best;
 }
 
@@ -493,21 +414,9 @@ bool PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man,
 	if(impulseToApply.squaredNorm() <= 0){continue;} //ignore 0 impulses
 	deformed = true;
 	Eigen::VectorXd weightsAtContact;
-	//if(triangleIndex < 0){
-	//		std::cout << "using vertex: " << std::endl;
+
 	auto vIndex = getNearestVertex(bulletToEigen(localPoint));
 	weightsAtContact = boneWeights.row(vIndex).transpose();
-	/*} else {
-	//		std::cout << "using triangle: " << std::endl;
-	auto bcCoords = getBarycentricCoordinates(localPoint, 
-	triangleIndex);
-	auto tri = tetmeshTriangles.row(triangleIndex);
-	weightsAtContact = 
-	(bcCoords(0)*boneWeights.row(tri(0)) +
-	bcCoords(1)*boneWeights.row(tri(1)) +
-	bcCoords(2)*boneWeights.row(tri(2))).transpose();
-	}
-	*/
 	
 	for(auto i : range(tetmeshVertices.rows())){
 	  auto weightSpaceDistance = (weightsAtContact - 
@@ -606,29 +515,29 @@ bool PlasticObject::projectImpulsesOntoExampleManifold(){
 	auto& manPoint = pr.first;
 	bool isObject0 = pr.second;
 
-	auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
+	//auto triangleIndex = isObject0 ? manPoint.m_index0 : manPoint.m_index1;
 	auto localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	
 	//always use closest point, even it's actually on a triangle
 	//if(triangleIndex < 0){
-	  auto vInd = getNearestVertex(bulletToEigen(localPoint));
-	  auto it = std::find(vertexIndices.begin(), vertexIndices.end(),
-						  vInd);
+	auto vInd = getNearestVertex(bulletToEigen(localPoint));
+	auto it = std::find(vertexIndices.begin(), vertexIndices.end(),
+						vInd);
+	
+	
+	if(it == vertexIndices.end()){
+	  vertexIndices.push_back(vInd);
+	  impulses.push_back(getDeformationVectorFromImpulse(manPoint, isObject0));
+	} else {
+	  impulses[std::distance(vertexIndices.begin(), it)] +=
+		getDeformationVectorFromImpulse(manPoint, isObject0);
+	}
+	//} else {
+	
 	  
-	  
-	  if(it == vertexIndices.end()){
-		vertexIndices.push_back(vInd);
-		impulses.push_back(getDeformationVectorFromImpulse(manPoint, isObject0));
-	  } else {
-		impulses[std::distance(vertexIndices.begin(), it)] +=
-		  getDeformationVectorFromImpulse(manPoint, isObject0);
-	  }
-	  //} else {
-	  
-	  
-	  //}
+	//}
   }
-
+  
   //copy impulses into an Eigen::vector to do a least squares solve
   Eigen::VectorXd rhs(3*impulses.size());
   for(auto i : range(impulses.size())){
@@ -732,101 +641,3 @@ void PlasticObject::restoreBulletSnapshot(){
 }
 
 
-void PlasticObject::updateCompoundShape(){
-  
-
-
-  //clear the compound children
-  while(compoundShape->getNumChildShapes() > 0){
-	compoundShape->removeChildShapeByIndex(0);
-  }
-
-
-  //use HACD to split up the object...
-
-  hacdVertices.resize(currentBulletVertexPositions.rows());
-  for(auto i : range(hacdVertices.size())){
-	hacdVertices[i] = HACD::Vec3<double>{currentBulletVertexPositions(i,0),
-										 currentBulletVertexPositions(i,1),
-										 currentBulletVertexPositions(i,2)};
-  }
-  hacdTriangles.resize(tetmeshTriangles.rows());
-  for(auto i : range(hacdTriangles.size())){
-	hacdTriangles[i] = HACD::Vec3<long>(tetmeshTriangles(i,0),
-										tetmeshTriangles(i,1),
-										tetmeshTriangles(i,2));
-  }
-
-  HACD::HACD hacd;
-  hacd.SetPoints(hacdVertices.data());
-  hacd.SetNPoints(hacdVertices.size());
-  hacd.SetTriangles(hacdTriangles.data());
-  hacd.SetNTriangles(hacdTriangles.size());
-  hacd.SetCompacityWeight(0.1);
-  hacd.SetVolumeWeight(0.0);
-  
-  
-  size_t nClusters = 5;
-  double concavity = 100;
-  bool invert = false;
-  bool addExtraDistPoints = false;
-  bool addNeighboursDistPoints = false;
-  bool addFacesPoints = false;       
-  
-  hacd.SetNClusters(nClusters);                     // minimum number of clusters
-  hacd.SetNVerticesPerCH(100);                      // max of 100 vertices per convex-hull
-  hacd.SetConcavity(concavity);                     // maximum concavity
-  hacd.SetAddExtraDistPoints(addExtraDistPoints);   
-  hacd.SetAddNeighboursDistPoints(addNeighboursDistPoints);   
-  hacd.SetAddFacesPoints(addFacesPoints); 
-  
-  hacd.Compute();
-  nClusters = hacd.GetNClusters();	
-  
-  convexHulls.clear();
-  convexHulls.reserve(nClusters);
-
-  std::cout << "nclusters: " << nClusters << std::endl;
-  for(auto cluster : range(nClusters)){
-	convexHulls.emplace_back(new btConvexHullShape{});
-	convexHulls.back()->setMargin(0.00001);//tiny
-	//reuse these vectors
-	hacdVertices.resize(hacd.GetNPointsCH(cluster));
-	hacdTriangles.resize(hacd.GetNTrianglesCH(cluster));
-	hacd.GetCH(cluster, hacdVertices.data(), hacdTriangles.data());
-
-	for(auto& vertex : hacdVertices){
-	  convexHulls.back()->addPoint(btVector3{vertex.X(),vertex.Y(), vertex.Z()});
-	  
-	}
-	btTransform trans;
-	trans.setIdentity();
-	compoundShape->addChildShape(trans,convexHulls.back().get());
-	
-  }
-  
-  
-
-  //hacd.Save("output.wrl", false);
-
-  
-
-  
-  /*btTransform tr;
-  tr.setIdentity();
-  
-
-  btVector3 aabbMin,aabbMax;
-
-  bulletShape->getAabb(tr,aabbMin,aabbMax);
-  auto diff = aabbMax - aabbMin;
-  auto minDist = std::min({diff.x(), diff.y(), diff.z()});  
-
-
-  MyInternalTriangleIndexCallback cb(compoundShape.get(),bulletShape.get(), 0.05*minDist);
-
-  bulletShape->getMeshInterface()->InternalProcessAllTriangles(&cb,aabbMin,aabbMax);
-  */
-  // compoundShape->updateBounds();
-  
-}

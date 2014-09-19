@@ -9,13 +9,11 @@
 #include <LinearMath/btDefaultMotionState.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
-#include <BulletCollision/CollisionShapes/btConvexHullShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <BulletCollision/NarrowPhaseCollision/btManifoldPoint.h>
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 
-#include <HACD/hacdHACD.h>
 
 
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
@@ -71,9 +69,6 @@ public:
 										Eigen::MatrixXd& deriv);
   
 
-
-  void updateCompoundShape();
-
   void skinMesh(btDiscreteDynamicsWorld& bulletWorld);
 
   void dump(std::string filename);
@@ -87,13 +82,6 @@ public:
   EGTraverser egTraverser;
   std::unique_ptr<btRigidBody> bulletBody;
   std::unique_ptr<btGImpactMeshShape> bulletShape;
-
-  std::unique_ptr<btCompoundShape> compoundShape;
-  std::vector<std::unique_ptr<btConvexHullShape>> convexHulls;
-
-  //hacd stuff
-  std::vector<HACD::Vec3<double>> hacdVertices;
-  std::vector<HACD::Vec3<long>> hacdTriangles;
   
   std::unique_ptr<btDefaultMotionState> motionState;
   
