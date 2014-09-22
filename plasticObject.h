@@ -78,8 +78,14 @@ public:
   void saveBulletSnapshot();
   void restoreBulletSnapshot();
 
+  void skinMeshVaryingBarycentricCoords();
+
+
   ExampleGraph exampleGraph;
-  EGTraverser egTraverser;
+  EGTraverser egTraverser; //ignore current position stuff, but useful for shortest paths
+
+  Eigen::MatrixXd barycentricCoordinates; //per vertex
+
   std::unique_ptr<btRigidBody> bulletBody;
   std::unique_ptr<btGImpactMeshShape> bulletShape;
   
@@ -109,7 +115,7 @@ public:
   Eigen::VectorXd tetmeshVertexMasses;
   
   std::unique_ptr<Skeleton<Bone>> skeleton;
-  std::vector<Bone*> boneRoots;
+  std::vector<Bone*> bones;
   
   Eigen::MatrixXd boneWeights;
   Eigen::MatrixXd currentTransformMatrix;

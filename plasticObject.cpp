@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <numeric> //accumulate
 
 #include <skeleton.h>
 #include <read_BF.h>
@@ -41,7 +42,10 @@ void PlasticObject::loadFromFiles(std::string directory){
 	exit(1);
   }
   */
-  exampleGraph.parent = skeleton.get();  
+  exampleGraph.parent = skeleton.get();
+  
+  bones = gather_bones(skeleton->roots);
+
   exampleGraph.load(directory + "/exampleGraph.txt");
 
   egTraverser = EGTraverser{&exampleGraph};
@@ -76,6 +80,9 @@ void PlasticObject::loadFromFiles(std::string directory){
 
   lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
 
+  barycentricCoordinates = Eigen::MatrixXd::Zero(tetmeshVertices.rows(), exampleGraph.nodes.size());
+  barycentricCoordinates.col(0).setOnes();// = 1; //set everything to be in rest pose
+  
 
 }
 
@@ -233,16 +240,18 @@ void PlasticObject::dumpVerticesBinary(std::string filename) const {
 
 
 void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
-
   
-  btTransform trans;
-  trans.setIdentity();
-  btVector3 aabbMin, aabbMax;
-  bulletShape->getAabb(trans, aabbMin,aabbMax);
+  
+  //btTransform trans;
+  //trans.setIdentity();
+  //btVector3 aabbMin, aabbMax;
+  //bulletShape->getAabb(trans, aabbMin,aabbMax);
   /*std::cout << "before: " //<< trans << std::endl
 			<< "aabbmin" <<aabbMin << std::endl
 			<< "aabbmax" <<aabbMax << std::endl;
   */
+
+  /*
   exampleGraph.setInterpolatedTransform(egTraverser.currentPosition.simplex,
 										egTraverser.currentPosition.coords);
 
@@ -274,13 +283,6 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   
   
   auto* dataBefore = currentBulletVertexPositions.data();
-  //std::cout << "data bafore: " << currentBulletVertexPositions.data() << std::endl;
-  /* for(auto i : range(currentBulletVertexPositions.rows())){
-	currentBulletVertexPositions(i, 0) = U3(i);
-	currentBulletVertexPositions(i, 1) = U3(currentBulletVertexPositions.rows() +i);
-	currentBulletVertexPositions(i, 2) = U3(2*currentBulletVertexPositions.rows() + i);
-	}*/
-
 												  
 
   currentBulletVertexPositions.col(0) = U3.block(0,0, 
@@ -299,7 +301,18 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   if(dataBefore != currentBulletVertexPositions.data()){
 	std::cout << "data changed" << std::endl;
 	exit(1);
+	}*/
+
+  Eigen::VectorXd basicRow = Eigen::VectorXd::Zero(exampleGraph.nodes.size());
+  for(auto i : range(egTraverser.currentPosition.coords.size())){
+	basicRow(exampleGraph.simplices[egTraverser.currentPosition.simplex][i]) =
+	  egTraverser.currentPosition.coords[i];
   }
+  for(auto i : range(barycentricCoordinates.rows())){
+	barycentricCoordinates.row(i) = basicRow.transpose();
+  }
+  skinMeshVaryingBarycentricCoords();
+
   //add the extra offsets
   currentBulletVertexPositions += localImpulseBasedOffsets;
 
@@ -641,3 +654,37 @@ void PlasticObject::restoreBulletSnapshot(){
 }
 
 
+void PlasticObject::skinMeshVaryingBarycentricCoords(){
+  
+  currentBulletVertexPositions.resize(tetmeshVertices.rows(), 3);
+  currentBulletVertexPositions.setZero();
+  for(auto i : range(tetmeshVertices.rows())){
+	for(auto j : range(bones.size())){
+	  const auto kRange = range(exampleGraph.nodes.size());
+	  //compute bone transform
+	  const Vec3 translation = 
+		std::accumulate(kRange.begin(), kRange.end(),
+						Vec3::Zero().eval(),
+						[this, i,j](const Vec3& acc, size_t k){
+						  return (acc + barycentricCoordinates(i, k)*
+								  exampleGraph.nodes[k].transformations[j].translation).eval();
+						});
+	  const Eigen::Vector4d rotationCoeffs =
+		std::accumulate(kRange.begin(), kRange.end(),
+						Eigen::Vector4d::Zero().eval(),
+						[this, i,j](const Eigen::Vector4d& acc, size_t k){
+						  return acc + barycentricCoordinates(i, k)*
+						  exampleGraph.nodes[k].transformations[j].rotation.coeffs();
+						});
+	  Quat rotation(rotationCoeffs);
+	  rotation.normalize();
+
+	  
+
+	  currentBulletVertexPositions.row(i) +=
+		scaleFactor*boneWeights(i,j)*(rotation*(tetmeshVertices.row(i).transpose()) + 
+									  translation).transpose();
+	  
+	}
+  }
+}
