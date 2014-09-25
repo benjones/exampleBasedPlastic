@@ -45,8 +45,10 @@ void PlasticObject::loadFromFiles(std::string directory){
   exampleGraph.parent = skeleton.get();
   
   bones = gather_bones(skeleton->roots);
+  numBones = bones.size();
 
   exampleGraph.load(directory + "/exampleGraph.txt");
+  numNodes = exampleGraph.nodes.size();
 
   egTraverser = EGTraverser{&exampleGraph};
   
@@ -67,7 +69,8 @@ void PlasticObject::loadFromFiles(std::string directory){
 	std::cout << "couldn't read tetmesh" << std::endl;
 	exit(1);
   }
-  std::cout << "tetmesh has: " << tetmeshVertices.rows() << " verts" << std::endl
+  numPhysicsVertices = tetmeshVertices.rows();
+  std::cout << "tetmesh has: " << numPhysicsVertices << " verts" << std::endl
 			<< "and " << tetmeshTets.rows() << " tets" << std::endl;
 
   if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
@@ -80,9 +83,10 @@ void PlasticObject::loadFromFiles(std::string directory){
 
   lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
 
-  barycentricCoordinates = Eigen::MatrixXd::Zero(tetmeshVertices.rows(), exampleGraph.nodes.size());
+  barycentricCoordinates = Eigen::MatrixXd::Zero(numPhysicsVertices, numNodes);
   barycentricCoordinates.col(0).setOnes();// = 1; //set everything to be in rest pose
-  
+
+  skinMeshVaryingBarycentricCoords();//precompute rotations and stuff
 
 }
 
@@ -92,7 +96,7 @@ void PlasticObject::computeMassesAndVolume(){
   volume = 0;
   mass = 0;
   //compute object centerOfMass
-  tetmeshVertexMasses.resize(tetmeshVertices.rows());
+  tetmeshVertexMasses.resize(numPhysicsVertices);
   tetmeshVertexMasses.setZero();
 
   Eigen::Matrix3d basis(3,3);
@@ -303,7 +307,9 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
 	exit(1);
 	}*/
 
-  Eigen::VectorXd basicRow = Eigen::VectorXd::Zero(exampleGraph.nodes.size());
+  /*  
+	  set everything to the same barycentric coordinate
+Eigen::VectorXd basicRow = Eigen::VectorXd::Zero(numNodes);
   for(auto i : range(egTraverser.currentPosition.coords.size())){
 	basicRow(exampleGraph.simplices[egTraverser.currentPosition.simplex][i]) =
 	  egTraverser.currentPosition.coords[i];
@@ -311,6 +317,7 @@ void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
   for(auto i : range(barycentricCoordinates.rows())){
 	barycentricCoordinates.row(i) = basicRow.transpose();
   }
+  */
   skinMeshVaryingBarycentricCoords();
 
   //add the extra offsets
@@ -431,7 +438,7 @@ bool PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man,
 	auto vIndex = getNearestVertex(bulletToEigen(localPoint));
 	weightsAtContact = boneWeights.row(vIndex).transpose();
 	
-	for(auto i : range(tetmeshVertices.rows())){
+	for(auto i : range(numPhysicsVertices)){
 	  auto weightSpaceDistance = (weightsAtContact - 
 								  boneWeights.row(i).transpose()).norm();
 	  
@@ -513,6 +520,106 @@ btVector3 PlasticObject::getLocalDeformationVectorFromImpulse(const btManifoldPo
   return displacementToApply;
 }
 
+bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
+  if(plasticityImpulseScale == 0){
+	return false;
+  }
+  bool deformed = false;
+  desiredDeformations.resize(tetmeshVertices.size(), 3);
+  desiredDeformations.setZero();
+
+  Eigen::VectorXd weightsAtContact; //save on allocations
+  for(auto& pr : manifoldPoints){
+	auto& manPoint = pr.first;
+	bool isObject0 = pr.second;
+	
+	auto& localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
+	auto vInd = getNearestVertex(bulletToEigen(localPoint));
+	
+	auto impulseAtContact = 
+	  bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
+	if(impulseAtContact.squaredNorm() <= 0){continue;} //ignore 0 impulses
+	deformed = true;
+
+	weightsAtContact = boneWeights.row(vInd).transpose();
+
+	
+	//todo, some sort of BVH/clustering to speed this up?
+	for(auto i : range(numPhysicsVertices)){
+	  auto weightSpaceDistance = 
+		(weightsAtContact -
+		 boneWeights.row(i).transpose()).norm();
+	  auto scale = Kernels::simpleCubic(weightSpaceDistance*plasticityKernelScale);
+	  if(scale > 0){
+		desiredDeformations.row(i) += 
+		  scale*impulseAtContact.transpose();
+	  }
+	  
+	}
+  }
+  
+  //do the solves:
+  
+  Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, numNodes);
+
+  for(auto i : range(numPhysicsVertices)){
+	//no need to solve for stuff that doesn't want to be deformed
+	if(desiredDeformations.row(i).squaredNorm() < 0.0001){continue;}
+
+	jacobian.resize(numNodes, 3);
+	jacobian.setZero();
+	
+	for(auto nodeIndex : range(numNodes)){
+	  auto& node = exampleGraph.nodes[nodeIndex];
+	  for(auto boneIndex : range(numBones)){
+		Eigen::AngleAxis<double> nodeRotation{node.transformations[boneIndex].rotation};
+		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numBones +
+																	boneIndex]};
+		
+		//see "computeTransformationDerivatives" for explaination
+		jacobian.block(0, nodeIndex, 3, 1) +=
+		  boneWeights(i, boneIndex)*
+		  (node.transformations[boneIndex].translation +
+		   nodeRotation.angle()*
+		   currentRotation.axis().cross(currentRotation*
+										tetmeshVertices.row(i).transpose())
+		   );
+	  }
+	}
+	checkNans(jacobian);
+	//Eigen::VectorXd deltaS = jacobian.colPivHouseholderQr().solve(desiredDeformations.row(i).transpose());
+	Eigen::VectorXd deltaS = 
+	  jacobian.jacobiSvd(Eigen::ComputeThinU | 
+						 Eigen::ComputeThinV).solve(desiredDeformations.row(i).transpose());
+
+	//std::cout << deltaS << std::endl;
+	//std::cout << "desired def: " << desiredDeformations.row(i) << std::endl;
+	//std::cout << "jacobian: " << jacobian << std::endl;
+	checkNans(deltaS);
+
+	if(deltaS.squaredNorm() > 0.01){
+	  std::cout << "delta s for vertex " << i << ": " << deltaS << std::endl;
+	}
+
+	barycentricCoordinates.row(i) += deltaS.transpose();
+	//reproject back onto the simplex (assuming all nodes in 1 simplex for now)
+	for(auto j : range(barycentricCoordinates.cols())){
+	  //clamp stuff back into the simplex
+	  barycentricCoordinates(i,j) = std::max(barycentricCoordinates(i,j), 0.0);
+	}
+	//normalize
+	auto sum = barycentricCoordinates.row(i).sum();
+	if(sum < 0.0001){
+	  barycentricCoordinates(i,0) = 1;
+	  sum = 1;
+	}
+	barycentricCoordinates.row(i) /= sum;
+	
+  }
+  checkNans(barycentricCoordinates);
+  return deformed;
+  
+}
 
 bool PlasticObject::projectImpulsesOntoExampleManifold(){
   
@@ -588,7 +695,7 @@ void PlasticObject::computeTransformationDerivatives(const EGPosition& egPositio
 													 const std::vector<int>& indices,
 													 Eigen::MatrixXd& deriv){
   
-  std::vector<double> currentWeights(exampleGraph.nodes.size(), 0.0);
+  std::vector<double> currentWeights(numNodes, 0.0);
   auto& simplex = exampleGraph.simplices[egPosition.simplex];
   for(auto i : range(simplex.size())){
 	currentWeights[simplex[i]] = egPosition.coords[i];
@@ -636,11 +743,8 @@ void PlasticObject::computeTransformationDerivatives(const EGPosition& egPositio
 
 void PlasticObject::saveBulletSnapshot(){
   bulletSnapshot.linearVelocity = bulletBody->getLinearVelocity();
-  std::cout << "inertia tensor: " << bulletBody->getInvInertiaTensorWorld() << std::endl;
-  std::cout << "inertia tensor inverse: " << bulletBody->getInvInertiaTensorWorld().inverse() << std::endl;
   bulletSnapshot.angularMomentum = bulletBody->getInvInertiaTensorWorld().inverse()*
 	bulletBody->getAngularVelocity();
-  std::cout << "angular momentum: " << bulletSnapshot.angularMomentum << std::endl;
   //keep the inertia part out of it
   bulletSnapshot.comTransform = bulletBody->getCenterOfMassTransform()*
 	inertiaAligningTransform.inverse();
@@ -649,18 +753,20 @@ void PlasticObject::saveBulletSnapshot(){
 void PlasticObject::restoreBulletSnapshot(){
   bulletBody->setLinearVelocity(bulletSnapshot.linearVelocity);
   bulletBody->setAngularVelocity(bulletBody->getInvInertiaTensorWorld()*bulletSnapshot.angularMomentum);
-  std::cout << "angularVelocity: " << bulletBody->getAngularVelocity() << std::endl;
   bulletBody->setCenterOfMassTransform(bulletSnapshot.comTransform*inertiaAligningTransform);
 }
 
 
 void PlasticObject::skinMeshVaryingBarycentricCoords(){
   
-  currentBulletVertexPositions.resize(tetmeshVertices.rows(), 3);
+  perVertexTranslations.resize(numPhysicsVertices*numBones);
+  perVertexRotations.resize(numPhysicsVertices*numBones);
+
+  currentBulletVertexPositions.resize(numPhysicsVertices, 3);
   currentBulletVertexPositions.setZero();
-  for(auto i : range(tetmeshVertices.rows())){
-	for(auto j : range(bones.size())){
-	  const auto kRange = range(exampleGraph.nodes.size());
+  for(auto i : range(numPhysicsVertices)){
+	for(auto j : range(numBones)){
+	  const auto kRange = range(numNodes);
 	  //compute bone transform
 	  const Vec3 translation = 
 		std::accumulate(kRange.begin(), kRange.end(),
@@ -679,11 +785,12 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 	  Quat rotation(rotationCoeffs);
 	  rotation.normalize();
 
-	  
-
 	  currentBulletVertexPositions.row(i) +=
 		scaleFactor*boneWeights(i,j)*(rotation*(tetmeshVertices.row(i).transpose()) + 
 									  translation).transpose();
+
+	  perVertexTranslations[i*numBones + j] = translation;
+	  perVertexRotations[i*numBones +j] = rotation;
 	  
 	}
   }

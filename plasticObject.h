@@ -50,6 +50,8 @@ public:
   bool deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
   
   bool projectImpulsesOntoExampleManifold();
+  
+  bool projectImpulsesOntoExampleManifoldLocally();
 
 
   btVector3 getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
@@ -85,6 +87,12 @@ public:
   EGTraverser egTraverser; //ignore current position stuff, but useful for shortest paths
 
   Eigen::MatrixXd barycentricCoordinates; //per vertex
+  RMMatrix3d desiredDeformations; //per vertex
+
+  //nVertex x nBones, row-major matrix of the translation/rotation of each bone
+  //store this so that we can use it when computing derivatives for the projection
+  std::vector<Vec3> perVertexTranslations; 
+  std::vector<Quat> perVertexRotations;
 
   std::unique_ptr<btRigidBody> bulletBody;
   std::unique_ptr<btGImpactMeshShape> bulletShape;
@@ -97,6 +105,7 @@ public:
   //std::vector<int> trimeshIndices;
   
   RMMatrix3d trimeshVertices, tetmeshVertices;
+  size_t numPhysicsVertices, numBones, numNodes;
   RMMatrix3i trimeshTriangles, tetmeshTriangles;
   RMMatrix4i tetmeshTets;
   
@@ -127,6 +136,7 @@ public:
   double plasticityImpulseYield;
   //scale*(mag(impulse) - yield) gets distributed to handles
   double plasticityImpulseScale;
+  double plasticityKernelScale;
   
   double localPlasticityImpulseYield;
   double localPlasticityImpulseScale;

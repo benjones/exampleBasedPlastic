@@ -1616,6 +1616,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	
 	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
 	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
+	po.plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
 
 	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 1e6).asDouble();
 	po.localPlasticityImpulseScale = poi.get("localPlasticityImpulseScale", 0).asDouble();
@@ -1625,9 +1626,9 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 	po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
 
-	po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.tetmeshVertices.rows(), 3);
+	po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
 	
-	//	po.currentBulletVertexPositions.resize( po.tetmeshVertices.rows(),
+	//	po.currentBulletVertexPositions.resize( po.numPhysicsVertices,
 	//											Eigen::NoChange);
 	
 	std::cout << "vertex array data: " << po.currentBulletVertexPositions.data() << std::endl;
@@ -1704,7 +1705,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//actually, just jam this into the worldTransform 
 	/*Eigen::Vector3d centerOfMass = 
 	  po.tetmeshVertices.colwise().sum().transpose()/
-	  po.tetmeshVertices.rows();
+	  po.numPhysicsVertices;
 	
 
 	for(auto i : range(po.currentBulletVertexPositions.rows())){
@@ -1831,7 +1832,8 @@ void World::timeStepDynamicSprites(){
 
   for(auto& po : plasticObjects){
 	
-	if(po.projectImpulsesOntoExampleManifold()){
+	//	if(po.projectImpulsesOntoExampleManifold()){
+	if(po.projectImpulsesOntoExampleManifoldLocally()){
 	  po.deformedThisFrame = true;
 	}
 
@@ -1977,7 +1979,7 @@ void World::makeBarrelPyramid(){
 		
 		po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
 
-		po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.tetmeshVertices.rows(), 3);
+		po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
 
 		po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
 		  new btTriangleIndexVertexArray{

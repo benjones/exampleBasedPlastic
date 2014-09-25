@@ -100,3 +100,16 @@ void writeEle(std::string filename, const TType& triangles){
   
 }
 
+template<typename T>
+void checkNans(const T * const data, size_t size){
+  assert(!std::any_of(data, data + size, [](const T& t){return std::isnan(t);}));
+}
+
+template <typename T>
+inline void checkNans(const std::vector<T>& vec){
+  checkNans(vec.data(), vec.size());
+}
+template <typename EigenType>
+inline void checkNans(const EigenType& mat){
+  checkNans(mat.data(), mat.rows()*mat.cols());
+}

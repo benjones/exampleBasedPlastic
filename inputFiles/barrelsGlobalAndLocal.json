@@ -9,6 +9,7 @@
 			"scaleFactor" : 0.01,
 			"plasticityImpulseScale" : 20,
 			"plasticityImpulseYield" : 0.0001,
+			"plasticityKernelScale" : 0.5,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 
@@ -19,6 +20,7 @@
 			"scaleFactor" : 0.01,
 			"plasticityImpulseScale" : 20,//500,
 			"plasticityImpulseYield" : 0.0001,
+			"plasticityKernelScale" : 0.5,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 
@@ -29,6 +31,7 @@
 			"scaleFactor" : 0.01,
 			"plasticityImpulseScale" : 20,//500,
 			"plasticityImpulseYield" : 0.0001,
+			"plasticityKernelScale" : 0.5,
 			"localPlasticityImpulseScale" : 3,
 			"localPlasticityImpulseYield" : 0.001
 
