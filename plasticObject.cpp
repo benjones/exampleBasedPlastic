@@ -16,6 +16,10 @@
 #include <igl/readOBJ.h>
 #include <igl/writeOBJ.h>
 #include <igl/readMESH.h>
+#include <igl/cotmatrix.h>
+#include <igl/adjacency_matrix.h>
+#include <igl/sum.h>
+#include <igl/diag.h>
 
 #include "plyIO.hpp"
 
@@ -45,7 +49,8 @@ void PlasticObject::loadFromFiles(std::string directory){
   exampleGraph.parent = skeleton.get();
   
   bones = gather_bones(skeleton->roots);
-  numBones = bones.size();
+  numBoneTips = bones.size();
+  std::cout << "numBoneTips" << numBoneTips << std::endl;
 
   exampleGraph.load(directory + "/exampleGraph.txt");
   numNodes = exampleGraph.nodes.size();
@@ -78,10 +83,33 @@ void PlasticObject::loadFromFiles(std::string directory){
 	exit(1);
   }
   
+  numRealBones = boneWeights.cols();
+
+  //sanity check
+  assert (numRealBones == 
+		  std::count_if(bones.begin(), bones.end(), 
+						[](const Bone* b){
+						  return b->get_wi() >= 0;
+						}));
+
   //just the translational bit for each handle
   collisionHandleAdjustments = Eigen::MatrixXd::Zero(3, boneWeights.cols());
 
   lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
+  //igl::cotmatrix(tetmeshVertices, tetmeshTets, cotangentLaplacian);
+  Eigen::SparseMatrix<double> A;
+  igl::adjacency_matrix(tetmeshTets, A);
+  Eigen::SparseVector<double> Asum;
+  igl::sum(A, 1, Asum);
+  Eigen::SparseMatrix<double> Adiag;
+  igl::diag(Asum, Adiag);
+  cotangentLaplacian = 2*Adiag + A;//A - Adiag;
+
+  for(auto i : range(cotangentLaplacian.cols())){
+	cotangentLaplacian.col(i) /= cotangentLaplacian.col(i).sum();
+  }
+  //  std::cout << cotangentLaplacian.col(0) << std::endl;
+  //  exit(1);
 
   barycentricCoordinates = Eigen::MatrixXd::Zero(numPhysicsVertices, numNodes);
   barycentricCoordinates.col(0).setOnes();// = 1; //set everything to be in rest pose
@@ -525,7 +553,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	return false;
   }
   bool deformed = false;
-  desiredDeformations.resize(tetmeshVertices.size(), 3);
+  desiredDeformations.resize(numPhysicsVertices, 3);
   desiredDeformations.setZero();
 
   Eigen::VectorXd weightsAtContact; //save on allocations
@@ -561,6 +589,8 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   //do the solves:
   
   Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, numNodes);
+  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
+  deltaBarycentricCoordinates.setZero();
 
   for(auto i : range(numPhysicsVertices)){
 	//no need to solve for stuff that doesn't want to be deformed
@@ -571,14 +601,16 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	
 	for(auto nodeIndex : range(numNodes)){
 	  auto& node = exampleGraph.nodes[nodeIndex];
-	  for(auto boneIndex : range(numBones)){
-		Eigen::AngleAxis<double> nodeRotation{node.transformations[boneIndex].rotation};
-		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numBones +
-																	boneIndex]};
+	  //	  for(auto boneIndex : range(numBones)){
+	  for(auto boneIndex : range(numBoneTips)){
+		auto weightIndex = bones[boneIndex]->get_wi();
+		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
+		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numRealBones +
+																	weightIndex]};
 		
 		//see "computeTransformationDerivatives" for explaination
 		jacobian.block(0, nodeIndex, 3, 1) +=
-		  boneWeights(i, boneIndex)*
+		  boneWeights(i, weightIndex)*
 		  (node.transformations[boneIndex].translation +
 		   nodeRotation.angle()*
 		   currentRotation.axis().cross(currentRotation*
@@ -601,7 +633,9 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	  std::cout << "delta s for vertex " << i << ": " << deltaS << std::endl;
 	}
 
-	barycentricCoordinates.row(i) += deltaS.transpose();
+	deltaBarycentricCoordinates.row(i) += deltaS.transpose();
+
+	/*
 	//reproject back onto the simplex (assuming all nodes in 1 simplex for now)
 	for(auto j : range(barycentricCoordinates.cols())){
 	  //clamp stuff back into the simplex
@@ -614,8 +648,35 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	  sum = 1;
 	}
 	barycentricCoordinates.row(i) /= sum;
-	
+	*/
   }
+
+  //hit the delta with the laplacian to smooth it
+  for(auto i : range(8)){
+	deltaBarycentricCoordinates = (cotangentLaplacian.transpose()*deltaBarycentricCoordinates).eval();
+	//	deltaBarycentricCoordinates -= 0.005*(cotangentLaplacian*deltaBarycentricCoordinates).eval();
+	//	if(deltaBarycentricCoordinates.row(i).squaredNorm() > 0.001){
+	//	  std::cout << "smoothing iter: " << i << ' ' << deltaBarycentricCoordinates.row(0) << std::endl;
+	//	}
+  }
+
+  barycentricCoordinates += deltaBarycentricCoordinates;
+
+  //clamp and rescale:
+  for(auto i : range(numPhysicsVertices)){
+	for(auto j : range(numNodes)){
+	  barycentricCoordinates(i, j) = std::max(barycentricCoordinates(i,j), 0.0);
+	}
+	auto sum = barycentricCoordinates.row(i).sum();
+	if(fabs(sum) < 0.0001){
+	  barycentricCoordinates(i, 0) = 1;
+	} else {
+	  barycentricCoordinates.row(i) /= sum;
+	}
+  }
+  std::cout << "row 0: " << std::endl;
+  std::cout << barycentricCoordinates.row(0) << std::endl;
+  //  if(barycentricCoordinates(0,2) > 0.1) {exit(1);}
   checkNans(barycentricCoordinates);
   return deformed;
   
@@ -759,13 +820,15 @@ void PlasticObject::restoreBulletSnapshot(){
 
 void PlasticObject::skinMeshVaryingBarycentricCoords(){
   
-  perVertexTranslations.resize(numPhysicsVertices*numBones);
-  perVertexRotations.resize(numPhysicsVertices*numBones);
+  perVertexTranslations.resize(numPhysicsVertices*numRealBones);
+  perVertexRotations.resize(numPhysicsVertices*numRealBones);
 
   currentBulletVertexPositions.resize(numPhysicsVertices, 3);
   currentBulletVertexPositions.setZero();
   for(auto i : range(numPhysicsVertices)){
-	for(auto j : range(numBones)){
+	for(auto j : range(numBoneTips)){
+	  if(bones[j]->get_wi() < 0){ continue;} //not a real bone
+
 	  const auto kRange = range(numNodes);
 	  //compute bone transform
 	  const Vec3 translation = 
@@ -784,13 +847,19 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 						});
 	  Quat rotation(rotationCoeffs);
 	  rotation.normalize();
-
+	  
+	  //	  std::cout << "bone weights: " << boneWeights.rows() << ' ' << boneWeights.cols() << std::endl;
+	  //	  std::cout << "tmverts: " << tetmeshVertices.rows() << ' ' << tetmeshVertices.cols() << std::endl;
+	  
+	  auto weightIndex = bones[j]->get_wi();
+	  
 	  currentBulletVertexPositions.row(i) +=
-		scaleFactor*boneWeights(i,j)*(rotation*(tetmeshVertices.row(i).transpose()) + 
-									  translation).transpose();
+		scaleFactor*boneWeights(i,weightIndex)*
+		(rotation*(tetmeshVertices.row(i).transpose()) + 
+		 translation).transpose();
 
-	  perVertexTranslations[i*numBones + j] = translation;
-	  perVertexRotations[i*numBones +j] = rotation;
+	  perVertexTranslations[i*numRealBones + weightIndex] = translation;
+	  perVertexRotations[i*numRealBones + weightIndex] = rotation;
 	  
 	}
   }

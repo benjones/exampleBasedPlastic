@@ -6,6 +6,8 @@
 #include <Skeleton.cpp> //templates...
 #include <Bone.h>
 
+#include <unsupported/Eigen/SparseExtra>
+
 #include <LinearMath/btDefaultMotionState.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
@@ -87,6 +89,7 @@ public:
   EGTraverser egTraverser; //ignore current position stuff, but useful for shortest paths
 
   Eigen::MatrixXd barycentricCoordinates; //per vertex
+  Eigen::MatrixXd deltaBarycentricCoordinates;
   RMMatrix3d desiredDeformations; //per vertex
 
   //nVertex x nBones, row-major matrix of the translation/rotation of each bone
@@ -105,7 +108,7 @@ public:
   //std::vector<int> trimeshIndices;
   
   RMMatrix3d trimeshVertices, tetmeshVertices;
-  size_t numPhysicsVertices, numBones, numNodes;
+  size_t numPhysicsVertices, numBoneTips, numRealBones, numNodes;
   RMMatrix3i trimeshTriangles, tetmeshTriangles;
   RMMatrix4i tetmeshTets;
   
@@ -154,5 +157,7 @@ public:
   //centered at its COM and aligned with the principal axes of inertia
   
   btTransform worldTransform; //the transform bullet gets is the product of these 2
+
+  Eigen::SparseMatrix<double> cotangentLaplacian; //for smoothing barycentric weights
 
 };

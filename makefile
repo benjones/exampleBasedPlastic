@@ -65,7 +65,7 @@ LDOPTS = $(OPT) $(INCS) $(IGL_LIB) $(FAST_LIB) $(MOSEK_LIB) $(ANT_LIB) $(CETRA_L
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS) openglViewer remakeObjs
+default: $(TARGETS) openglViewer decomposeLaplacian
 
 
 clean: 
@@ -81,6 +81,9 @@ fracture: $(OBJECTS) $(HEADERS)
 openglViewer: openglViewer.cpp
 	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp -I./Common -L./Common \
 -lslCommon -framework OpenGL -framework GLUT
+
+decomposeLaplacian: decomposeLaplacian.cpp
+	$(cc) $(CCOPTS) -o decomposeLaplacian decomposeLaplacian.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
 
 remakeObjs: remakeObjs.cpp
 	$(CC) $(CCOPTS) -o remakeObjs remakeObjs.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
