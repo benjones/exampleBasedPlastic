@@ -1943,7 +1943,6 @@ int World::getNumBarrels(){
 }
 
 void World::makeBarrelPyramid(){
-    return;
   int barrelCount = getNumBarrels();
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;
@@ -1970,9 +1969,9 @@ void World::makeBarrelPyramid(){
 		po.dt = dt;
 		po.density = 1000;
 		
-		po.plasticityImpulseYield = 0.000001;//0.001;
-		po.plasticityImpulseScale = 2.0;//80;
-		po.plasticityKernelScale = 0.3;
+		po.plasticityImpulseYield = 0.0002;//0.001;
+		po.plasticityImpulseScale = 100;//80;
+		po.plasticityKernelScale = 1.0;
 		po.localPlasticityImpulseScale = 0;//3;
 		po.localPlasticityImpulseYield = 0.0001;
 		

@@ -553,10 +553,14 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	return false;
   }
   bool deformed = false;
-  desiredDeformations.resize(numPhysicsVertices, 3);
-  desiredDeformations.setZero();
+  //desiredDeformations.resize(numPhysicsVertices, 3);
+  //desiredDeformations.setZero();
+  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
+  deltaBarycentricCoordinates.setZero();
+
 
   Eigen::VectorXd weightsAtContact; //save on allocations
+  Eigen::MatrixXd jacobian;
   for(auto& pr : manifoldPoints){
 	auto& manPoint = pr.first;
 	bool isObject0 = pr.second;
@@ -567,13 +571,57 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	auto impulseAtContact = 
 	  bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
 	if(impulseAtContact.squaredNorm() <= 0){continue;} //ignore 0 impulses
+	std::cout << "contact impulse SN: " << impulseAtContact.squaredNorm() << std::endl;
 	deformed = true;
 
 	weightsAtContact = boneWeights.row(vInd).transpose();
 
+	//compute the derivative
+	jacobian.resize(3, numNodes);
+	jacobian.setZero();
 	
+	for(auto nodeIndex : range(numNodes)){
+	  auto& node = exampleGraph.nodes[nodeIndex];
+	  for(auto boneIndex : range(numBoneTips)){
+		auto weightIndex = bones[boneIndex]->get_wi();
+		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
+		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numRealBones +
+																	weightIndex]};
+		
+		//		std::cout << "node rotaiton: " << nodeRotation.angle() << ", " << nodeRotation.axis() << std::endl;
+		//		std::cout << "current rotation: " << currentRotation.angle() << ", " << currentRotation.axis()  << std::endl;
+		jacobian.col(nodeIndex) += 
+		  boneWeights(vInd, weightIndex)*
+		  (node.transformations[boneIndex].translation +
+		   nodeRotation.angle()*
+		   currentRotation.axis().cross(currentRotation*
+										tetmeshVertices.row(vInd).transpose()));
+		   }
+	  
+	}
+	
+	std::cout << "jacobian: " << jacobian << std::endl;
+	Eigen::VectorXd deltaS =
+	  jacobian.jacobiSvd(Eigen::ComputeThinU | 
+						 Eigen::ComputeThinV).solve(impulseAtContact);
+
+	std::cout << "deltaS: " << deltaS << std::endl;
+	
+	//scale it
+	deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
+	
+	if(deltaS.squaredNorm() > 0.000001){
+
+	  //distribute this to evereyone else
+	  for(auto i : range(numPhysicsVertices)){
+		auto weightSpaceDistance =
+		  (weightsAtContact - boneWeights.row(i).transpose()).norm();
+		auto scale = Kernels::simpleCubic(weightSpaceDistance*plasticityKernelScale);
+		deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
+	  }
+	}
 	//todo, some sort of BVH/clustering to speed this up?
-	for(auto i : range(numPhysicsVertices)){
+	/*	for(auto i : range(numPhysicsVertices)){
 	  auto weightSpaceDistance = 
 		(weightsAtContact -
 		 boneWeights.row(i).transpose()).norm();
@@ -586,11 +634,10 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	}
   }
   
+	*/
   //do the solves:
   
-  Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, numNodes);
-  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
-  deltaBarycentricCoordinates.setZero();
+  /*Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, numNodes);
 
   for(auto i : range(numPhysicsVertices)){
 	//no need to solve for stuff that doesn't want to be deformed
@@ -634,7 +681,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	}
 
 	deltaBarycentricCoordinates.row(i) += deltaS.transpose();
-
+  */
 	/*
 	//reproject back onto the simplex (assuming all nodes in 1 simplex for now)
 	for(auto j : range(barycentricCoordinates.cols())){
@@ -652,14 +699,14 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   }
 
   //hit the delta with the laplacian to smooth it
-  for(auto i : range(8)){
+  /*for(auto i : range(8)){
 	deltaBarycentricCoordinates = (cotangentLaplacian.transpose()*deltaBarycentricCoordinates).eval();
 	//	deltaBarycentricCoordinates -= 0.005*(cotangentLaplacian*deltaBarycentricCoordinates).eval();
 	//	if(deltaBarycentricCoordinates.row(i).squaredNorm() > 0.001){
 	//	  std::cout << "smoothing iter: " << i << ' ' << deltaBarycentricCoordinates.row(0) << std::endl;
 	//	}
   }
-
+  */
   barycentricCoordinates += deltaBarycentricCoordinates;
 
   //clamp and rescale:
@@ -667,15 +714,15 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	for(auto j : range(numNodes)){
 	  barycentricCoordinates(i, j) = std::max(barycentricCoordinates(i,j), 0.0);
 	}
-	auto sum = barycentricCoordinates.row(i).sum();
+	double sum = barycentricCoordinates.row(i).sum();
 	if(fabs(sum) < 0.0001){
 	  barycentricCoordinates(i, 0) = 1;
 	} else {
 	  barycentricCoordinates.row(i) /= sum;
 	}
   }
-  std::cout << "row 0: " << std::endl;
-  std::cout << barycentricCoordinates.row(0) << std::endl;
+  //  std::cout << "row 0: " << std::endl;
+  //  std::cout << barycentricCoordinates.row(0) << std::endl;
   //  if(barycentricCoordinates(0,2) > 0.1) {exit(1);}
   checkNans(barycentricCoordinates);
   return deformed;
