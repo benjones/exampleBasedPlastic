@@ -113,3 +113,29 @@ template <typename EigenType>
 inline void checkNans(const EigenType& mat){
   checkNans(mat.data(), mat.rows()*mat.cols());
 }
+
+
+template <typename EigenType>
+void writeMatrixBinary(const std::string& filename, const EigenType& mat){
+  
+  std::ofstream outs(filename);
+  size_t rows = mat.rows();
+  size_t cols = mat.cols();
+  outs.write(reinterpret_cast<const char*>(&rows), sizeof(rows));
+  outs.write(reinterpret_cast<const char*>(&cols), sizeof(cols));
+  outs.write(reinterpret_cast<const char*>(mat.data()), rows*cols*sizeof(double));
+
+}
+
+inline Eigen::MatrixXd readMatrixBinary(const std::string& filename){
+  std::ifstream ins(filename);
+  size_t rows, cols;
+  ins.read(reinterpret_cast<char*>(&rows), sizeof(rows));
+  ins.read(reinterpret_cast<char*>(&cols), sizeof(cols));
+  if(!ins.good()){
+	return Eigen::MatrixXd(0,0);
+  }
+  Eigen::MatrixXd ret(rows, cols);
+  ins.read(reinterpret_cast<char*>(ret.data()), rows*cols*sizeof(double));
+  return ret;
+}

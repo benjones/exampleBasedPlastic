@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <numeric> //accumulate
+#include <deque>
 
 #include <skeleton.h>
 #include <read_BF.h>
@@ -29,6 +30,7 @@
 
 #include "cppitertools/range.hpp"
 
+#include "range.hpp"
 
 using iter::range;
 
@@ -77,6 +79,8 @@ void PlasticObject::loadFromFiles(std::string directory){
   numPhysicsVertices = tetmeshVertices.rows();
   std::cout << "tetmesh has: " << numPhysicsVertices << " verts" << std::endl
 			<< "and " << tetmeshTets.rows() << " tets" << std::endl;
+
+  computeVertexNeighbors();
 
   if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
 	std::cout << "couldn't read skinning weights" << std::endl;
@@ -244,6 +248,10 @@ void PlasticObject::dump(std::string filename){
   assert(sanityTriangles.rows() == tetmeshTriangles.rows());
   */
   
+}
+
+void PlasticObject::dumpBarycentricCoords(std::string filename) const{
+  writeMatrixBinary(filename, barycentricCoordinates);
 }
 
 void PlasticObject::dumpVerticesBinary(std::string filename) const {
@@ -612,11 +620,14 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	
 	if(deltaS.squaredNorm() > 0.000001){
 
+	  computeGeodesicDistances(vInd, 1.0/plasticityKernelScale);
+	  
 	  //distribute this to evereyone else
 	  for(auto i : range(numPhysicsVertices)){
-		auto weightSpaceDistance =
-		  (weightsAtContact - boneWeights.row(i).transpose()).norm();
-		auto scale = Kernels::simpleCubic(weightSpaceDistance*plasticityKernelScale);
+		//		auto weightSpaceDistance =
+		//		  (weightsAtContact - boneWeights.row(i).transpose()).norm();
+		//		auto scale = Kernels::simpleCubic(weightSpaceDistance*plasticityKernelScale);
+		auto scale = Kernels::simpleCubic(plasticityKernelScale*geodesicDistances[i]);
 		deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
 	  }
 	}
@@ -909,5 +920,71 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 	  perVertexRotations[i*numRealBones + weightIndex] = rotation;
 	  
 	}
+  }
+}
+
+void PlasticObject::computeGeodesicDistances(size_t vInd, double radius){
+
+  geodesicDistances.assign(numPhysicsVertices, std::numeric_limits<double>::infinity());
+  
+  geodesicDistances[vInd] = 0;
+  
+  const size_t passes = 4;
+  std::deque<size_t> queue;
+  for(auto pass : range(passes)){
+	queue.clear();
+	queue.insert(queue.end(), vertexNeighbors[vInd].begin(), vertexNeighbors[vInd].end());
+	while(!queue.empty()){
+	  size_t currentVertex = queue.front();
+	  queue.pop_front();
+	  double oldDist = geodesicDistances[currentVertex];
+	  auto neighborRange = benlib::range(vertexNeighbors[currentVertex].size());
+	  auto minIt = 
+		std::min_element(neighborRange.begin(),
+						 neighborRange.end(),
+						 [this, currentVertex](size_t ind1, size_t ind2){
+						   return (geodesicDistances[vertexNeighbors[currentVertex][ind1]] + 
+								   neighborDistances[currentVertex][ind1]) <
+						   (geodesicDistances[vertexNeighbors[currentVertex][ind2]] +
+							neighborDistances[currentVertex][ind2]);
+						 });
+	  double bestDist = geodesicDistances[vertexNeighbors[currentVertex][*minIt]] + 
+		neighborDistances[currentVertex][*minIt];
+	  if(bestDist < oldDist &&
+		 bestDist < radius){
+		geodesicDistances[currentVertex] = bestDist;
+		queue.insert(queue.end(), 
+					 vertexNeighbors[currentVertex].begin(), 
+					 vertexNeighbors[currentVertex].end());
+	  }
+	}
+  }
+}
+
+void PlasticObject::computeVertexNeighbors(){
+
+  vertexNeighbors.resize(numPhysicsVertices);
+  neighborDistances.resize(numPhysicsVertices);
+  for(auto row : range(tetmeshTets.rows())){
+	for(auto i : range(4)){
+	  vertexNeighbors[tetmeshTets(row, i)].push_back(tetmeshTets(row, (i + 1)%4));
+	  vertexNeighbors[tetmeshTets(row, i)].push_back(tetmeshTets(row, (i + 2)%4));
+	  vertexNeighbors[tetmeshTets(row, i)].push_back(tetmeshTets(row, (i + 3)%4));
+	}
+  }
+
+  //trash duplicates
+  for(auto vInd : range(numPhysicsVertices)){
+	auto& vlist = vertexNeighbors[vInd];
+	std::sort(vlist.begin(), vlist.end());
+	vlist.erase(std::unique(vlist.begin(), vlist.end()),
+				vlist.end());
+	
+	neighborDistances[vInd].resize(vlist.size());
+	std::transform(vlist.begin(), vlist.end(),
+				   neighborDistances[vInd].begin(),
+				   [this, vInd](size_t nInd){
+					 return (tetmeshVertices.row(vInd) - tetmeshVertices.row(nInd)).norm();
+				   });
   }
 }

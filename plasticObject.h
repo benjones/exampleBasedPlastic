@@ -78,6 +78,8 @@ public:
   void dump(std::string filename);
 
   void dumpVerticesBinary(std::string filename) const;
+  void dumpBarycentricCoords(std::string filename) const;
+
 
   void saveBulletSnapshot();
   void restoreBulletSnapshot();
@@ -159,5 +161,12 @@ public:
   btTransform worldTransform; //the transform bullet gets is the product of these 2
 
   Eigen::SparseMatrix<double> cotangentLaplacian; //for smoothing barycentric weights
+
+  void computeGeodesicDistances(size_t vInd, double radius);
+  std::vector<double> geodesicDistances; //geodesic distances to a given point
+
+  void computeVertexNeighbors();
+  std::vector<std::vector<size_t>> vertexNeighbors;
+  std::vector<std::vector<double>> neighborDistances;
 
 };

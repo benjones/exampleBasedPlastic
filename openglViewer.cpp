@@ -23,6 +23,7 @@ using iter::range;
 using iter::enumerate;
 
 #include "plyIO.hpp"
+#include "utils.h"
 
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
@@ -32,6 +33,7 @@ using Vector3 = Eigen::Vector3f;
 struct objStruct {
   RMMatrix3f pts;
   RMMatrix3i tris;
+  Eigen::MatrixXd barycentricCoordinates;
   //  std::vector<SlVector3> pts;
   //  std::vector<SlTri> tris;
   
@@ -70,6 +72,7 @@ Vector3 eye;
 Vector3 upVector;
 unsigned currentFrame = 0;
 std::string objFormat;
+std::string barycentricFormat;
 
 int windWidth, windHeight;
 double zoomFactor = 1.0;
@@ -79,15 +82,22 @@ float lightPos2[4] = {3.0f, 20.0f, -30.0f, 0.0f};
 float lightColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 float lightAmbient[4] = {.2f, .2f, .2f, 1.0f};
 
+bool useBarycentricColors;
+
 int main(int argc, char** argv){
   if(argc < 2){
-    std::cout << "Usage: ./openglViewer plyFormatString\n"
+    std::cout << "Usage: ./openglViewer plyFormatString [barycentricCoordinatesString]\n"
               << "(eg frames/foo-%03d.%04d.ply)\n";
     exit(1);
   }
   objFormat = argv[1];
+  useBarycentricColors = argc > 2;
+  if(useBarycentricColors){
+	barycentricFormat = argv[2];
+  }
   readFrame(objFormat, 0);
   
+
 
 
   glutInit(&argc, argv);
@@ -96,6 +106,9 @@ int main(int argc, char** argv){
   windWidth = windHeight = 800;
 
   glutCreateWindow("Mesh Viewer");
+  const auto screenWidth = glutGet(GLUT_SCREEN_WIDTH);
+  const auto screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
+  glutPositionWindow(screenWidth/4, screenHeight/5);
   glutDisplayFunc(displayFrame);
   glutKeyboardFunc(keyInput);
   glutSpecialFunc(specialInput);
@@ -134,6 +147,12 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
 	  //objStruct oj;
 	  //readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
 	  std::cout << "num tris: " << oj.tris.rows() << std::endl;
+
+
+	  if(useBarycentricColors){
+		sprintf(filename, barycentricFormat.c_str(), i, frameNumber);
+		oj.barycentricCoordinates = readMatrixBinary(filename);
+	  }
 
 	}
 	/*else{
@@ -181,9 +200,33 @@ void drawTriangles(bool changeColor){
       Vector3 normal =(v2 - v1).cross(v3 -v1);
       normal.normalize();
       glNormal3fv(normal.data());
-      glVertex3fv(v1.data());
-      glVertex3fv(v2.data());
-      glVertex3fv(v3.data());
+	  //hack.  Fix to use more than 3 barycentric coordinates
+	  if(changeColor && useBarycentricColors && oj.barycentricCoordinates.rows() > 0){
+		glColor3d(oj.barycentricCoordinates(tris(i, 0), 0),
+				  oj.barycentricCoordinates(tris(i, 0), 1),
+				  oj.barycentricCoordinates.cols() > 2 ? 
+				  oj.barycentricCoordinates(tris(i, 0), 2) :
+				  0);
+		glVertex3fv(v1.data());
+		glColor3d(oj.barycentricCoordinates(tris(i, 1), 0),
+				  oj.barycentricCoordinates(tris(i, 1), 1),
+				  oj.barycentricCoordinates.cols() > 2 ? 
+				  oj.barycentricCoordinates(tris(i, 1), 2) :
+				  0);
+
+		glVertex3fv(v2.data());
+		
+		glColor3d(oj.barycentricCoordinates(tris(i, 2), 0),
+				  oj.barycentricCoordinates(tris(i, 2), 1),
+				  oj.barycentricCoordinates.cols() > 2 ? 
+				  oj.barycentricCoordinates(tris(i, 2), 2) :
+				  0);
+		glVertex3fv(v3.data());
+	  } else {
+		glVertex3fv(v1.data());
+		glVertex3fv(v2.data());
+		glVertex3fv(v3.data());
+	  }
       //	glEnd();
       
     }      
@@ -332,6 +375,7 @@ void displayFrame(){
     glFlush();
     glutSwapBuffers();
 	//writeMitsuba();
+	glutSetWindowTitle((std::string("Mesh viewer: Frame ") + std::to_string(currentFrame)).c_str());
 }
 
 void keyInput(unsigned char key, int x, int y) {

@@ -644,9 +644,9 @@ void World::updateFemPositions(){
 void World::dumpFrame(){
 
   char framestring[80];
-  //char binaryString[80];
+  char bcsstring[80];
   sprintf(framestring, "frames/foo-%%03i.%%04i.ply");
-  //sprintf(binaryString, "frames/foo-%%03i.%%04i.bin");
+  sprintf(bcsstring, "frames/foo-%%03i.%%04i.bcs");
   std::cout << "writing frame: " << currentFrame << std::endl;
 
   int objectCount = 0;
@@ -717,6 +717,8 @@ void World::dumpFrame(){
 	  }*/
 	sprintf(fname, framestring, objectCount, currentFrame);
 	plasticObject.dump(fname);
+	sprintf(fname, bcsstring, objectCount, currentFrame);
+	plasticObject.dumpBarycentricCoords(fname);
 	objectCount++;
 	  
   }
@@ -1969,9 +1971,9 @@ void World::makeBarrelPyramid(){
 		po.dt = dt;
 		po.density = 1000;
 		
-		po.plasticityImpulseYield = 0.0002;//0.001;
-		po.plasticityImpulseScale = 100;//80;
-		po.plasticityKernelScale = 1.0;
+		po.plasticityImpulseYield = 0.0001;//0.001;
+		po.plasticityImpulseScale = 180;//80;
+		po.plasticityKernelScale = 0.025;
 		po.localPlasticityImpulseScale = 0;//3;
 		po.localPlasticityImpulseYield = 0.0001;
 		
