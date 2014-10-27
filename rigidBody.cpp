@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include <vector>
-#include "cppitertools/range.hpp"
+
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
@@ -13,7 +13,11 @@
 #include <iostream>
 #include "plyIO.hpp"
 
-using iter::range;
+//#include "cppitertools/range.hpp"
+//using iter::range;
+#include "range.hpp"
+using benlib::range;
+
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3i = Eigen::Matrix<int,   Eigen::Dynamic, 3, Eigen::RowMajor>;

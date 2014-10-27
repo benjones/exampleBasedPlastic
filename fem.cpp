@@ -27,8 +27,10 @@ using std::unordered_map;
 //#define TIMING
 //#define OUTPUT
 
-#include "cppitertools/range.hpp"
-using iter::range;
+//#include "cppitertools/range.hpp"
+//using iter::range;
+#include "range.hpp"
+using benlib::range;
 
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 

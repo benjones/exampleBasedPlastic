@@ -28,11 +28,8 @@
 
 #include "utils.h"
 
-#include "cppitertools/range.hpp"
-
 #include "range.hpp"
-
-using iter::range;
+using benlib::range;
 
 void PlasticObject::loadFromFiles(std::string directory){
   
@@ -608,7 +605,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	  
 	}
 	
-	std::cout << "jacobian: " << jacobian << std::endl;
+	//	std::cout << "jacobian: " << jacobian << std::endl;
 	Eigen::VectorXd deltaS =
 	  jacobian.jacobiSvd(Eigen::ComputeThinU | 
 						 Eigen::ComputeThinV).solve(impulseAtContact);
@@ -736,6 +733,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   //  std::cout << barycentricCoordinates.row(0) << std::endl;
   //  if(barycentricCoordinates(0,2) > 0.1) {exit(1);}
   checkNans(barycentricCoordinates);
+
   return deformed;
   
 }

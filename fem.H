@@ -31,9 +31,12 @@
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <LinearMath/btDefaultMotionState.h>
 
-#include "cppitertools/range.hpp"
+
 #include "utils.h"
-using iter::range;
+//#include "cppitertools/range.hpp"
+//using iter::range;
+#include "range.hpp"
+using benlib::range;
 
 class btDiscreteDynamicsWorld;
 class MaterialProperties;

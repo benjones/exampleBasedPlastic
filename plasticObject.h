@@ -122,6 +122,7 @@ public:
 
   double dt;
   double density;
+  double restitution;
   double mass;
   double volume;
   Eigen::Matrix3d inertiaTensor;
@@ -168,5 +169,7 @@ public:
   void computeVertexNeighbors();
   std::vector<std::vector<size_t>> vertexNeighbors;
   std::vector<std::vector<double>> neighborDistances;
+
+  
 
 };

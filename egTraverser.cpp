@@ -3,9 +3,11 @@
 #include <numeric> //I <3 accumulate + inner_product
 
 #include "utils.h"
-#include "cppitertools/range.hpp"
+//#include "cppitertools/range.hpp"
+#include "range.hpp"
 #include "cppitertools/enumerate.hpp"
-using iter::range;
+//using iter::range;
+using benlib::range; 
 using iter::enumerate;
 
 

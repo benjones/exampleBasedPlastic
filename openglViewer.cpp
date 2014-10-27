@@ -17,10 +17,11 @@
 #include<GL/glu.h>
 #endif
 
-#include "cppitertools/range.hpp"
+
 #include "cppitertools/enumerate.hpp"
-using iter::range;
 using iter::enumerate;
+#include "range.hpp"
+using benlib::range;
 
 #include "plyIO.hpp"
 #include "utils.h"

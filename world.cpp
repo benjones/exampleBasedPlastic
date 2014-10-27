@@ -13,7 +13,7 @@
 #include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
 #include "json/json.h"
-#include "cppitertools/range.hpp"
+//#include "cppitertools/range.hpp"
 #include "cppitertools/enumerate.hpp"
 #include "utils.h"
 #include <numeric>
@@ -30,7 +30,9 @@ extern "C" {
 #include "tminres.hpp"
 #include "SimpleVector.hpp"
 
-using iter::range;
+//using iter::range;
+#include "range.hpp"
+using benlib::range;
 using iter::enumerate;
 
 #define PROJECTION 1
@@ -1779,7 +1781,8 @@ void World::loadPlasticObjects(const Json::Value& root){
 	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
 	std::cout << "po inertia inverse: " << po.bulletBody->getInvInertiaTensorWorld() << std::endl;
 
-	po.bulletBody->setRestitution(0.8);
+	po.restitution = poi.get("restitution", 0.8).asDouble();
+	po.bulletBody->setRestitution(po.restitution);
 
 	bulletWorld.addRigidBody(po.bulletBody.get());
 	//user index holds index into the plasticObjects array
@@ -1852,12 +1855,24 @@ void World::timeStepDynamicSprites(){
 			po.bulletBody->getLinearVelocity().y(),
 			po.constantVelocity.z()});
 	}
+	
+	double avgBcNorm = po.deltaBarycentricCoordinates.norm()/po.numPhysicsVertices;
+	double restitutionScale = std::max(0.0, 1 - 50*avgBcNorm);
+	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << std::endl;}
+	po.bulletBody->setRestitution(po.restitution*restitutionScale);
+
   }
+
+
+
+
+
   std::cout << "do second step: " << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
   std::cout << "step done" << std::endl;
 
   for(auto& po: plasticObjects){
+	po.bulletBody->setRestitution(po.restitution);
 	if(po.hasConstantVelocity){
 	  po.bulletBody->setLinearVelocity(btVector3{po.constantVelocity.x(),
 			po.bulletBody->getLinearVelocity().y(),

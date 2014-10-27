@@ -7,6 +7,9 @@
 #include <vector>
 #include <fstream>
 
+#include "range.hpp"
+using benlib::range;
+
 template <typename T>
 inline T sqr(const T& t){
   return t*t;
