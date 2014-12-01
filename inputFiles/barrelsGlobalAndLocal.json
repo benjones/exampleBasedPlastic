@@ -11,8 +11,8 @@
 			"plasticityImpulseYield" : 0.0004,
 			"plasticityKernelScale" : 0.015,
 			"localPlasticityImpulseScale" : 0,//3,
-			"localPlasticityImpulseYield" : 0.001
-
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05
 		},
 		{
 			"directory" : "inputFiles/barrel2/",
@@ -22,7 +22,8 @@
 			"plasticityImpulseYield" : 0.0004,
 			"plasticityKernelScale" : 0.015,
 			"localPlasticityImpulseScale" : 0,//3,
-			"localPlasticityImpulseYield" : 0.001
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05
 
 		},
 		{
@@ -33,7 +34,8 @@
 			"plasticityImpulseYield" : 0.0004,
 			"plasticityKernelScale" : 0.015,
 			"localPlasticityImpulseScale" : 0,//3,
-			"localPlasticityImpulseYield" : 0.001
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05
 
 		}
 	]

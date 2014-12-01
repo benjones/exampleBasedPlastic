@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
 
   //	double dt = 1/900.0 + 1e-12; 
   //	SlVector3 gravity(0.0,0.0,-9.8);
-  double framerate = 1/60.0;
+  double framerate = 1/60.0;//60.0;
   //double framerate = 0.00005960464478;
   //double framerate = 0.00011920928956;
 	//	bool ground = true;

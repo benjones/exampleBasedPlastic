@@ -18,10 +18,12 @@
 #endif
 
 
-#include "cppitertools/enumerate.hpp"
-using iter::enumerate;
+//#include "cppitertools/enumerate.hpp"
+//using iter::enumerate;
 #include "range.hpp"
+#include "enumerate.hpp"
 using benlib::range;
+using benlib::enumerate;
 
 #include "plyIO.hpp"
 #include "utils.h"
@@ -64,7 +66,7 @@ void mouseClicks(int button, int state, int x, int y);
 void mouseMove(int x, int y);
 
 void writeMitsuba();
-
+void drawImpulsesForFrame();
 
 //std::vector<particleInfo> globalPInfo; //Gotta because of glut
 std::vector<std::vector<objStruct>> globalObjs;
@@ -74,6 +76,7 @@ Vector3 upVector;
 unsigned currentFrame = 0;
 std::string objFormat;
 std::string barycentricFormat;
+std::string impulseFormat;
 
 int windWidth, windHeight;
 double zoomFactor = 1.0;
@@ -84,10 +87,11 @@ float lightColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 float lightAmbient[4] = {.2f, .2f, .2f, 1.0f};
 
 bool useBarycentricColors;
+bool drawImpulses;
 
 int main(int argc, char** argv){
   if(argc < 2){
-    std::cout << "Usage: ./openglViewer plyFormatString [barycentricCoordinatesString]\n"
+    std::cout << "Usage: ./openglViewer plyFormatString [barycentricCoordinatesString] [impulse files string]\n"
               << "(eg frames/foo-%03d.%04d.ply)\n";
     exit(1);
   }
@@ -95,6 +99,10 @@ int main(int argc, char** argv){
   useBarycentricColors = argc > 2;
   if(useBarycentricColors){
 	barycentricFormat = argv[2];
+  }
+  drawImpulses = argc > 3;
+  if(drawImpulses){
+	impulseFormat = argv[3];
   }
   readFrame(objFormat, 0);
   
@@ -180,12 +188,23 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
 
+				  
+
+
 void drawTriangles(bool changeColor){
+  RMMatrix3d drawableColors(5, 3);
+  drawableColors << 1, 0, 0,
+	0, 1, 0,
+	0, 0, 1,
+	0, 0, 0,
+	1, 1, 1;
+
+
   glBegin(GL_TRIANGLES);
-  for(auto e : enumerate(globalObjs[currentFrame])){
-	auto& oj = e.element;
+  for(auto&& e : enumerate(globalObjs[currentFrame])){
+	auto& oj = e.second;
 	if(changeColor){
-	  auto greenChannel = static_cast<double>(e.index)/globalObjs[currentFrame].size();
+	  auto greenChannel = static_cast<double>(e.first)/globalObjs[currentFrame].size();
 		
 		glColor4d(.5,greenChannel,.5,1);
 	}
@@ -203,26 +222,27 @@ void drawTriangles(bool changeColor){
       glNormal3fv(normal.data());
 	  //hack.  Fix to use more than 3 barycentric coordinates
 	  if(changeColor && useBarycentricColors && oj.barycentricCoordinates.rows() > 0){
-		glColor3d(oj.barycentricCoordinates(tris(i, 0), 0),
-				  oj.barycentricCoordinates(tris(i, 0), 1),
-				  oj.barycentricCoordinates.cols() > 2 ? 
-				  oj.barycentricCoordinates(tris(i, 0), 2) :
-				  0);
+		Eigen::Vector3d color = Eigen::Vector3d::Zero();
+		for(auto j : range(oj.barycentricCoordinates.cols())){
+		  color += oj.barycentricCoordinates(tris(i, 0),j)*drawableColors.row(j);
+		}
+		glColor3dv(color.data());
 		glVertex3fv(v1.data());
-		glColor3d(oj.barycentricCoordinates(tris(i, 1), 0),
-				  oj.barycentricCoordinates(tris(i, 1), 1),
-				  oj.barycentricCoordinates.cols() > 2 ? 
-				  oj.barycentricCoordinates(tris(i, 1), 2) :
-				  0);
+		color = Eigen::Vector3d::Zero();
+		for(auto j : range(oj.barycentricCoordinates.cols())){
+		  color += oj.barycentricCoordinates(tris(i, 1),j)*drawableColors.row(j);
+		}
+		glColor3dv(color.data());
 
 		glVertex3fv(v2.data());
-		
-		glColor3d(oj.barycentricCoordinates(tris(i, 2), 0),
-				  oj.barycentricCoordinates(tris(i, 2), 1),
-				  oj.barycentricCoordinates.cols() > 2 ? 
-				  oj.barycentricCoordinates(tris(i, 2), 2) :
-				  0);
+
+		color = Eigen::Vector3d::Zero();
+		for(auto j : range(oj.barycentricCoordinates.cols())){
+		  color += oj.barycentricCoordinates(tris(i, 2),j)*drawableColors.row(j);
+		}
+		glColor3dv(color.data());
 		glVertex3fv(v3.data());
+
 	  } else {
 		glVertex3fv(v1.data());
 		glVertex3fv(v2.data());
@@ -241,10 +261,10 @@ void drawPoints(){
   glPointSize(5);
   glDisable(GL_DEPTH_TEST);
   glBegin(GL_POINTS);
-  for(auto e : enumerate(globalObjs[currentFrame])){
-	auto redChannel = static_cast<double>(e.index)/globalObjs[currentFrame].size();
+  for(auto&& e : enumerate(globalObjs[currentFrame])){
+	auto redChannel = static_cast<double>(e.first)/globalObjs[currentFrame].size();
 	glColor3d(redChannel, 1, 1);
-	auto& oj = e.element;
+	auto& oj = e.second;
 	for(auto i : range(oj.pts.rows())){
 	  glVertex3fv(oj.pts.row(i).data());
 	}
@@ -288,7 +308,7 @@ void displayFrame(){
   glLightfv(GL_LIGHT1, GL_AMBIENT, lightAmbient);
 
 
-  glEnable(GL_CULL_FACE);
+  glDisable(GL_CULL_FACE); //triangles aren't wound properly...
   glCullFace(GL_BACK);
 
   //glEnable(GL_LIGHTING);
@@ -373,6 +393,10 @@ void displayFrame(){
 
 	//drawPoints();
 
+	if(drawImpulses){
+	  drawImpulsesForFrame();
+	}
+
     glFlush();
     glutSwapBuffers();
 	//writeMitsuba();
@@ -401,18 +425,24 @@ std::string makeFilename(const std::string &format, unsigned frame)
 void specialInput(int key, int x, int y){
   if(key == GLUT_KEY_RIGHT){
     std::cout << "right pressed" << std::endl;
-    currentFrame++;
-    std::cout << "currentFrame: " <<currentFrame << std::endl;
-    //if(globalPInfo[0].positions.size() <= (currentFrame)*3){
-    if(globalObjs.size() <= currentFrame){
-      readFrame(objFormat, currentFrame);     
-    }
+	int framesToRead = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) ? 10 : 1;
+	for(auto i : range(framesToRead)){
+	  currentFrame++;
+	  std::cout << "currentFrame: " <<currentFrame << std::endl;
+	  //if(globalPInfo[0].positions.size() <= (currentFrame)*3){
+	  if(globalObjs.size() <= currentFrame){
+		readFrame(objFormat, currentFrame);     
+	  }
+	}
     glutPostRedisplay();
   } else if (key == GLUT_KEY_LEFT){
     std::cout << "left pressed" << std::endl;
-    if(currentFrame != 0)
-      --currentFrame;
-    std::cout << "currentFrame: " <<currentFrame << std::endl;
+	int framesToBacktrack = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) ? 10 : 1;
+	for(auto i : range(framesToBacktrack)){
+		if(currentFrame != 0)
+		  --currentFrame;
+		std::cout << "currentFrame: " <<currentFrame << std::endl;
+	  }
     glutPostRedisplay();
   } else if(key == GLUT_KEY_UP){
 	//    zoomFactor /= 1.1;
@@ -492,3 +522,29 @@ void mouseMove(int x, int y){
 
 
   }*/
+
+
+void drawImpulsesForFrame(){
+  glDisable(GL_DEPTH_TEST);
+  glColor3d(1, 1, 0);
+  glBegin(GL_LINES);
+  for(auto i : range(globalObjs[currentFrame].size())){
+	char filename[1024];
+	sprintf(filename, impulseFormat.c_str(), i, currentFrame);
+	std::ifstream ins(filename);
+	
+	if(ins.good()){
+	  Vector3 p1, p2;
+	  ins >> p1.x() >> p1.y() >> p1.z()
+		  >> p2.x() >> p2.y() >> p2.z();
+	  while(ins.good()){
+		glVertex3fv(p1.data());
+		glVertex3fv(p2.data());
+		ins >> p1.x() >> p1.y() >> p1.z()
+			>> p2.x() >> p2.y() >> p2.z();
+	  }
+	}
+  }
+  glEnd();
+  glEnable(GL_DEPTH_TEST);
+}

@@ -1,0 +1,53 @@
+{
+	"ground" : true,
+	"dt" : 0.003,
+
+	"plasticObjects" : [
+		{
+			"directory" : "inputFiles/barrel4Examples/",
+			"offset" : [0,1,0],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 5.8e1,
+			"plasticityImpulseYield" : 4e-4,//0.0004,
+			"plasticityKernelScale" : 0.015,
+			"localPlasticityImpulseScale" : 0,//3,
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05,
+			"perExampleScale" : [0.01, 1, 1, 2]
+		},
+		{
+			"directory" : "inputFiles/barrel4Examples/",
+			"offset" : [1,2,2],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 5.8e1,//500,
+			"plasticityImpulseYield" : 4e-4,//0.0004,
+			"plasticityKernelScale" : 0.015,
+			"localPlasticityImpulseScale" : 0,//3,
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05,
+			"perExampleScale" : [0.01, 1, 1, 2]
+
+		},
+		{
+			"directory" : "inputFiles/barrel4Examples/",
+			"offset" : [0,4,0.3],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 5.8e1,//500,
+			"plasticityImpulseYield" : 4e-4,//0.0004,
+			"plasticityKernelScale" : 0.015,
+			"localPlasticityImpulseScale" : 0,//3,
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05,
+			"perExampleScale" : [0.01, 1, 1, 2]
+
+		}
+	]/*,
+	"bulletObjects" : [
+		{ 
+			"mass" : 200,
+			"offset" : [0, 4, 0.0],
+			"shape" : "box",
+			"extents" : [ 0.1, 0.1, 0.1]
+		}
+	]*/
+}

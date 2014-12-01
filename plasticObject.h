@@ -2,20 +2,21 @@
 
 #include <memory>
 #include <exampleGraph.h>
-#include "egTraverser.h"
+//#include "egTraverser.h"
 #include <Skeleton.cpp> //templates...
 #include <Bone.h>
 
-#include <unsupported/Eigen/SparseExtra>
+//#include <unsupported/Eigen/SparseExtra>
 
 #include <LinearMath/btDefaultMotionState.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
-#include <BulletCollision/CollisionShapes/btCompoundShape.h>
+//#include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <BulletCollision/NarrowPhaseCollision/btManifoldPoint.h>
-#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 
+//#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+//class btDiscreteDynamicsWorld;
 
 
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
@@ -47,11 +48,11 @@ public:
 							  const RMMatrix4i& tets);
   
 
-  void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
+  //void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
   
   bool deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
   
-  bool projectImpulsesOntoExampleManifold();
+  //bool projectImpulsesOntoExampleManifold();
   
   bool projectImpulsesOntoExampleManifoldLocally();
 
@@ -64,22 +65,22 @@ public:
   
 
 
-  Eigen::Vector3d getBarycentricCoordinates(btVector3 localPoint, int triangleIndex);
+  //Eigen::Vector3d getBarycentricCoordinates(btVector3 localPoint, int triangleIndex);
   int getNearestVertex(Eigen::Vector3d localPoint);
   
 
-  void computeTransformationDerivatives(const EGPosition& egPosition, 
+  /*void computeTransformationDerivatives(const EGPosition& egPosition, 
 										const std::vector<int>& indices,
 										Eigen::MatrixXd& deriv);
-  
+  */
 
-  void skinMesh(btDiscreteDynamicsWorld& bulletWorld);
+  void skinMesh();// unneeded param btDiscreteDynamicsWorld& bulletWorld);
 
   void dump(std::string filename);
 
   void dumpVerticesBinary(std::string filename) const;
   void dumpBarycentricCoords(std::string filename) const;
-
+  void dumpImpulses(std::string filename) const;
 
   void saveBulletSnapshot();
   void restoreBulletSnapshot();
@@ -88,10 +89,13 @@ public:
 
 
   ExampleGraph exampleGraph;
-  EGTraverser egTraverser; //ignore current position stuff, but useful for shortest paths
+  
+  //EGTraverser egTraverser; //ignore current position stuff, but useful for shortest paths
 
   Eigen::MatrixXd barycentricCoordinates; //per vertex
   Eigen::MatrixXd deltaBarycentricCoordinates;
+  Eigen::VectorXd perExampleScale;
+
   RMMatrix3d desiredDeformations; //per vertex
 
   //nVertex x nBones, row-major matrix of the translation/rotation of each bone
@@ -109,9 +113,9 @@ public:
   //std::vector<double> trimeshVertices;
   //std::vector<int> trimeshIndices;
   
-  RMMatrix3d trimeshVertices, tetmeshVertices;
+  RMMatrix3d tetmeshVertices;//,trimeshVertices //unused now
   size_t numPhysicsVertices, numBoneTips, numRealBones, numNodes;
-  RMMatrix3i trimeshTriangles, tetmeshTriangles;
+  RMMatrix3i tetmeshTriangles; //, trimeshTriangles unused
   RMMatrix4i tetmeshTets;
   
   RMMatrix3d currentBulletVertexPositions;
@@ -143,7 +147,11 @@ public:
   //scale*(mag(impulse) - yield) gets distributed to handles
   double plasticityImpulseScale;
   double plasticityKernelScale;
-  
+  double jacobianAlpha; //blend between singular vectors and J^T results
+
+  double plasticityRate; //how slowly to apply this delta
+
+
   double localPlasticityImpulseYield;
   double localPlasticityImpulseScale;
 
@@ -154,14 +162,14 @@ public:
   //second tells us if po is object0 in the contact
   std::vector<std::pair<btManifoldPoint, bool>> manifoldPoints;
 
-  Eigen::MatrixXd LBSMatrix;
+  //Eigen::MatrixXd LBSMatrix;
 
   btTransform inertiaAligningTransform; //align the skinned position so that it's 
   //centered at its COM and aligned with the principal axes of inertia
   
   btTransform worldTransform; //the transform bullet gets is the product of these 2
 
-  Eigen::SparseMatrix<double> cotangentLaplacian; //for smoothing barycentric weights
+  //Eigen::SparseMatrix<double> cotangentLaplacian; //for smoothing barycentric weights
 
   void computeGeodesicDistances(size_t vInd, double radius);
   std::vector<double> geodesicDistances; //geodesic distances to a given point
@@ -170,6 +178,8 @@ public:
   std::vector<std::vector<size_t>> vertexNeighbors;
   std::vector<std::vector<double>> neighborDistances;
 
+
+  void computeTriangleFaces();
   
 
 };

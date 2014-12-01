@@ -5,10 +5,12 @@
 #include "utils.h"
 //#include "cppitertools/range.hpp"
 #include "range.hpp"
-#include "cppitertools/enumerate.hpp"
+#include "enumerate.hpp"
+//#include "cppitertools/enumerate.hpp"
 //using iter::range;
 using benlib::range; 
-using iter::enumerate;
+using benlib::enumerate;
+//using iter::enumerate;
 
 
 
@@ -179,10 +181,10 @@ void EGTraverser::getCorrespondingPoint(const EGPosition& first,
 
 
   std::vector<std::pair<int, int>> weightCorrespondences;
-  for(auto e1 : enumerate(graph->simplices[first.simplex])){
-	for(auto e2 : enumerate(graph->simplices[nextSimplex])){
-	  if(e1.element == e2.element){
-		weightCorrespondences.emplace_back(e1.index, e2.index);
+  for(auto&& e1 : enumerate(graph->simplices[first.simplex])){
+	for(auto&& e2 : enumerate(graph->simplices[nextSimplex])){
+	  if(e1.second == e2.second){
+		weightCorrespondences.emplace_back(e1.first, e2.first);
 	  }
 	}
   }

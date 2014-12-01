@@ -38,7 +38,7 @@ LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath \
 -L./bullet-2.82-r2704/build/src/BulletDynamics \
 -lslcommon -llapack -lblas -lBulletDynamics \
 -lBulletCollision -lLinearMath -lHACD \
--framework OpenGL #./eltopo/eltopo3d/libeltopo_release.a
+-framework OpenGL -L/usr/local/lib -ltbb #./eltopo/eltopo3d/libeltopo_release.a
 INCS = -I./Common -I./bullet-2.82-r2704/src/ -I./bullet-2.82-r2704/Extras -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
 
 EIGEN_INCLUDE=-I/usr/local/include/eigen3
@@ -51,7 +51,7 @@ IGL_INCLUDE=-I../libigl/include -DIGL_HEADER_ONLY
 MOSEK=/Users/ben/mosek
 MOSEKPLATFORM=osx64x86
 MOSEK_INC=-I$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/h
-MOSEK_LIB=-lmosek64 #-L$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/bin #-liglmosek -lmosek64 -liomp5 -lpthread
+MOSEK_LIB=-lmosek64 -L$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/bin #-liglmosek -lmosek64 -liomp5 -lpthread
 
 ANT_LIB=-L../libigl/external/AntTweakBar/lib -lAntTweakBar -framework AppKit
 

@@ -6,30 +6,36 @@
 #include <cstdlib>
 #include <numeric> //accumulate
 #include <deque>
+#include <set>
+
+#include <tbb/tbb.h>
 
 #include <skeleton.h>
 #include <read_BF.h>
-#include <lbs_matrix.h>
-#include <gather_transformations.h>
-#include <columnize.h>
+//#include <lbs_matrix.h>
+//#include <gather_transformations.h>
+//#include <columnize.h>
 
 #include <igl/readDMAT.h>
-#include <igl/readOBJ.h>
-#include <igl/writeOBJ.h>
+//#include <igl/readOBJ.h>
+//#include <igl/writeOBJ.h>
 #include <igl/readMESH.h>
-#include <igl/cotmatrix.h>
-#include <igl/adjacency_matrix.h>
-#include <igl/sum.h>
-#include <igl/diag.h>
+//#include <igl/cotmatrix.h>
+//#include <igl/adjacency_matrix.h>
+//#include <igl/sum.h>
+//#include <igl/diag.h>
 
 #include "plyIO.hpp"
 
-#include <Eigen/QR>
+//#include <Eigen/QR>
 
 #include "utils.h"
 
 #include "range.hpp"
 using benlib::range;
+
+#include "enumerate.hpp"
+using benlib::enumerate;
 
 void PlasticObject::loadFromFiles(std::string directory){
   
@@ -54,18 +60,19 @@ void PlasticObject::loadFromFiles(std::string directory){
   exampleGraph.load(directory + "/exampleGraph.txt");
   numNodes = exampleGraph.nodes.size();
 
-  egTraverser = EGTraverser{&exampleGraph};
+  //egTraverser = EGTraverser{&exampleGraph};
   
 
   std::cout << "eg parent: " << exampleGraph.parent << " roots " 
 			<< exampleGraph.parent->roots << std::endl;
 
-  if(!igl::readOBJ(directory + "/mesh.obj", 
+  //we're not using the high res mesh for anything
+  /*if(!igl::readOBJ(directory + "/mesh.obj", 
 				   trimeshVertices,
 				   trimeshTriangles)){
 	std::cout << "couldn't read obj mesh" << std::endl;
 	exit(1);
-  }
+	}*/
   if(!igl::readMESH(directory + "/mesh.mesh",
 					tetmeshVertices,
 					tetmeshTets,
@@ -76,6 +83,9 @@ void PlasticObject::loadFromFiles(std::string directory){
   numPhysicsVertices = tetmeshVertices.rows();
   std::cout << "tetmesh has: " << numPhysicsVertices << " verts" << std::endl
 			<< "and " << tetmeshTets.rows() << " tets" << std::endl;
+
+  
+  computeTriangleFaces();
 
   computeVertexNeighbors();
 
@@ -96,9 +106,10 @@ void PlasticObject::loadFromFiles(std::string directory){
   //just the translational bit for each handle
   collisionHandleAdjustments = Eigen::MatrixXd::Zero(3, boneWeights.cols());
 
-  lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
+  //lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
+
   //igl::cotmatrix(tetmeshVertices, tetmeshTets, cotangentLaplacian);
-  Eigen::SparseMatrix<double> A;
+  /*Eigen::SparseMatrix<double> A;
   igl::adjacency_matrix(tetmeshTets, A);
   Eigen::SparseVector<double> Asum;
   igl::sum(A, 1, Asum);
@@ -111,9 +122,14 @@ void PlasticObject::loadFromFiles(std::string directory){
   }
   //  std::cout << cotangentLaplacian.col(0) << std::endl;
   //  exit(1);
-
+  */
   barycentricCoordinates = Eigen::MatrixXd::Zero(numPhysicsVertices, numNodes);
   barycentricCoordinates.col(0).setOnes();// = 1; //set everything to be in rest pose
+
+  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
+  deltaBarycentricCoordinates.setZero();
+
+  perExampleScale = Eigen::VectorXd::Ones(numNodes);
 
   skinMeshVaryingBarycentricCoords();//precompute rotations and stuff
 
@@ -276,7 +292,7 @@ void PlasticObject::dumpVerticesBinary(std::string filename) const {
 
 
 
-void PlasticObject::skinMesh(btDiscreteDynamicsWorld& bulletWorld){
+void PlasticObject::skinMesh(){//btDiscreteDynamicsWorld& bulletWorld){
   
   
   //btTransform trans;
@@ -362,7 +378,7 @@ Eigen::VectorXd basicRow = Eigen::VectorXd::Zero(numNodes);
 }
 
 
-void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObject0){
+/*void PlasticObject::deformBasedOnImpulses(btPersistentManifold* man, bool isObject0){
   for(auto j : range(man->getNumContacts())){
 	auto& manPoint = man->getContactPoint(j);
 	
@@ -425,7 +441,7 @@ Eigen::Vector3d PlasticObject::getBarycentricCoordinates(btVector3 localPoint, i
 
   return ret;
 }
-
+*/
 
 int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
 
@@ -560,12 +576,15 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   bool deformed = false;
   //desiredDeformations.resize(numPhysicsVertices, 3);
   //desiredDeformations.setZero();
-  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
-  deltaBarycentricCoordinates.setZero();
+  //  deltaBarycentricCoordinates.resize(numPhysicsVertices, numNodes);
+  //  deltaBarycentricCoordinates.setZero();
 
 
   Eigen::VectorXd weightsAtContact; //save on allocations
   Eigen::MatrixXd jacobian;
+  /*if(manifoldPoints.size() > 0){
+	std::cout << "processing " << manifoldPoints.size() << " contacts for object\n";
+	}*/
   for(auto& pr : manifoldPoints){
 	auto& manPoint = pr.first;
 	bool isObject0 = pr.second;
@@ -576,7 +595,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	auto impulseAtContact = 
 	  bulletToEigen(getDeformationVectorFromImpulse(manPoint, isObject0));
 	if(impulseAtContact.squaredNorm() <= 0){continue;} //ignore 0 impulses
-	std::cout << "contact impulse SN: " << impulseAtContact.squaredNorm() << std::endl;
+	//std::cout << "contact impulse SN: " << impulseAtContact.squaredNorm() << std::endl;
 	deformed = true;
 
 	weightsAtContact = boneWeights.row(vInd).transpose();
@@ -606,11 +625,47 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	}
 	
 	//	std::cout << "jacobian: " << jacobian << std::endl;
-	Eigen::VectorXd deltaS =
-	  jacobian.jacobiSvd(Eigen::ComputeThinU | 
-						 Eigen::ComputeThinV).solve(impulseAtContact);
+	//scale the columns
+	//std::cout << "col norms: " << jacobian.colwise().norm() << std::endl;
 
-	std::cout << "deltaS: " << deltaS << std::endl;
+	//jacobian = (jacobian*perExampleScale.asDiagonal().inverse()).eval();
+	
+	Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
+										  Eigen::ComputeThinU | 
+										  Eigen::ComputeThinV);
+	//	std::cout << "singular values: " << svd.singularValues() << std::endl;
+	//	Eigen::VectorXd modifiedSingularValues = sqrt(svd.singularValues().array());
+
+	Eigen::VectorXd singularVectorContribution = 
+	  //(svd.matrixV()*svd.singularValues())*impulseAtContact.norm();
+	  svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
+											 svd.matrixU().transpose()*
+											 impulseAtContact).normalized();
+	Eigen::VectorXd jacobianTransposeContribution = 
+	  jacobian.transpose()*impulseAtContact;
+
+	Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
+	  (1.0 - jacobianAlpha)*jacobianTransposeContribution;
+	//	  modifiedSingularValues.asDiagonal()*
+	//	  svd.matrixU().transpose()*
+	//	  impulseAtContact;
+
+	  //(1.0*jacobian.colwise().norm().maxCoeff())*jacobian.transpose()*impulseAtContact;
+	
+	//std::cout << "deltaS " << deltaS << std::endl;
+	/*	if((impulseAtContact - jacobian*deltaS).norm() > impulseAtContact.norm()){
+	  std::cout << "norm grew from " << impulseAtContact.norm() 
+				<< " to " << (impulseAtContact - jacobian*deltaS).norm() << std::endl;
+	  std::cout << "i - jj^t norm: " << (Eigen::MatrixXd::Identity(jacobian.rows(), jacobian.rows()) -
+										 jacobian*jacobian.transpose()).norm() << std::endl;
+
+	}
+	*/
+	//	deltaS = jacobian.jacobiSvd(Eigen::ComputeThinU | 
+	//								Eigen::ComputeThinV).solve(impulseAtContact -
+	//													   jacobian*deltaS);
+
+  //	std::cout << "deltaS both: " << deltaS << std::endl;
 	
 	//scale it
 	deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
@@ -628,82 +683,6 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 		deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
 	  }
 	}
-	//todo, some sort of BVH/clustering to speed this up?
-	/*	for(auto i : range(numPhysicsVertices)){
-	  auto weightSpaceDistance = 
-		(weightsAtContact -
-		 boneWeights.row(i).transpose()).norm();
-	  auto scale = Kernels::simpleCubic(weightSpaceDistance*plasticityKernelScale);
-	  if(scale > 0){
-		desiredDeformations.row(i) += 
-		  scale*impulseAtContact.transpose();
-	  }
-	  
-	}
-  }
-  
-	*/
-  //do the solves:
-  
-  /*Eigen::MatrixXd jacobian = Eigen::MatrixXd::Zero(3, numNodes);
-
-  for(auto i : range(numPhysicsVertices)){
-	//no need to solve for stuff that doesn't want to be deformed
-	if(desiredDeformations.row(i).squaredNorm() < 0.0001){continue;}
-
-	jacobian.resize(numNodes, 3);
-	jacobian.setZero();
-	
-	for(auto nodeIndex : range(numNodes)){
-	  auto& node = exampleGraph.nodes[nodeIndex];
-	  //	  for(auto boneIndex : range(numBones)){
-	  for(auto boneIndex : range(numBoneTips)){
-		auto weightIndex = bones[boneIndex]->get_wi();
-		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
-		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numRealBones +
-																	weightIndex]};
-		
-		//see "computeTransformationDerivatives" for explaination
-		jacobian.block(0, nodeIndex, 3, 1) +=
-		  boneWeights(i, weightIndex)*
-		  (node.transformations[boneIndex].translation +
-		   nodeRotation.angle()*
-		   currentRotation.axis().cross(currentRotation*
-										tetmeshVertices.row(i).transpose())
-		   );
-	  }
-	}
-	checkNans(jacobian);
-	//Eigen::VectorXd deltaS = jacobian.colPivHouseholderQr().solve(desiredDeformations.row(i).transpose());
-	Eigen::VectorXd deltaS = 
-	  jacobian.jacobiSvd(Eigen::ComputeThinU | 
-						 Eigen::ComputeThinV).solve(desiredDeformations.row(i).transpose());
-
-	//std::cout << deltaS << std::endl;
-	//std::cout << "desired def: " << desiredDeformations.row(i) << std::endl;
-	//std::cout << "jacobian: " << jacobian << std::endl;
-	checkNans(deltaS);
-
-	if(deltaS.squaredNorm() > 0.01){
-	  std::cout << "delta s for vertex " << i << ": " << deltaS << std::endl;
-	}
-
-	deltaBarycentricCoordinates.row(i) += deltaS.transpose();
-  */
-	/*
-	//reproject back onto the simplex (assuming all nodes in 1 simplex for now)
-	for(auto j : range(barycentricCoordinates.cols())){
-	  //clamp stuff back into the simplex
-	  barycentricCoordinates(i,j) = std::max(barycentricCoordinates(i,j), 0.0);
-	}
-	//normalize
-	auto sum = barycentricCoordinates.row(i).sum();
-	if(sum < 0.0001){
-	  barycentricCoordinates(i,0) = 1;
-	  sum = 1;
-	}
-	barycentricCoordinates.row(i) /= sum;
-	*/
   }
 
   //hit the delta with the laplacian to smooth it
@@ -715,7 +694,9 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	//	}
   }
   */
-  barycentricCoordinates += deltaBarycentricCoordinates;
+
+  barycentricCoordinates += plasticityRate*deltaBarycentricCoordinates*perExampleScale.asDiagonal();
+  deltaBarycentricCoordinates *= 1.0 - plasticityRate;
 
   //clamp and rescale:
   for(auto i : range(numPhysicsVertices)){
@@ -738,7 +719,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   
 }
 
-bool PlasticObject::projectImpulsesOntoExampleManifold(){
+/*bool PlasticObject::projectImpulsesOntoExampleManifold(){
   
   if(plasticityImpulseScale == 0){
 	return false;
@@ -806,9 +787,9 @@ bool PlasticObject::projectImpulsesOntoExampleManifold(){
 	std::cout <<egTraverser.currentPosition.coords << std::endl;
   }
   return deformed;
-}
+  }*/
 
-void PlasticObject::computeTransformationDerivatives(const EGPosition& egPosition, 
+/*void PlasticObject::computeTransformationDerivatives(const EGPosition& egPosition, 
 													 const std::vector<int>& indices,
 													 Eigen::MatrixXd& deriv){
   
@@ -856,7 +837,7 @@ void PlasticObject::computeTransformationDerivatives(const EGPosition& egPositio
 	}
   }
 
-}
+  }*/
 
 void PlasticObject::saveBulletSnapshot(){
   bulletSnapshot.linearVelocity = bulletBody->getLinearVelocity();
@@ -881,44 +862,46 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 
   currentBulletVertexPositions.resize(numPhysicsVertices, 3);
   currentBulletVertexPositions.setZero();
-  for(auto i : range(numPhysicsVertices)){
-	for(auto j : range(numBoneTips)){
-	  if(bones[j]->get_wi() < 0){ continue;} //not a real bone
 
-	  const auto kRange = range(numNodes);
-	  //compute bone transform
-	  const Vec3 translation = 
-		std::accumulate(kRange.begin(), kRange.end(),
-						Vec3::Zero().eval(),
-						[this, i,j](const Vec3& acc, size_t k){
-						  return (acc + barycentricCoordinates(i, k)*
-								  exampleGraph.nodes[k].transformations[j].translation).eval();
-						});
-	  const Eigen::Vector4d rotationCoeffs =
-		std::accumulate(kRange.begin(), kRange.end(),
-						Eigen::Vector4d::Zero().eval(),
-						[this, i,j](const Eigen::Vector4d& acc, size_t k){
-						  return acc + barycentricCoordinates(i, k)*
-						  exampleGraph.nodes[k].transformations[j].rotation.coeffs();
-						});
-	  Quat rotation(rotationCoeffs);
-	  rotation.normalize();
+//  for(auto i : range(numPhysicsVertices)){
+  tbb::parallel_for(tbb::blocked_range<size_t>(0, numPhysicsVertices),
+					[this](const tbb::blocked_range<size_t>& r){
+					  for(auto i = r.begin(); i != r.end(); ++i){
+						for(auto j : range(numBoneTips)){
+						  if(bones[j]->get_wi() < 0){ continue;} //not a real bone
+						  
+						  const auto kRange = range(numNodes);
+						  //compute bone transform
+						  const Vec3 translation = 
+							std::accumulate(kRange.begin(), kRange.end(),
+											Vec3::Zero().eval(),
+											[this, i,j](const Vec3& acc, size_t k){
+											  return (acc + barycentricCoordinates(i, k)*
+													  exampleGraph.nodes[k].transformations[j].translation).eval();
+											});
+						  const Eigen::Vector4d rotationCoeffs =
+							std::accumulate(kRange.begin(), kRange.end(),
+											Eigen::Vector4d::Zero().eval(),
+											[this, i,j](const Eigen::Vector4d& acc, size_t k){
+											  return acc + barycentricCoordinates(i, k)*
+											  exampleGraph.nodes[k].transformations[j].rotation.coeffs();
+											});
+						  Quat rotation(rotationCoeffs);
+						  rotation.normalize();
 	  
-	  //	  std::cout << "bone weights: " << boneWeights.rows() << ' ' << boneWeights.cols() << std::endl;
-	  //	  std::cout << "tmverts: " << tetmeshVertices.rows() << ' ' << tetmeshVertices.cols() << std::endl;
-	  
-	  auto weightIndex = bones[j]->get_wi();
-	  
-	  currentBulletVertexPositions.row(i) +=
-		scaleFactor*boneWeights(i,weightIndex)*
-		(rotation*(tetmeshVertices.row(i).transpose()) + 
-		 translation).transpose();
-
-	  perVertexTranslations[i*numRealBones + weightIndex] = translation;
-	  perVertexRotations[i*numRealBones + weightIndex] = rotation;
-	  
-	}
-  }
+						  const auto weightIndex = bones[j]->get_wi();
+						  
+						  currentBulletVertexPositions.row(i) +=
+							scaleFactor*boneWeights(i,weightIndex)*
+							(rotation*(tetmeshVertices.row(i).transpose()) + 
+							 translation).transpose();
+						  
+						  perVertexTranslations[i*numRealBones + weightIndex] = translation;
+						  perVertexRotations[i*numRealBones + weightIndex] = rotation;
+						  
+						}
+					  }
+					});
 }
 
 void PlasticObject::computeGeodesicDistances(size_t vInd, double radius){
@@ -985,4 +968,59 @@ void PlasticObject::computeVertexNeighbors(){
 					 return (tetmeshVertices.row(vInd) - tetmeshVertices.row(nInd)).norm();
 				   });
   }
+}
+
+
+void PlasticObject::dumpImpulses(std::string filename) const{
+  if(manifoldPoints.size()){
+	std::ofstream outs(filename);
+	for(auto& mp : manifoldPoints){
+	  auto& pos = mp.second ? mp.first.getPositionWorldOnA() : mp.first.getPositionWorldOnB();
+	  auto imp = 0.2*(mp.second ? 1.0 : -1.0)*mp.first.m_normalWorldOnB;
+	  outs << pos.x() << ' ' << pos.y() << ' ' << pos.z() << ' '
+		   << pos.x() + imp.x() << ' ' << pos.y() + imp.y() << ' ' << pos.z() + imp.z() << '\n';
+	}
+  }
+}
+
+
+void PlasticObject::computeTriangleFaces(){
+  
+  //use sorted vector instead of set if speed is an issue?
+  std::set<std::tuple<int,int,int>> seenFaces;
+  int triIndices[4][3] = { {0,1,2},{0,1,3},{0,2,3},{1,2,3}};
+  auto makeTri = [](int a, int b, int c) -> std::tuple<int,int,int>{
+	int max = std::max({a, b, c});
+	int min = std::min({a, b, c});
+	int mid = ((a != max) && ( a != min)) ? a :
+	( ((b != max) && ( b != min)) ? b : c);
+	return std::tuple<int,int,int>(min,mid,max);
+  };
+  
+  for(auto i : range(tetmeshTets.rows())){
+	for(auto j : range(4)){
+	  auto tri = makeTri(tetmeshTets(i, triIndices[j][0]),
+						 tetmeshTets(i, triIndices[j][1]),
+						 tetmeshTets(i, triIndices[j][2]));
+	  auto it = seenFaces.find(tri);
+	  if(it == seenFaces.end()){
+		seenFaces.insert(tri);
+	  } else {
+		seenFaces.erase(it);
+	  }
+	}
+  }
+  
+  std::cout << "mesh file tris: " << tetmeshTriangles.rows() << std::endl;
+  std::cout << "computed: " << seenFaces.size() << std::endl;
+
+  //orientation is ignored by bullet, so don't reorient stuff
+  tetmeshTriangles.resize(seenFaces.size(), 3);
+
+  for(auto pr : enumerate(seenFaces)){
+	tetmeshTriangles(pr.first, 0) = std::get<0>(pr.second);
+	tetmeshTriangles(pr.first, 1) = std::get<1>(pr.second);
+	tetmeshTriangles(pr.first, 2) = std::get<2>(pr.second);
+  }
+
 }

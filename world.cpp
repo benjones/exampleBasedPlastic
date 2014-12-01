@@ -14,7 +14,7 @@
 
 #include "json/json.h"
 //#include "cppitertools/range.hpp"
-#include "cppitertools/enumerate.hpp"
+//#include "cppitertools/enumerate.hpp"
 #include "utils.h"
 #include <numeric>
 #include <limits>
@@ -32,8 +32,9 @@ extern "C" {
 
 //using iter::range;
 #include "range.hpp"
+#include "enumerate.hpp"
 using benlib::range;
-using iter::enumerate;
+using benlib::enumerate;
 
 #define PROJECTION 1
 
@@ -647,8 +648,10 @@ void World::dumpFrame(){
 
   char framestring[80];
   char bcsstring[80];
+  char impulsestring[80];
   sprintf(framestring, "frames/foo-%%03i.%%04i.ply");
   sprintf(bcsstring, "frames/foo-%%03i.%%04i.bcs");
+  sprintf(impulsestring, "frames/foo-%%03i.%%04i.impulses");
   std::cout << "writing frame: " << currentFrame << std::endl;
 
   int objectCount = 0;
@@ -721,6 +724,8 @@ void World::dumpFrame(){
 	plasticObject.dump(fname);
 	sprintf(fname, bcsstring, objectCount, currentFrame);
 	plasticObject.dumpBarycentricCoords(fname);
+	sprintf(fname, impulsestring, objectCount, currentFrame);
+	plasticObject.dumpImpulses(fname);
 	objectCount++;
 	  
   }
@@ -985,16 +990,16 @@ void World::mulJTLambda(double* in, double* out){
 //out = first rigid body velocity in the vector
 void World::mulRigidMassMatrix(double* in, double* out){
 	int index = 0;
-  for(auto pr : enumerate(rigidBodies)){
-		if (pr.element.rbType == RigidBody::RBType::RB_PLANE) continue;
-    auto mass = 1.0/pr.element.bulletBody->getInvMass();
+  for(auto&& pr : enumerate(rigidBodies)){
+		if (pr.second.rbType == RigidBody::RBType::RB_PLANE) continue;
+    auto mass = 1.0/pr.second.bulletBody->getInvMass();
     out[index    ] = mass*in[index    ];
     out[index + 1] = mass*in[index + 1];
     out[index + 2] = mass*in[index + 2];
     //rotational part
     bulletOverwriteMultiply(in + index + 3, 
 			    out + index + 3,
-			    pr.element.bulletBody->getInvInertiaTensorWorld().inverse());
+			    pr.second.bulletBody->getInvInertiaTensorWorld().inverse());
 
 	//zero out angular part
 	/*	out[index + 3] = 0;
@@ -1010,8 +1015,8 @@ void World::mulRigidMassMatrix(double* in, double* out){
 void World::applyRigidPreconditioner(double* in, double* out){
   
 	int index = 0;
-  for(auto pr : enumerate(rigidBodies)){
-    auto& rb = pr.element;
+  for(auto&& pr : enumerate(rigidBodies)){
+    auto& rb = pr.second;
 		if (rb.rbType == RigidBody::RBType::RB_PLANE) continue;
     out[index    ] = rb.bulletBody->getInvMass()*in[index    ];
     out[index + 1] = rb.bulletBody->getInvMass()*in[index + 1];
@@ -1621,9 +1626,19 @@ void World::loadPlasticObjects(const Json::Value& root){
 	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
 	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
 	po.plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
+	po.plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
+	po.jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+	
 
 	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 1e6).asDouble();
 	po.localPlasticityImpulseScale = poi.get("localPlasticityImpulseScale", 0).asDouble();
+
+	auto& pesIn = poi["perExampleScale"];
+	if(!pesIn.isNull()){
+	  for(auto j : range(pesIn.size())){
+		po.perExampleScale[j] = pesIn[j].asDouble();
+	  }
+	}
 
 
 	po.scaleFactor = poi.get("scaleFactor", 1).asDouble();
@@ -1635,7 +1650,6 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//	po.currentBulletVertexPositions.resize( po.numPhysicsVertices,
 	//											Eigen::NoChange);
 	
-	std::cout << "vertex array data: " << po.currentBulletVertexPositions.data() << std::endl;
 	//make space for the vertex array
 	po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
 	  new btTriangleIndexVertexArray{
@@ -1649,7 +1663,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	};
 	
 	std::cout << "nverts: " << po.currentBulletVertexPositions.rows() << "  ntris: " 
-			  << po.tetmeshTriangles.size() << std::endl;
+			  << po.tetmeshTriangles.rows() << std::endl;
 
 	//	std::cout << "first 3 vertices: " << 
 	//	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
@@ -1788,9 +1802,9 @@ void World::loadPlasticObjects(const Json::Value& root){
 	//user index holds index into the plasticObjects array
 	po.bulletBody->setUserIndex(plasticObjects.size() -1);
 	
-	po.egTraverser.restPosition = EGPosition{0, {0,1, 0}};
-	po.egTraverser.currentPosition = EGPosition{0, {1,0, 0}};
-	po.egTraverser.restSpringStrength = 0.00;//1;
+	//	po.egTraverser.restPosition = EGPosition{0, {0,1, 0}};
+	//	po.egTraverser.currentPosition = EGPosition{0, {1,0, 0}};
+	//	po.egTraverser.restSpringStrength = 0.00;//1;
 
   }
   
@@ -1809,9 +1823,10 @@ void World::timeStepDynamicSpritesNoDouble(){
   deformBasedOnImpulses();
   for(auto& po : plasticObjects){
 	
-	po.projectImpulsesOntoExampleManifold();
+	//po.projectImpulsesOntoExampleManifold();
+	po.projectImpulsesOntoExampleManifoldLocally();
 
-	po.skinMesh(bulletWorld);
+	po.skinMesh();//bulletWorld);
 	po.updateBulletProperties(po.currentBulletVertexPositions, 
 							  po.tetmeshTets);
 	//po.updateCompoundShape();
@@ -1825,12 +1840,12 @@ void World::timeStepDynamicSprites(){
 
   for(auto& po : plasticObjects){
 	po.saveBulletSnapshot();
-	po.deformedThisFrame = false;
+	po.deformedThisFrame = currentFrame == 1 || (po.deltaBarycentricCoordinates.norm() > 0);
   }
-  std::cout << "do fist step" << std::endl;
+  //  std::cout << "do fist step" << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
 
-  std::cout << "deform" << std::endl;  
+  //  std::cout << "deform" << std::endl;  
   collectImpulses();
 
   deformBasedOnImpulses();
@@ -1843,7 +1858,7 @@ void World::timeStepDynamicSprites(){
 	}
 
 	if(po.deformedThisFrame){
-	  po.skinMesh(bulletWorld);
+	  po.skinMesh();//bulletWorld);
 	  po.updateBulletProperties(po.currentBulletVertexPositions, 
 								po.tetmeshTets);
 	}
@@ -1857,8 +1872,8 @@ void World::timeStepDynamicSprites(){
 	}
 	
 	double avgBcNorm = po.deltaBarycentricCoordinates.norm()/po.numPhysicsVertices;
-	double restitutionScale = std::max(0.0, 1 - 50*avgBcNorm);
-	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << std::endl;}
+	double restitutionScale = std::max(0.0, 1 - 1*avgBcNorm);
+	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << '\n';}
 	po.bulletBody->setRestitution(po.restitution*restitutionScale);
 
   }
@@ -1867,9 +1882,9 @@ void World::timeStepDynamicSprites(){
 
 
 
-  std::cout << "do second step: " << std::endl;
+  //std::cout << "do second step: " << std::endl;
   bulletWorld.stepSimulation(dt, 10, dt);
-  std::cout << "step done" << std::endl;
+  //std::cout << "step done" << std::endl;
 
   for(auto& po: plasticObjects){
 	po.bulletBody->setRestitution(po.restitution);
@@ -1960,6 +1975,7 @@ int World::getNumBarrels(){
 }
 
 void World::makeBarrelPyramid(){
+
   int barrelCount = getNumBarrels();
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;
@@ -1982,16 +1998,27 @@ void World::makeBarrelPyramid(){
 		plasticObjects.emplace_back();
 		auto& po = plasticObjects.back();
 		
-		po.loadFromFiles("inputFiles/barrel2");
+		po.loadFromFiles("inputFiles/barrel4Examples");
 		po.dt = dt;
 		po.density = 1000;
 		
-		po.plasticityImpulseYield = 0.0001;//0.001;
-		po.plasticityImpulseScale = 180;//80;
-		po.plasticityKernelScale = 0.025;
+		po.plasticityImpulseYield = 1e-4;//0.0004;//0.001;
+		po.plasticityImpulseScale = 200;//80;
+		po.plasticityKernelScale = 0.02;
+		po.plasticityRate = 0.3;
+		po.jacobianAlpha = 1.0;
+
+
+		po.perExampleScale(0) = 0.1;
+		po.perExampleScale(1) = 0.1;
+		po.perExampleScale(2) = 0.1;
+
+
 		po.localPlasticityImpulseScale = 0;//3;
 		po.localPlasticityImpulseYield = 0.0001;
 		
+
+
 		po.scaleFactor = 0.01;
 		
 		po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
@@ -2056,11 +2083,11 @@ void World::makeBarrelPyramid(){
 		//user index holds index into the plasticObjects array
 		po.bulletBody->setUserIndex(plasticObjects.size() -1);
 
-		po.egTraverser.restPosition = 
-		  EGPosition{0, std::vector<double>(po.exampleGraph.simplices[0].size(), 0.0)};
-		po.egTraverser.restPosition.coords[0] = 1;
-		po.egTraverser.currentPosition = po.egTraverser.restPosition;
-		po.egTraverser.restSpringStrength = 0.0;
+		//		po.egTraverser.restPosition = 
+		//		  EGPosition{0, std::vector<double>(po.exampleGraph.simplices[0].size(), 0.0)};
+		//		po.egTraverser.restPosition.coords[0] = 1;
+		//		po.egTraverser.currentPosition = po.egTraverser.restPosition;
+		//		po.egTraverser.restSpringStrength = 0.0;
 		
 
 	  }
