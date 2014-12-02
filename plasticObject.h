@@ -1,10 +1,20 @@
 #pragma once
 
 #include <memory>
-#include <exampleGraph.h>
+#include "exampleGraph.h"
 //#include "egTraverser.h"
-#include <Skeleton.cpp> //templates...
-#include <Bone.h>
+//#include <Skeleton.cpp> //templates...
+
+//don't need skeleton or bone info
+/*
+template <class BoneType>
+class Skeleton {
+public:
+  std::vector<BoneType*> roots;
+};
+*/
+
+//#include <Bone.h>
 
 //#include <unsupported/Eigen/SparseExtra>
 
@@ -100,7 +110,7 @@ public:
 
   //nVertex x nBones, row-major matrix of the translation/rotation of each bone
   //store this so that we can use it when computing derivatives for the projection
-  std::vector<Vec3> perVertexTranslations; 
+  std::vector<Eigen::Vector3d> perVertexTranslations; 
   std::vector<Quat> perVertexRotations;
 
   std::unique_ptr<btRigidBody> bulletBody;
@@ -133,9 +143,13 @@ public:
   
   Eigen::VectorXd tetmeshVertexMasses;
   
-  std::unique_ptr<Skeleton<Bone>> skeleton;
-  std::vector<Bone*> bones;
+  //  std::unique_ptr<Skeleton<Bone>> skeleton;
+  //  std::vector<Bone*> bones;
   
+  std::vector<int> boneIndices;
+  void computeBoneIndices(const std::string& boneFile);
+
+
   Eigen::MatrixXd boneWeights;
   Eigen::MatrixXd currentTransformMatrix;
   

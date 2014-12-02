@@ -25,47 +25,60 @@ OPT = -O3 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUB
 
 TARGETS = fracture
 
-OBJECTS =  fem.o grip.o main.o globalMatrix.o obstacle.o world.o jsoncpp.o \
-rigidBody.o couplingConstraintSolver.o plasticObject.o kdTree.o egTraverser.o
+OBJECTS =   main.o world.o jsoncpp.o \
+rigidBody.o plasticObject.o exampleGraph.o
+#egTraverser.o
+#fem.o grip.o globalMatrix.o obstacle.o  couplingConstraintSolver.o kdTree.o
 HEADERS = *.h *.H *.hpp
 #collisions.o, punt on this
 
 #-----------------------------------------
 
-LIBS = -lm -L./Common -L./bullet-2.82-r2704/build/src/LinearMath \
--L./bullet-2.82-r2704/build/Extras/HACD \
+LIBS = -lm  -L./bullet-2.82-r2704/build/src/LinearMath \
 -L./bullet-2.82-r2704/build/src/BulletCollision \
 -L./bullet-2.82-r2704/build/src/BulletDynamics \
--lslcommon -llapack -lblas -lBulletDynamics \
--lBulletCollision -lLinearMath -lHACD \
+-llapack -lblas -lBulletDynamics \
+-lBulletCollision -lLinearMath \
 -framework OpenGL -L/usr/local/lib -ltbb #./eltopo/eltopo3d/libeltopo_release.a
-INCS = -I./Common -I./bullet-2.82-r2704/src/ -I./bullet-2.82-r2704/Extras -I/usr/local/include #-I./eltopo/eltopo3d -I./eltopo/common
+#-L./Common
+#-L./bullet-2.82-r2704/build/Extras/HACD 
+#-lslcommon
+#-lHACD
+
+INCS = -I./bullet-2.82-r2704/src/ -I./bullet-2.82-r2704/Extras -I/usr/local/include 
+#-I./eltopo/eltopo3d -I./eltopo/common
+#-I./Common
 
 EIGEN_INCLUDE=-I/usr/local/include/eigen3
-FAST_INCLUDE = -I../fastSkinning
-FAST_LIB = -L../fastSkinning -lskinning
+#FAST_INCLUDE = -I../fastSkinning
+#FAST_LIB = -L../fastSkinning -lskinning
 
 IGL_INCLUDE=-I../libigl/include -DIGL_HEADER_ONLY
 #IGL_LIB=-L../libigl/lib -ligl -liglmosek -ligltetgen
 
-MOSEK=/Users/ben/mosek
-MOSEKPLATFORM=osx64x86
-MOSEK_INC=-I$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/h
-MOSEK_LIB=-lmosek64 -L$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/bin #-liglmosek -lmosek64 -liomp5 -lpthread
+#MOSEK=/Users/ben/mosek
+#MOSEKPLATFORM=osx64x86
+#MOSEK_INC=-I$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/h
+#MOSEK_LIB=-lmosek64 -L$(MOSEK)/7/tools/platform/$(MOSEKPLATFORM)/bin #-liglmosek -lmosek64 -liomp5 -lpthread
 
-ANT_LIB=-L../libigl/external/AntTweakBar/lib -lAntTweakBar -framework AppKit
+#ANT_LIB=-L../libigl/external/AntTweakBar/lib -lAntTweakBar -framework AppKit
 
-CETRA_LIB=-L../cetra/ -lcetra
-ELTOPO_LIB=-L../cetra/eltopo/eltopo3d -leltopo_release
+#CETRA_LIB=-L../cetra/ -lcetra
+#ELTOPO_LIB=-L../cetra/eltopo/eltopo3d -leltopo_release
 
 
-CCOPTS = $(OPT) $(FLAGS) $(INCS) $(EIGEN_INCLUDE) $(IGL_INCLUDE) $(FAST_INCLUDE)#-pg
-LDOPTS = $(OPT) $(INCS) $(IGL_LIB) $(FAST_LIB) $(MOSEK_LIB) $(ANT_LIB) $(CETRA_LIB) $(ELTOPO_LIB)#-pg
+CCOPTS = $(OPT) $(FLAGS) $(INCS) $(EIGEN_INCLUDE) 
+#$(IGL_INCLUDE) 
+#$(FAST_INCLUDE) -pg
+LDOPTS = $(OPT) 
+
+#$(INCS) $(IGL_LIB) $(FAST_LIB) $(MOSEK_LIB) $(ANT_LIB) $(CETRA_LIB) $(ELTOPO_LIB)#-pg
 
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS) openglViewer decomposeLaplacian
+default: $(TARGETS) openglViewer 
+#decomposeLaplacian
 
 
 clean: 
@@ -79,9 +92,9 @@ fracture: $(OBJECTS) $(HEADERS)
 
 
 openglViewer: openglViewer.cpp
-	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp -I./Common -L./Common \
--lslCommon -framework OpenGL -framework GLUT
-
+	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp  \
+-framework OpenGL -framework GLUT
+#-I./Common -L./Common -lslCommon 
 decomposeLaplacian: decomposeLaplacian.cpp
 	$(cc) $(CCOPTS) -o decomposeLaplacian decomposeLaplacian.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
 

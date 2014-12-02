@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include <cassert>
 #include <Eigen/Dense>
-#include "Common/slVector.H"
-#include "Common/slUtil.H"
+//#include "Common/slVector.H"
+//#include "Common/slUtil.H"
 
 #ifdef __APPLE__
 #include<GLUT/glut.h>

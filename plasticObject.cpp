@@ -10,16 +10,16 @@
 
 #include <tbb/tbb.h>
 
-#include <skeleton.h>
-#include <read_BF.h>
+//#include <skeleton.h>
+//#include <read_BF.h>
 //#include <lbs_matrix.h>
 //#include <gather_transformations.h>
 //#include <columnize.h>
 
-#include <igl/readDMAT.h>
+#include "readDMAT.h"
 //#include <igl/readOBJ.h>
 //#include <igl/writeOBJ.h>
-#include <igl/readMESH.h>
+#include "readMESH.h"
 //#include <igl/cotmatrix.h>
 //#include <igl/adjacency_matrix.h>
 //#include <igl/sum.h>
@@ -39,23 +39,26 @@ using benlib::enumerate;
 
 void PlasticObject::loadFromFiles(std::string directory){
   
-  skeleton = std::unique_ptr<Skeleton<Bone>>{new Skeleton<Bone>{}};
+  /*  skeleton = std::unique_ptr<Skeleton<Bone>>{new Skeleton<Bone>{}};
   if(!read_BF((directory + "/bone_roots.bf").c_str(), 
 			  skeleton.get(), skeleton->roots)){
 	std::cout << "couldn't read bone roots: " << std::endl;
 	exit(1);
   }
-
+  */
   /*  if(!igl::readDMAT(directory + "/weights.dmat", boneWeights)){
 	std::cout << "couldn't read dmat file: " << std::endl;
 	exit(1);
   }
   */
-  exampleGraph.parent = skeleton.get();
+  //exampleGraph.parent = skeleton.get();
   
-  bones = gather_bones(skeleton->roots);
+  /*  bones = gather_bones(skeleton->roots);
   numBoneTips = bones.size();
   std::cout << "numBoneTips" << numBoneTips << std::endl;
+  */
+  computeBoneIndices(directory + "/bone_roots.bf");
+  numBoneTips = boneIndices.size();
 
   exampleGraph.load(directory + "/exampleGraph.txt");
   numNodes = exampleGraph.nodes.size();
@@ -63,8 +66,8 @@ void PlasticObject::loadFromFiles(std::string directory){
   //egTraverser = EGTraverser{&exampleGraph};
   
 
-  std::cout << "eg parent: " << exampleGraph.parent << " roots " 
-			<< exampleGraph.parent->roots << std::endl;
+  //  std::cout << "eg parent: " << exampleGraph.parent << " roots " 
+  //			<< exampleGraph.parent->roots << std::endl;
 
   //we're not using the high res mesh for anything
   /*if(!igl::readOBJ(directory + "/mesh.obj", 
@@ -98,9 +101,9 @@ void PlasticObject::loadFromFiles(std::string directory){
 
   //sanity check
   assert (numRealBones == 
-		  std::count_if(bones.begin(), bones.end(), 
-						[](const Bone* b){
-						  return b->get_wi() >= 0;
+		  std::count_if(boneIndices.begin(), boneIndices.end(), 
+						[](int b){
+						  return b >= 0;
 						}));
 
   //just the translational bit for each handle
@@ -607,7 +610,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	for(auto nodeIndex : range(numNodes)){
 	  auto& node = exampleGraph.nodes[nodeIndex];
 	  for(auto boneIndex : range(numBoneTips)){
-		auto weightIndex = bones[boneIndex]->get_wi();
+		auto weightIndex = boneIndices[boneIndex];//bones[boneIndex]->get_wi();
 		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
 		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numRealBones +
 																	weightIndex]};
@@ -868,14 +871,14 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 					[this](const tbb::blocked_range<size_t>& r){
 					  for(auto i = r.begin(); i != r.end(); ++i){
 						for(auto j : range(numBoneTips)){
-						  if(bones[j]->get_wi() < 0){ continue;} //not a real bone
+						  if(boneIndices[j] < 0){continue;} //bones[j]->get_wi() < 0) //not a real bone
 						  
 						  const auto kRange = range(numNodes);
 						  //compute bone transform
-						  const Vec3 translation = 
+						  const Eigen::Vector3d translation = 
 							std::accumulate(kRange.begin(), kRange.end(),
-											Vec3::Zero().eval(),
-											[this, i,j](const Vec3& acc, size_t k){
+											Eigen::Vector3d::Zero().eval(),
+											[this, i,j](const Eigen::Vector3d& acc, size_t k){
 											  return (acc + barycentricCoordinates(i, k)*
 													  exampleGraph.nodes[k].transformations[j].translation).eval();
 											});
@@ -889,7 +892,7 @@ void PlasticObject::skinMeshVaryingBarycentricCoords(){
 						  Quat rotation(rotationCoeffs);
 						  rotation.normalize();
 	  
-						  const auto weightIndex = bones[j]->get_wi();
+						  const auto weightIndex = boneIndices[j];//bones[j]->get_wi();
 						  
 						  currentBulletVertexPositions.row(i) +=
 							scaleFactor*boneWeights(i,weightIndex)*
@@ -1023,4 +1026,21 @@ void PlasticObject::computeTriangleFaces(){
 	tetmeshTriangles(pr.first, 2) = std::get<2>(pr.second);
   }
 
+}
+
+void PlasticObject::computeBoneIndices(const std::string& boneFile){
+  std::ifstream ins(boneFile);
+  boneIndices.clear();
+  
+  int wi;
+  double trash;
+
+  while(ins){
+	ins >> wi;
+	for(auto i : range(26)){ ins >> trash;}
+	if(ins.good()){
+	  boneIndices.push_back(wi);
+	}
+  }
+  
 }

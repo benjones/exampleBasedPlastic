@@ -8,7 +8,7 @@
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 
 #include "rigidBody.h"
-#include "fem.H"
+//#include "fem.H" //rip out FEM stuff
 #include "plasticObject.h"
 
 namespace Json{ class Value;}
@@ -25,7 +25,7 @@ class World{
 
 
   void loadPlasticObjects(const Json::Value& root);
-
+  /*
   void computeConstraints();
   void countConstraints();
 
@@ -38,16 +38,9 @@ class World{
   void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
   void timeStep();
   void timeStepRigidCollisions();
+  */
 
-  void timeStepDynamicSprites();
-  void timeStepDynamicSpritesNoDouble();
-  void deformBasedOnImpulses();
-  
-  void collectImpulses();
-
-
-  void dumpFrame();
-
+  /*
   void computeFemVelocities();
   void updateFemPositions();
 
@@ -60,12 +53,9 @@ class World{
 								 btCollisionDispatcher& _dispatcher, 
 								 const btDispatcherInfo& dispatcherInfo);
 
+  */
 
-  const int pyramidSize = 4;
-  int getNumBarrels();
-  void makeBarrelPyramid();
-
-
+  /*
   //multiply the constaint matrix by in and put the result in out.
   //this is the lower left block of the system.
   //make sure that in and out is correctly allocated already
@@ -85,6 +75,23 @@ class World{
   void applyRegularizer(double* in, double* out);
   //out += 1/regularizerAlpha*in
   void applyRegularizerPreconditioner(double* in, double* out);
+  */
+
+  void timeStepDynamicSprites();
+  void timeStepDynamicSpritesNoDouble();
+  void deformBasedOnImpulses();
+  
+  void collectImpulses();
+
+
+  void dumpFrame();
+
+
+
+  const int pyramidSize = 4;
+  int getNumBarrels();
+  void makeBarrelPyramid();
+
 
   std::unique_ptr<btBroadphaseInterface> broadphaseInterface;  
   std::unique_ptr<btCollisionConfiguration> collisionConfiguration;
@@ -101,17 +108,17 @@ class World{
   btVector3 gravity;
   double friction;
   
-  double regularizerAlpha;
-  size_t totalNumConstraints;
+  //  double regularizerAlpha;
+  //  size_t totalNumConstraints;
 
   std::vector<RigidBody> rigidBodies;
-  std::vector<FemObject> femObjects;
+  //  std::vector<FemObject> femObjects;
   std::vector<PlasticObject> plasticObjects;
 
-  unsigned int nrbdof, nfemdof;
+  //  unsigned int nrbdof, nfemdof;
 
   int currentFrame;
  
-	bool RIGIDS;
-	bool FEMS;
+  //	bool RIGIDS;
+  //	bool FEMS;
 };
