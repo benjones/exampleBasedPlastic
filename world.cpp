@@ -39,7 +39,7 @@ extern "C" {
 using benlib::range;
 using benlib::enumerate;
 
-//#define PROJECTION 1
+
 
 
 World::World(std::string filename)
@@ -102,6 +102,7 @@ World::World(std::string filename)
 								 
 	RB.bulletBody->setUserIndex(-1);
 	RB.bulletBody->setRestitution(0.5);
+	
     bulletWorld.addRigidBody(RB.bulletBody.get());
 
   }
@@ -651,6 +652,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 	std::cout << "po inertia inverse: " << po.bulletBody->getInvInertiaTensorWorld() << std::endl;
 
 	po.restitution = poi.get("restitution", 0.8).asDouble();
+	po.minRestitution = po.restitution;
 	po.bulletBody->setRestitution(po.restitution);
 
 	bulletWorld.addRigidBody(po.bulletBody.get());
@@ -727,14 +729,31 @@ void World::timeStepDynamicSprites(){
 	}
 	
 	double avgBcNorm = po.deltaBarycentricCoordinates.norm()/po.numPhysicsVertices;
-	double restitutionScale = std::max(0.0, 1 - 1*avgBcNorm);
-	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << '\n';}
-	po.bulletBody->setRestitution(po.restitution*restitutionScale);
+	
+	auto f1 = [](double a){ return 1 - 100*a;};
+	auto f2 = [](double a){ return exp(-300*a);};
+
+	double restitutionScale = std::max(0.0, f2(avgBcNorm));
+	//	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << '\n';}
+	po.minRestitution = std::min(po.minRestitution, po.restitution*restitutionScale); 
+	po.bulletBody->setRestitution(po.minRestitution);
 
   }
-
-
-
+  
+  auto minIt = 
+	std::min_element(plasticObjects.begin(),
+					 plasticObjects.end(),
+					 [](const PlasticObject& a,
+						const PlasticObject& b){
+					   return a.bulletBody->getRestitution() <
+					   b.bulletBody->getRestitution();
+					 });
+  
+  std::cout << "min restitution scale: " 
+	//<< "total : " << minIt->bulletBody->getRestitution()
+	//		<< "ratio: "
+			<< minIt->bulletBody->getRestitution()/minIt->restitution
+			<< '\n';
 
 
   //std::cout << "do second step: " << std::endl;
@@ -857,17 +876,17 @@ void World::makeBarrelPyramid(){
 		po.dt = dt;
 		po.density = 1000;
 		
-		po.plasticityImpulseYield = 1e-4;//0.0004;//0.001;
+		po.plasticityImpulseYield = 3e-4;//0.0004;//0.001;
 		po.plasticityImpulseScale = 200;//80;
 		po.plasticityKernelScale = 0.02;
 		po.plasticityRate = 0.3;
 		po.jacobianAlpha = 1.0;
 
 
-		po.perExampleScale(0) = 0.1;
-		po.perExampleScale(1) = 0.1;
-		po.perExampleScale(2) = 0.1;
-
+		po.perExampleScale(0) = 1;
+		po.perExampleScale(1) = 1;
+		po.perExampleScale(2) = 1;
+		po.perExampleScale(3) = 1;
 
 		po.localPlasticityImpulseScale = 0;//3;
 		po.localPlasticityImpulseYield = 0.0001;
@@ -922,7 +941,9 @@ void World::makeBarrelPyramid(){
 		
 		po.saveBulletSnapshot();
 	
-		po.bulletBody->setRestitution(0.8);
+		po.restitution = 0.8;
+		po.minRestitution = po.restitution;
+		po.bulletBody->setRestitution(po.restitution);
 
 		//aliasing issues?
 		po.updateBulletProperties(po.currentBulletVertexPositions,

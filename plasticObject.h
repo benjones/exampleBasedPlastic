@@ -136,7 +136,7 @@ public:
 
   double dt;
   double density;
-  double restitution;
+  double restitution, minRestitution; //lowest it's seen
   double mass;
   double volume;
   Eigen::Matrix3d inertiaTensor;
