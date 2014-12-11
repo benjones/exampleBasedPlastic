@@ -6,12 +6,15 @@ using benlib::range;
 using benlib::enumerate;
 
 #include "utils.h"
+#include "plyio.hpp"
+#include "exampleGraph.h"
+
 #include <tbb/tbb.h>
 
 #include <numeric>
 #include <set>
 
-#include "exampleGraph.h"
+
 
 void PlasticPiece::computeMassesAndVolume(){
 
@@ -316,4 +319,31 @@ void PlasticPiece::computeActiveVertices(){
 	activeVertices.end());
 
   activeVertices.shrink_to_fit();
+}
+
+void PlasticPiece::dumpPly(const std::string& filename) const{
+  std::ofstream outs(filename);
+  
+  auto bulletTrans = bulletBody->getCenterOfMassTransform();
+  auto eigenRot = bulletToEigen(bulletTrans.getBasis());
+  Eigen::Vector3d eigenTrans{bulletToEigen(bulletTrans.getOrigin())};
+  RMMatrix3f transformedVertices(currentBulletVertexPositions.rows(), 3);
+  for(auto i : range(transformedVertices.rows())){
+	Eigen::Vector3d transformedVertex = 
+	  eigenRot*currentBulletVertexPositions.row(i).transpose() +
+	  eigenTrans;
+	Eigen::Vector3f transFloat = transformedVertex.template cast<float>();
+	transformedVertices.row(i) = transFloat.transpose();
+	
+  }
+  
+  std::ofstream plyStream(filename);
+  writePLY(plyStream, transformedVertices, tetmeshTriangles);
+  plyStream.close();
+  
+}
+
+
+void PlasticPiece::dumpBcc(const std::string& filename) const{
+  writeMatrixBinary(filename, barycentricCoordinates);
 }

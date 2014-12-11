@@ -8,8 +8,7 @@
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 
 #include "rigidBody.h"
-//#include "fem.H" //rip out FEM stuff
-#include "plasticObject.h"
+#include "plasticBody.h"
 
 namespace Json{ class Value;}
 
@@ -24,63 +23,13 @@ class World{
   World& operator=(const World& other) = delete;
 
 
-  void loadPlasticObjects(const Json::Value& root);
-  /*
-  void computeConstraints();
-  void countConstraints();
+  //void loadPlasticObjects(const Json::Value& root);
 
-  void massScale(double *x, double *y);
-  void inverseMassScale(double *x, double *y);
-  void solve();
-  void solveMinres();
-  void project(double *in);
-  void checkVector(double *in);
-  void project(double *in, RigidBody &rb, int rbIndex, CouplingConstraint &c);
-  void timeStep();
-  void timeStepRigidCollisions();
-  */
-
-  /*
-  void computeFemVelocities();
-  void updateFemPositions();
-
-  void computeCrossProductMatrices();
-
-  void mulSpringMatrix(double *in, double *out);
-  void applySpringPreconditioner(double *in, double *out);
-
-  void constraintCullingCallback(btBroadphasePair& collisionPair, 
-								 btCollisionDispatcher& _dispatcher, 
-								 const btDispatcherInfo& dispatcherInfo);
-
-  */
-
-  /*
-  //multiply the constaint matrix by in and put the result in out.
-  //this is the lower left block of the system.
-  //make sure that in and out is correctly allocated already
-  void mulJV(double* in, double* out);
-
-  //out += JT*In.  This is the upper right block of the system
-  void mulJTLambda(double* in, double* out);
-
-  //set out to be the rigid mass/inertia matrix times in
-  //out = M_Rigid*In
-  void mulRigidMassMatrix(double* in, double* out);
-
-  //out = M^-1 I^-1 * in
-  void applyRigidPreconditioner(double* in, double* out);
-
-  //out += regularizerAlpha*in;
-  void applyRegularizer(double* in, double* out);
-  //out += 1/regularizerAlpha*in
-  void applyRegularizerPreconditioner(double* in, double* out);
-  */
+  void loadPlasticBodies(const Json::Value& root);
 
   void timeStepDynamicSprites();
-  void timeStepDynamicSpritesNoDouble();
+  // void timeStepDynamicSpritesNoDouble(); //hold off on this for now
 
-  //void deformBasedOnImpulses();
   
   void collectImpulses();
 
@@ -109,17 +58,11 @@ class World{
   btVector3 gravity;
   double friction;
   
-  //  double regularizerAlpha;
-  //  size_t totalNumConstraints;
 
   std::vector<RigidBody> rigidBodies;
-  //  std::vector<FemObject> femObjects;
-  std::vector<PlasticObject> plasticObjects;
+  std::vector<PlasticBody> plasticBodies;
 
-  //  unsigned int nrbdof, nfemdof;
 
   int currentFrame;
  
-  //	bool RIGIDS;
-  //	bool FEMS;
 };

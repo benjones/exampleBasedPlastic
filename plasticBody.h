@@ -43,7 +43,7 @@ public:
   std::vector<PlasticPiece> plasticPieces;
   
   //return objectStart + numPiecesWritten
-  int dump(const std::string&, int objectStart) const;
+  int dump(int currentFrame, int objectStart) const;
   
   void saveBulletSnapshots();
   void restoreBulletSnapshots();
@@ -78,5 +78,8 @@ public:
   void computeConstraints();
   void updateConstraints();
   std::vector<Constraint> constraints;
+
+
+  void skinAndUpdate();
 
 };

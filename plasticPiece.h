@@ -93,5 +93,9 @@ public:
 
   void computeActiveVertices();
   std::vector<size_t> activeVertices; //vertices that are actually part of tets
+  
+  void dumpPly(const std::string& filename) const;
+  //void dumpImpulses(const std::string& filename) const; //skip for now
+  void dumpBcc(const std::string& filename) const;
 
 };

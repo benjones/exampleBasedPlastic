@@ -2,6 +2,8 @@
 #include "plasticBody.h"
 
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 #include <numeric>
 
 #include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
@@ -472,5 +474,34 @@ void PlasticBody::updateConstraints(){
 	  bcon->setPivotB(eigenToBullet(pB));
 
 	}
+  }
+}
+
+
+int PlasticBody::dump(int currentFrame, int objectStart) const{
+
+  static const std::string base = "frames/foo-";
+  std::stringstream currentFrameStream;
+  currentFrameStream << std::setfill('0') << std::setw(4) << currentFrame;
+  std::string currentFrameString = currentFrameStream.str();
+
+  for(auto& piece : plasticPieces){
+	std::stringstream objectIndexStream;
+	objectIndexStream << std::setfill('0') << std::setw(3) << objectStart;
+	++objectStart;
+
+	std::string start = base + objectIndexStream.str();
+	piece.dumpPly(start + '.' + currentFrameString + ".ply");
+	piece.dumpBcc(start + '.' + currentFrameString + ".bcs");
+  }
+  return objectStart;
+}
+
+void PlasticBody::skinAndUpdate(){
+  for(auto& piece : plasticPieces){
+	piece.skinMeshVaryingBarycentricCoords(boneWeights,
+		boneIndices,
+		exampleGraph);
+	piece.updateBulletProperties();
   }
 }

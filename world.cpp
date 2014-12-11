@@ -1,7 +1,6 @@
 
 #include "world.h"
 #include "rigidBody.h"
-//#include "fem.H"
 
 #include <fstream>
 #include <iostream>
@@ -13,27 +12,12 @@
 #include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
 #include "json/json.h"
-//#include "cppitertools/range.hpp"
-//#include "cppitertools/enumerate.hpp"
+
 #include "utils.h"
 #include <numeric>
 #include <limits>
 
-/*
-#ifdef __APPLE__
-#include <Accelerate/Accelerate.h>
-#else
-extern "C" {
-#include <cblas.h>
-}
-#endif
-*/
 
-
-//#include "tminres.hpp"
-//#include "SimpleVector.hpp"
-
-//using iter::range;
 #include "range.hpp"
 #include "enumerate.hpp"
 using benlib::range;
@@ -56,9 +40,7 @@ World::World(std::string filename)
 	       broadphaseInterface.get(), 
 	       bulletSolver.get(), 
 	       collisionConfiguration.get()),
-  currentFrame(0)//,
-  //	FEMS(false),
-  //	RIGIDS(false)
+  currentFrame(0)
 {
 
   std::ifstream ins(filename.c_str());
@@ -75,9 +57,7 @@ World::World(std::string filename)
   }
 
   auto bulletObjectsIn = root["bulletObjects"];
-  //  auto femObjectsIn = root["femObjects"];
-  //  if (bulletObjectsIn.size() > 0) RIGIDS = true;
-  //  if (femObjectsIn.size() > 0) FEMS = true;
+
 
   ground = root.get("ground", true).asBool();
 
@@ -123,126 +103,6 @@ World::World(std::string filename)
 
 
   bulletWorld.setGravity(gravity);
-
-
-  //  regularizerAlpha = root.get("regularizerAlpha", 1.0).asDouble();
-
-  /*
-  femObjects.reserve(femObjectsIn.size());
-  for(auto i : range(femObjectsIn.size())){
-		auto& femObjectIn = femObjectsIn[i];
-		MaterialProperties mp;
-		mp.density = femObjectIn.get("density", 1000.0).asDouble();
-		mp.lambda = femObjectIn.get("lambda", 5e4).asDouble();
-		mp.mu = femObjectIn.get("mu", 1e5).asDouble();
-		mp.alphaCap = femObjectIn.get("alphaCap", 0.0).asDouble();
-		//		mp.scale = femObjectIn.get("scale", 1e-2).asDouble();
-		mp.scale = femObjectIn.get("dampingscale", 6e-1).asDouble();
-		mp.yieldStress = femObjectIn.get("yieldStress", DBL_MAX).asDouble();
-		mp.plasticModulus = femObjectIn.get("plasticModulus", 0.0).asDouble();
-		mp.flowrate = femObjectIn.get("flowrate", 0.0).asDouble();
-		mp.toughness = femObjectIn.get("toughness", DBL_MAX).asDouble();
-    auto fnameIn = femObjectIn["filename"];
-    femObjects.emplace_back();
-		auto& femObj = femObjects.back();
-		femObj.load(fnameIn.asString().c_str(), mp, &bulletWorld);
-		if (RIGIDS) femObj.setupBulletParticles();
-
-		auto centerOfMass = SlVector3{0, 0, 0};
-		double totalMass = 0.0;
-		for(auto vInd : range(femObj.nv)){
-			centerOfMass += femObj.mass[vInd]*femObj.pos[vInd];
-			totalMass += femObj.mass[vInd];
-		}
-		centerOfMass /= totalMass;
-		//center the object about its COM to make rotation make sense
-		femObj.bbMin -= centerOfMass;
-		femObj.bbMax -= centerOfMass;
-		for(auto  vInd : range(femObj.nv)){
-			femObj.pos[vInd] -= centerOfMass;
-		}
-		std::cout << femObj.bbMin << femObj.bbMax << std::endl;
-		std::cout<<mp<<std::endl;
-
-	if(!femObjectIn["rotation"].isNull()){
-	  SlVector3 axis;
-	  axis(0) = femObjectIn["rotation"]["axis"][0].asDouble();
-	  axis(1) = femObjectIn["rotation"]["axis"][1].asDouble();
-	  axis(2) = femObjectIn["rotation"]["axis"][2].asDouble();
-	  normalize(axis);
-	  double angle = femObjectIn["rotation"]["angle"].asDouble();
-	  
-	  std::cout << "rotating about " << axis << " by " 
-				<< angle << " radians" << std::endl;
-
-	  SlMatrix3x3 rot;
-	  SlMomentToPosMatrix(angle*axis, rot);
-	  
-	  //recompute bounding boxes
-	  femObj.bbMin.set(std::numeric_limits<double>::max());
-	  femObj.bbMax.set(std::numeric_limits<double>::lowest());
-	  for(auto vInd : range(femObj.nv)){
-			femObj.pos[vInd] = rot*femObj.pos[vInd];
-			for(auto j : range(3)){
-				femObj.bbMin[j] = std::min(femObj.bbMin[j], femObj.pos[vInd][j]);
-				femObj.bbMax[j] = std::max(femObj.bbMax[j], femObj.pos[vInd][j]);
-			}
-	  }
-		std::cout<<"new bounding box "<<femObj.bbMin<<"x"<<femObj.bbMax<<std::endl;
-	}	  
-
-	
-
-    if(!femObjectIn["offset"].isNull()){
-      assert(femObjectIn["offset"].isArray() &&
-	     femObjectIn["offset"].size() == 3);
-      auto offset = SlVector3{femObjectIn["offset"][0].asDouble(),
-							  femObjectIn["offset"][1].asDouble(),
-							  femObjectIn["offset"][2].asDouble()};
-	  
-			double scale = femObjectIn.get("scale", 1.0).asDouble();
-
-      femObj.bbMin += offset;
-      femObj.bbMax += offset;
-
-      femObj.bbMin *= scale;
-      femObj.bbMax *= scale;
-
-			std::cout<<"offsetting by: "<<offset<<std::endl;
-			std::cout<<"scaling by: "<<scale<<std::endl;
-      for(auto  vInd : range(femObj.nv)){
-				femObj.pos[vInd] += offset;
-				femObj.pos[vInd] *= scale;
-      }
-      
-      if(i == 0){
-				femObj.firstNodeIndex = 0;
-      } else {
-				femObj.firstNodeIndex = femObjects[i-1].firstNodeIndex +
-					femObjects[i -1].nv;
-      }
-
-			std::cout<<"new bounding box "<<femObj.bbMin<<"x"<<femObj.bbMax<<std::endl;
-		}
-	 
-		femObj.initializeRestState();
-
-
-		if(!femObjectIn["velocity"].isNull()){
-			assert(femObjectIn["velocity"].isArray() &&
-						 femObjectIn["velocity"].size() == 3);
-			auto velocity = SlVector3{femObjectIn["velocity"][0].asDouble(),
-																femObjectIn["velocity"][1].asDouble(),
-																femObjectIn["velocity"][2].asDouble()};
-			
-	      for(auto  vInd : range(femObj.nv)){
-					femObj.vel[vInd] = velocity;
-					//std::cout<<"setting velocity "<<velocity<<std::endl;
-				}
-		}
-		
-  }
-  */
   for(auto i : range(bulletObjectsIn.size())){
     std::cout << "adding rb: " << i << std::endl;
     auto bo = bulletObjectsIn[i];
@@ -327,139 +187,220 @@ World::World(std::string filename)
     bulletWorld.addRigidBody(RB.bulletBody.get());
     
   }
-  std::cout << "read in " << rigidBodies.size() << " rbs" << std::endl;
 
-
-  loadPlasticObjects(root);
+  loadPlasticBodies(root);
   makeBarrelPyramid();  
 
-  //  computeConstraints();
-  //  countConstraints();
-  /*  
-  std::function<void(btBroadphasePair&,
-					 btCollisionDispatcher&, 
-					 const btDispatcherInfo&)> collisionCallback = 
-	[this](btBroadphasePair& collisionPair,
-		   btCollisionDispatcher& _dispatcher,
-		   const btDispatcherInfo& dispatcherInfo){
-	constraintCullingCallback(collisionPair, _dispatcher, dispatcherInfo);
-  };
-
-  dispatcher.get()->setNearCallback(collisionCallback);
-  */
   btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 }
 
 void World::dumpFrame(){
 
   char framestring[80];
-  char bcsstring[80];
-  char impulsestring[80];
   sprintf(framestring, "frames/foo-%%03i.%%04i.ply");
-  sprintf(bcsstring, "frames/foo-%%03i.%%04i.bcs");
-  sprintf(impulsestring, "frames/foo-%%03i.%%04i.impulses");
+  
   std::cout << "writing frame: " << currentFrame << std::endl;
 
   int objectCount = 0;
   char fname[80];
-  /*  for(auto& femObject : femObjects){
-    sprintf(fname, framestring, objectCount, currentFrame);
-    femObject.dumpObj(fname);
-    objectCount++;
-	}*/
+
   for(auto& rigidBody : rigidBodies){
     sprintf(fname, framestring, objectCount, currentFrame);
     rigidBody.dump(fname);
 	objectCount++;
   }
   
-  for(auto& plasticObject : plasticObjects){
-
-	/*sprintf(fname, framestring, objectCount, currentFrame);
-	objectCount++;
-	std::ofstream outs(fname);
-	
-	btTransform trans = plasticObject.bulletBody->getCenterOfMassTransform();
-	btVector3 abmin, abmax;
-	plasticObject.bulletShape->getAabb(trans, abmin, abmax);
-	outs << "v " << abmin.x() << ' ' << abmin.y() << ' ' << abmin.z() << '\n'
-		 << "v " << abmax.x() << ' ' << abmin.y() << ' ' << abmin.z() << '\n'
-		 << "v " << abmin.x() << ' ' << abmax.y() << ' ' << abmin.z() << '\n'
-		 << "v " << abmax.x() << ' ' << abmax.y() << ' ' << abmin.z() << '\n'
-		 << "v " << abmin.x() << ' ' << abmin.y() << ' ' << abmax.z() << '\n'
-		 << "v " << abmax.x() << ' ' << abmin.y() << ' ' << abmax.z() << '\n'
-		 << "v " << abmin.x() << ' ' << abmax.y() << ' ' << abmax.z() << '\n'
-		 << "v " << abmax.x() << ' ' << abmax.y() << ' ' << abmax.z() << std::endl;
-	
-	trans.setIdentity();
-	plasticObject.bulletShape->getAabb(trans, abmin, abmax);
-	for(auto i : range(plasticObject.currentBulletVertexPositions.rows())){
-	  
-	  if(plasticObject.currentBulletVertexPositions(i, 0) < abmin.x() ||
-		 plasticObject.currentBulletVertexPositions(i, 1) < abmin.y() ||
-		 plasticObject.currentBulletVertexPositions(i, 2) < abmin.z() ||
-		 plasticObject.currentBulletVertexPositions(i, 0) > abmax.x() ||
-		 plasticObject.currentBulletVertexPositions(i, 1) > abmax.y() ||
-		 plasticObject.currentBulletVertexPositions(i, 2) > abmax.z()){
-		
-		std::cout << "vertex "<< i << " outside of bounding box :( " << std::endl;
-		std::cout << abmin << "\n"
-				  << abmax << "\n"
-				  << plasticObject.currentBulletVertexPositions.row(i) << std::endl;
-
-
-		Eigen::Vector3d realMin = plasticObject.currentBulletVertexPositions.colwise().minCoeff();
-		Eigen::Vector3d realMax = plasticObject.currentBulletVertexPositions.colwise().maxCoeff();
-		
-		std::cout << "eigen: " << realMin << std::endl << realMax << std::endl;
-
-		std::cout << "bb size: " << abmax - abmin << std::endl;
-		std::cout << "eigen: " << realMax - realMin << std::endl;
-
-
-		break;
-		//exit(1);
-	  }
-
-	  }*/
-	/*if(currentFrame == 0){
-	  sprintf(fname, framestring, objectCount, currentFrame);
-	  plasticObject.dump(fname);
-	  }*/
-	sprintf(fname, framestring, objectCount, currentFrame);
-	plasticObject.dump(fname);
-	sprintf(fname, bcsstring, objectCount, currentFrame);
-	plasticObject.dumpBarycentricCoords(fname);
-	sprintf(fname, impulsestring, objectCount, currentFrame);
-	plasticObject.dumpImpulses(fname);
-	objectCount++;
-	  
+  for(auto& plasticBody : plasticBodies){
+	objectCount = plasticBody.dump(currentFrame, objectCount);
   }
-
-  /*{
-	sprintf(fname, framestring, objectCount, currentFrame);
-	std::ofstream outs(fname);
-	
-	
-	objectCount++;
-	
-	for(auto i : range(dispatcher->getNumManifolds())){
-	  auto* man = dispatcher->getManifoldByIndexInternal(i);
-	  for(auto j : range(man->getNumContacts())){
-		auto& manPoint = man->getContactPoint(j);
-		auto& va = manPoint.getPositionWorldOnA();
-		auto& vb = manPoint.getPositionWorldOnB();
-		outs << "v " << va.x() << ' ' << va.y() << ' ' << va.z() << std::endl;
-		outs << "v " << vb.x() << ' ' << vb.y() << ' ' << vb.z() << std::endl;
-	  }
-	}
-	}*/
+	  
   currentFrame++;
 
 }
 
 
+void World::loadPlasticBodies(const Json::Value& root){
+  
+  plasticBodies.clear();
+  auto& plasticBodiesIn = root["plasticBodies"];
+  plasticBodies.reserve(plasticBodiesIn.size() + getNumBarrels());
 
+  //way easier than before...
+  for(auto& pbi : plasticBodiesIn){
+	plasticBodies.emplace_back();
+	auto& pb = plasticBodies.back();
+	pb.loadFromJson(pbi, bulletWorld, plasticBodies.size() -1 );
+  }
+}
+
+
+
+
+/*void World::timeStepDynamicSpritesNoDouble(){
+
+
+  bulletWorld.stepSimulation(dt, 10, dt);
+  for(auto& po : plasticObjects){
+	po.saveBulletSnapshot();
+  }
+  
+  collectImpulses();
+
+  //deformBasedOnImpulses();
+  for(auto& po : plasticObjects){
+	
+	//po.projectImpulsesOntoExampleManifold();
+	po.projectImpulsesOntoExampleManifoldLocally();
+
+	po.skinMesh();//bulletWorld);
+	po.updateBulletProperties(po.currentBulletVertexPositions, 
+							  po.tetmeshTets);
+	//po.updateCompoundShape();
+	//	po.restoreBulletSnapshot();
+  }
+  //  bulletWorld.stepSimulation(dt, 10, dt);
+
+  }*/
+
+void World::timeStepDynamicSprites(){
+  
+  for(auto& po : plasticBodies){
+	po.saveBulletSnapshots();
+  }
+  
+  bulletWorld.stepSimulation(dt, 10, dt);
+  
+  collectImpulses();
+
+  for(auto& po : plasticBodies){
+	po.projectImpulsesOntoExampleManifoldLocally(dt);
+	
+	po.skinAndUpdate(); //skin pieces and update bullet props
+	po.updateConstraints(); //make sure the point2point constraints are right
+	
+	po.restoreBulletSnapshots();
+	
+	if(po.hasConstantVelocity){
+	  for(auto& pp : po.plasticPieces){
+		pp.bulletBody->setLinearVelocity(po.constantVelocity);
+	  }
+	}
+	
+	for(auto& pp : po.plasticPieces){
+	  double avgBcNorm = 
+		pp.deltaBarycentricCoordinates.norm()/pp.activeVertices.size();
+	  
+	  //auto f1 = [](double a){ return 1 - 100*a;};
+	  auto f2 = [](double a){ return exp(-300*a);};
+	  
+	  double restitutionScale = std::max(0.0, f2(avgBcNorm));
+	  pp.bulletBody->setRestitution(
+		  std::min(pp.bulletBody->getRestitution(), 
+			  restitutionScale*po.restitution));
+	}
+  }
+  
+  bulletWorld.stepSimulation(dt, 10, dt);
+  
+  for(auto& po: plasticBodies){
+	for(auto& pp : po.plasticPieces){
+	  pp.bulletBody->setRestitution(po.restitution);
+	  if(po.hasConstantVelocity){
+		pp.bulletBody->setLinearVelocity(po.constantVelocity);
+	  }
+	}
+  }
+  
+}
+
+
+void World::collectImpulses(){
+  for(auto& po : plasticBodies){
+	po.manifoldPoints.clear();
+  }
+  
+  for(auto i : range(dispatcher->getNumManifolds())){
+	auto* man = dispatcher->getManifoldByIndexInternal(i);
+
+	auto* rb1 = btRigidBody::upcast(man->getBody0());
+	auto* rb2 = btRigidBody::upcast(man->getBody1());
+
+	for(auto j : range(man->getNumContacts())){
+	  auto& manPoint = man->getContactPoint(j);
+	  if(rb1 && rb1->getUserIndex() >= 0){
+		plasticBodies[rb1->getUserIndex()].manifoldPoints.emplace_back(
+			rb1, manPoint, true);
+	  }
+	  if(rb2 && rb2->getUserIndex() >= 0){
+		plasticBodies[rb2->getUserIndex()].manifoldPoints.emplace_back(
+			rb2, manPoint, false);
+	  }
+	}
+  }
+}
+
+int World::getNumBarrels(){
+  int barrelCount = 0;
+  for(auto i : range(pyramidSize+1)){
+	barrelCount += i*i;
+  }
+  return barrelCount;
+}
+
+void World::makeBarrelPyramid(){
+
+  int barrelCount = getNumBarrels();
+  
+  std::cout << "making " << barrelCount << " barrels" << std::endl;
+  
+  double startHeight = 0.235;
+  double currentHeight = startHeight;
+  double deltaHeight = 0.77;
+
+  double barrelRadius = 0.34;
+  double startX = 0, startZ = 0;
+
+  //set up most stuff here...
+  Json::Value pbj;
+  pbj["directory"] = "inputFiles/barrel4Examples";
+  pbj["density"] = 1000.0;
+  pbj["restitution"] = 0.8;
+  pbj["plasticityImpulseYield"] = 3e-4;
+  pbj["plasticityImpulseScale"] = 200;
+  pbj["plasticityKernelScale"] = 0.02;
+  pbj["plasticityRate"] = 0.3;
+  pbj["jacobianAlpha"] = 1.0;
+  pbj["scaleFactor"] = 0.01;
+  pbj["offset"].resize(3);
+  
+  for(auto l : range(pyramidSize)){
+	auto level = pyramidSize - l;
+	for(auto row : range(level)){
+	  for(auto col : range(level)){
+		
+		plasticBodies.emplace_back();
+		auto& po = plasticBodies.back();
+		
+		btVector3 offset{startX + col*2*barrelRadius,
+			currentHeight,
+			startZ + row*2*barrelRadius};
+		
+		pbj["offset"][0] = offset.x();
+		pbj["offset"][1] = offset.y();
+		pbj["offset"][2] = offset.z();
+		
+		po.loadFromJson(pbj, bulletWorld, plasticBodies.size() -1);
+
+	  }
+	}
+	currentHeight += deltaHeight;
+	startX += barrelRadius;
+	startZ += barrelRadius;
+  }
+}
+
+#if 0
+//no longer used
 void World::loadPlasticObjects(const Json::Value& root){
 
   plasticObjects.clear();
@@ -498,6 +439,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 
 	po.scaleFactor = poi.get("scaleFactor", 1).asDouble();
+	
 
 	po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
 
@@ -666,315 +608,4 @@ void World::loadPlasticObjects(const Json::Value& root){
   }
   
 }
-
-void World::timeStepDynamicSpritesNoDouble(){
-
-
-  bulletWorld.stepSimulation(dt, 10, dt);
-  for(auto& po : plasticObjects){
-	po.saveBulletSnapshot();
-  }
-  
-  collectImpulses();
-
-  //deformBasedOnImpulses();
-  for(auto& po : plasticObjects){
-	
-	//po.projectImpulsesOntoExampleManifold();
-	po.projectImpulsesOntoExampleManifoldLocally();
-
-	po.skinMesh();//bulletWorld);
-	po.updateBulletProperties(po.currentBulletVertexPositions, 
-							  po.tetmeshTets);
-	//po.updateCompoundShape();
-	//	po.restoreBulletSnapshot();
-  }
-  //  bulletWorld.stepSimulation(dt, 10, dt);
-
-}
-
-void World::timeStepDynamicSprites(){
-
-  for(auto& po : plasticObjects){
-	po.saveBulletSnapshot();
-	po.deformedThisFrame = currentFrame == 1 || (po.deltaBarycentricCoordinates.norm() > 0);
-  }
-  //  std::cout << "do fist step" << std::endl;
-  bulletWorld.stepSimulation(dt, 10, dt);
-
-  //  std::cout << "deform" << std::endl;  
-  collectImpulses();
-
-  //local stuff, skip it
-  //deformBasedOnImpulses();
-
-  for(auto& po : plasticObjects){
-	
-	//	if(po.projectImpulsesOntoExampleManifold()){
-	if(po.projectImpulsesOntoExampleManifoldLocally()){
-	  po.deformedThisFrame = true;
-	}
-
-	if(po.deformedThisFrame){
-	  po.skinMesh();//bulletWorld);
-	  po.updateBulletProperties(po.currentBulletVertexPositions, 
-								po.tetmeshTets);
-	}
-	//po.updateCompoundShape();
-	po.restoreBulletSnapshot();
-	
-	if(po.hasConstantVelocity){
-	  po.bulletBody->setLinearVelocity(btVector3{po.constantVelocity.x(),
-			po.bulletBody->getLinearVelocity().y(),
-			po.constantVelocity.z()});
-	}
-	
-	double avgBcNorm = po.deltaBarycentricCoordinates.norm()/po.numPhysicsVertices;
-	
-	auto f1 = [](double a){ return 1 - 100*a;};
-	auto f2 = [](double a){ return exp(-300*a);};
-
-	double restitutionScale = std::max(0.0, f2(avgBcNorm));
-	//	if(restitutionScale != 1){ std::cout << "restitution scale: " << restitutionScale << '\n';}
-	po.minRestitution = std::min(po.minRestitution, po.restitution*restitutionScale); 
-	po.bulletBody->setRestitution(po.minRestitution);
-
-  }
-  
-  auto minIt = 
-	std::min_element(plasticObjects.begin(),
-					 plasticObjects.end(),
-					 [](const PlasticObject& a,
-						const PlasticObject& b){
-					   return a.bulletBody->getRestitution() <
-					   b.bulletBody->getRestitution();
-					 });
-  
-  std::cout << "min restitution scale: " 
-	//<< "total : " << minIt->bulletBody->getRestitution()
-	//		<< "ratio: "
-			<< minIt->bulletBody->getRestitution()/minIt->restitution
-			<< '\n';
-
-
-  //std::cout << "do second step: " << std::endl;
-  bulletWorld.stepSimulation(dt, 10, dt);
-  //std::cout << "step done" << std::endl;
-
-  for(auto& po: plasticObjects){
-	po.bulletBody->setRestitution(po.restitution);
-	if(po.hasConstantVelocity){
-	  po.bulletBody->setLinearVelocity(btVector3{po.constantVelocity.x(),
-			po.bulletBody->getLinearVelocity().y(),
-			po.constantVelocity.z()});
-	}
-  }
-
-  //deformBasedOnImpulses();
-
-  
-
-  //  for(auto& po : plasticObjects){
-	
-
-
-	//po.egTraverser.traverse();
-	//po.skinMesh();
-	//po.currentBulletVertexPositions = po.tetmeshVertices;
-	//po.updateBulletProperties(po.currentBulletVertexPositions,
-	//							  po.tetmeshTets);
-  //  }
-}
-
-
-/*void World::deformBasedOnImpulses(){
-  //  std::cout << "num contacts this frame: " << 
-  //	dispatcher->getNumManifolds() << std::endl;
-  for(auto i : range(dispatcher->getNumManifolds())){
-	auto* man = dispatcher->getManifoldByIndexInternal(i);
-	
-	auto* rb1 = btRigidBody::upcast(man->getBody0());
-	auto* rb2 = btRigidBody::upcast(man->getBody1());
-	if(rb1 && rb1->getUserIndex() >= 0){
-	  //	  std::cout << "first" << std::endl;
-	  //std::cout << "index: " << rb1->getUserIndex() << std::endl;
-	  if(plasticObjects[rb1->getUserIndex()].deformBasedOnImpulseLocal(man, true)){
-		plasticObjects[rb1->getUserIndex()].deformedThisFrame = true;
-	  }
-	}
-	if(rb2 && rb2->getUserIndex() >= 0){
-	  //	  std::cout << "second" << std::endl;
-	  //std::cout << "index: " << rb2->getUserIndex() << std::endl;
-	  if(plasticObjects[rb2->getUserIndex()].deformBasedOnImpulseLocal(man, false)){
-		plasticObjects[rb2->getUserIndex()].deformedThisFrame = true;
-	  }
-	}
-  }
-  }*/
-
-void World::collectImpulses(){
-  for(auto& po : plasticObjects){
-	po.manifoldPoints.clear();
-  }
-
-  for(auto i : range(dispatcher->getNumManifolds())){
-	auto* man = dispatcher->getManifoldByIndexInternal(i);
-
-	auto* rb1 = btRigidBody::upcast(man->getBody0());
-	auto* rb2 = btRigidBody::upcast(man->getBody1());
-
-
-	for(auto j : range(man->getNumContacts())){
-	  auto& manPoint = man->getContactPoint(j);
-	  if(rb1 && rb1->getUserIndex() >= 0){
-		//std::cout << "index: " << rb1->getUserIndex() << std::endl;
-		plasticObjects[rb1->getUserIndex()].manifoldPoints.emplace_back(
-		  rb1, manPoint, true);
-	  }
-	  if(rb2 && rb2->getUserIndex() >= 0){
-		//std::cout << "index: " << rb2->getUserIndex() << std::endl;
-		plasticObjects[rb2->getUserIndex()].manifoldPoints.emplace_back(
-		  rb2, manPoint, false);
-	  }
-	}
-	//man->clearManifold();
-  }
-}
-
-int World::getNumBarrels(){
-  int barrelCount = 0;
-  for(auto i : range(pyramidSize+1)){
-	barrelCount += i*i;
-  }
-  return barrelCount;
-}
-
-void World::makeBarrelPyramid(){
-
-  int barrelCount = getNumBarrels();
-  
-  std::cout << "making " << barrelCount << " barrels" << std::endl;
-  
-  //plasticObjects.clear();
-  //plasticObjects.reserve(barrelCount);
-
-  double startHeight = 0.235;
-  double currentHeight = startHeight;
-  double deltaHeight = 0.77;
-
-  double barrelRadius = 0.34;
-  double startX = 0, startZ = 0;
-
-  for(auto l : range(pyramidSize)){
-	auto level = pyramidSize - l;
-	for(auto row : range(level)){
-	  for(auto col : range(level)){
-		
-		plasticObjects.emplace_back();
-		auto& po = plasticObjects.back();
-		
-		po.loadFromFiles("inputFiles/barrel4Examples");
-		po.dt = dt;
-		po.density = 1000;
-		
-		po.plasticityImpulseYield = 3e-4;//0.0004;//0.001;
-		po.plasticityImpulseScale = 200;//80;
-		po.plasticityKernelScale = 0.02;
-		po.plasticityRate = 0.3;
-		po.jacobianAlpha = 1.0;
-
-
-		po.perExampleScale(0) = 1;
-		po.perExampleScale(1) = 1;
-		po.perExampleScale(2) = 1;
-		po.perExampleScale(3) = 1;
-
-		po.localPlasticityImpulseScale = 0;//3;
-		po.localPlasticityImpulseYield = 0.0001;
-		
-
-
-		po.scaleFactor = 0.01;
-		
-		po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
-
-		//po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
-
-		po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
-		  new btTriangleIndexVertexArray{
-			static_cast<int>(po.tetmeshTriangles.rows()),
-			po.tetmeshTriangles.data(),
-			3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
-			static_cast<int>(po.currentBulletVertexPositions.rows()),
-			po.currentBulletVertexPositions.data(),
-			3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
-		  }
-		};
-		
-		btVector3 offset{startX + col*2*barrelRadius,
-			currentHeight,
-			startZ + row*2*barrelRadius};
-
-		
-		po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
-		  new btGImpactMeshShape{po.btTriMesh.get()}};
-		po.motionState = 
-		  std::unique_ptr<btDefaultMotionState>{
-		  new btDefaultMotionState{}};
-		
-		po.mass = 1; //save a bit of grief in rb construction
-		po.bulletBody = std::unique_ptr<btRigidBody>{
-		  new btRigidBody{po.mass,
-						  po.motionState.get(),
-						  po.bulletShape.get()}
-		  //po.compoundShape.get()}
-		};
-
-		//compute node masses and volume
-		po.computeMassesAndVolume();
-
-
-		//apply the transform now
-		po.inertiaAligningTransform.setIdentity();
-		po.worldTransform = btTransform{btQuaternion::getIdentity(), 
-										offset};
-		po.bulletBody->setCenterOfMassTransform(po.worldTransform);
-		
-		po.saveBulletSnapshot();
-	
-		po.restitution = 0.8;
-		po.minRestitution = po.restitution;
-		po.bulletBody->setRestitution(po.restitution);
-
-		//aliasing issues?
-		po.updateBulletProperties(po.currentBulletVertexPositions,
-								  po.tetmeshTets);
-
-		//po.updateCompoundShape();
-	
-
-		po.bulletShape->updateBound();
-
-		
-		bulletWorld.addRigidBody(po.bulletBody.get());
-		//user index holds index into the plasticObjects array
-		po.bulletBody->setUserIndex(plasticObjects.size() -1);
-
-		//		po.egTraverser.restPosition = 
-		//		  EGPosition{0, std::vector<double>(po.exampleGraph.simplices[0].size(), 0.0)};
-		//		po.egTraverser.restPosition.coords[0] = 1;
-		//		po.egTraverser.currentPosition = po.egTraverser.restPosition;
-		//		po.egTraverser.restSpringStrength = 0.0;
-		
-
-	  }
-	}
-
-	
-	currentHeight += deltaHeight;
-	startX += barrelRadius;
-	startZ += barrelRadius;
-  }
-
-
-}
+#endif
