@@ -107,7 +107,7 @@ void PlasticObject::loadFromFiles(std::string directory){
 						}));
 
   //just the translational bit for each handle
-  collisionHandleAdjustments = Eigen::MatrixXd::Zero(3, boneWeights.cols());
+  //collisionHandleAdjustments = Eigen::MatrixXd::Zero(3, boneWeights.cols());
 
   //lbs_matrix(tetmeshVertices, boneWeights, LBSMatrix);
 
@@ -373,7 +373,7 @@ Eigen::VectorXd basicRow = Eigen::VectorXd::Zero(numNodes);
   skinMeshVaryingBarycentricCoords();
 
   //add the extra offsets
-  currentBulletVertexPositions += localImpulseBasedOffsets;
+  //currentBulletVertexPositions += localImpulseBasedOffsets;
 
 
 
@@ -466,7 +466,7 @@ int PlasticObject::getNearestVertex(Eigen::Vector3d localPoint){
   return best;
 }
 
-
+/*
 bool PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man, 
 											  bool isObject0){
 
@@ -507,12 +507,14 @@ bool PlasticObject::deformBasedOnImpulseLocal(btPersistentManifold* man,
   }
   return deformed;
 
-}
+  }*/
 
-btVector3 PlasticObject::getDeformationVectorFromImpulse(const btManifoldPoint& manPoint,
-														 bool isObject0){
-
-  btVector3 impulseGlobal = manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
+btVector3 PlasticObject::getDeformationVectorFromImpulse(
+	const btManifoldPoint& manPoint,
+	bool isObject0){
+  
+  btVector3 impulseGlobal = 
+	manPoint.m_normalWorldOnB*manPoint.m_appliedImpulse;
 
   btVector3 displacementGlobal = impulseGlobal*dt/mass;
   if(!isObject0){displacementGlobal *= -1;}
@@ -588,9 +590,9 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
   /*if(manifoldPoints.size() > 0){
 	std::cout << "processing " << manifoldPoints.size() << " contacts for object\n";
 	}*/
-  for(auto& pr : manifoldPoints){
-	auto& manPoint = pr.first;
-	bool isObject0 = pr.second;
+  for(auto& tup : manifoldPoints){
+	auto& manPoint = std::get<1>(tup);
+	bool isObject0 = std::get<2>(tup);
 	
 	auto& localPoint = isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	auto vInd = getNearestVertex(bulletToEigen(localPoint));
@@ -977,9 +979,13 @@ void PlasticObject::computeVertexNeighbors(){
 void PlasticObject::dumpImpulses(std::string filename) const{
   if(manifoldPoints.size()){
 	std::ofstream outs(filename);
-	for(auto& mp : manifoldPoints){
-	  auto& pos = mp.second ? mp.first.getPositionWorldOnA() : mp.first.getPositionWorldOnB();
-	  auto imp = 0.2*(mp.second ? 1.0 : -1.0)*mp.first.m_normalWorldOnB;
+	for(auto& tup : manifoldPoints){
+	  auto isObject0 = std::get<2>(tup);
+	  auto& manPoint = std::get<1>(tup);
+	  auto& pos = isObject0 ? 
+		manPoint.getPositionWorldOnA() : 
+		manPoint.getPositionWorldOnB();
+	  auto imp = 0.2*(isObject0 ? 1.0 : -1.0)*manPoint.m_normalWorldOnB;
 	  outs << pos.x() << ' ' << pos.y() << ' ' << pos.z() << ' '
 		   << pos.x() + imp.x() << ' ' << pos.y() + imp.y() << ' ' << pos.z() + imp.z() << '\n';
 	}

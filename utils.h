@@ -142,3 +142,21 @@ inline Eigen::MatrixXd readMatrixBinary(const std::string& filename){
   ins.read(reinterpret_cast<char*>(ret.data()), rows*cols*sizeof(double));
   return ret;
 }
+
+template <
+  class InputIterator, class OutputIterator, 
+  class UnaryOperator, class Pred
+  >
+OutputIterator transform_if(
+	InputIterator first1, InputIterator last1,
+	OutputIterator result, UnaryOperator op, Pred pred){
+  
+  while (first1 != last1){
+	if (pred(*first1)){
+	  *result = op(*first1);
+	  ++result;
+	}
+	++first1;
+  }
+  return result;
+}

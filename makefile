@@ -6,14 +6,15 @@ cc          = clang++
 
 
 FLAGS=-Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++\
--DBT_USE_DOUBLE_PRECISION -Wno-deprecated-declarations 
+-DBT_USE_DOUBLE_PRECISION -Wno-deprecated-declarations \
+-DBULLET_TRIANGLE_COLLISION
 
 #-----------------------------------------
 #Optimization ----------------------------
 #OPT   = -O3 -g #-flto for more speed
  #ignore glut deprecation warnings
 #-DPCUBE -DINVENTOR_DEFINED
-OPT = -O3 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUBLE_PRECISION -DBULLET_TRIANGLE_COLLISION
+OPT = -O3 -g 
 
 #OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -DBT_USE_DOUBLE_PRECISION  -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 #-DPCUBE -DINVENTOR_DEFINED
 #OPT   = -g -Wall
@@ -26,7 +27,8 @@ OPT = -O3 -g -Wall -Wno-c++11-extensions -std=c++11 -stdlib=libc++ -DBT_USE_DOUB
 TARGETS = fracture
 
 OBJECTS =   main.o world.o jsoncpp.o \
-rigidBody.o plasticObject.o exampleGraph.o
+rigidBody.o plasticObject.o exampleGraph.o \
+plasticPiece.o plasticBody.o
 #egTraverser.o
 #fem.o grip.o globalMatrix.o obstacle.o  couplingConstraintSolver.o kdTree.o
 HEADERS = *.h *.H *.hpp

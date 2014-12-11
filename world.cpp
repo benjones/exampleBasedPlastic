@@ -501,7 +501,7 @@ void World::loadPlasticObjects(const Json::Value& root){
 
 	po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
 
-	po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
+	//po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
 	
 	//	po.currentBulletVertexPositions.resize( po.numPhysicsVertices,
 	//											Eigen::NoChange);
@@ -677,7 +677,7 @@ void World::timeStepDynamicSpritesNoDouble(){
   
   collectImpulses();
 
-  deformBasedOnImpulses();
+  //deformBasedOnImpulses();
   for(auto& po : plasticObjects){
 	
 	//po.projectImpulsesOntoExampleManifold();
@@ -705,7 +705,8 @@ void World::timeStepDynamicSprites(){
   //  std::cout << "deform" << std::endl;  
   collectImpulses();
 
-  deformBasedOnImpulses();
+  //local stuff, skip it
+  //deformBasedOnImpulses();
 
   for(auto& po : plasticObjects){
 	
@@ -786,7 +787,7 @@ void World::timeStepDynamicSprites(){
 }
 
 
-void World::deformBasedOnImpulses(){
+/*void World::deformBasedOnImpulses(){
   //  std::cout << "num contacts this frame: " << 
   //	dispatcher->getNumManifolds() << std::endl;
   for(auto i : range(dispatcher->getNumManifolds())){
@@ -809,7 +810,7 @@ void World::deformBasedOnImpulses(){
 	  }
 	}
   }
-}
+  }*/
 
 void World::collectImpulses(){
   for(auto& po : plasticObjects){
@@ -827,13 +828,13 @@ void World::collectImpulses(){
 	  auto& manPoint = man->getContactPoint(j);
 	  if(rb1 && rb1->getUserIndex() >= 0){
 		//std::cout << "index: " << rb1->getUserIndex() << std::endl;
-		plasticObjects[rb1->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
-																					true));
+		plasticObjects[rb1->getUserIndex()].manifoldPoints.emplace_back(
+		  rb1, manPoint, true);
 	  }
 	  if(rb2 && rb2->getUserIndex() >= 0){
 		//std::cout << "index: " << rb2->getUserIndex() << std::endl;
-		plasticObjects[rb2->getUserIndex()].manifoldPoints.push_back(std::make_pair(manPoint,
-																					false));
+		plasticObjects[rb2->getUserIndex()].manifoldPoints.emplace_back(
+		  rb2, manPoint, false);
 	  }
 	}
 	//man->clearManifold();
@@ -897,7 +898,7 @@ void World::makeBarrelPyramid(){
 		
 		po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
 
-		po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
+		//po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
 
 		po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
 		  new btTriangleIndexVertexArray{

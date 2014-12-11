@@ -28,11 +28,7 @@ public:
 //#include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
 //class btDiscreteDynamicsWorld;
 
-
-using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
-using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
-using RMMatrix3i = Eigen::Matrix<int,   Eigen::Dynamic, 3, Eigen::RowMajor>;
-using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
+#include "eigenTypedefs.h"
 
 class PlasticObject{
 public:
@@ -60,7 +56,8 @@ public:
 
   //void deformBasedOnImpulses(btPersistentManifold* man, bool isObject0);
   
-  bool deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
+  //don't use dents
+  //bool deformBasedOnImpulseLocal(btPersistentManifold* man, bool isObject0);
   
   //bool projectImpulsesOntoExampleManifold();
   
@@ -106,7 +103,7 @@ public:
   Eigen::MatrixXd deltaBarycentricCoordinates;
   Eigen::VectorXd perExampleScale;
 
-  RMMatrix3d desiredDeformations; //per vertex
+  //RMMatrix3d desiredDeformations; //per vertex
 
   //nVertex x nBones, row-major matrix of the translation/rotation of each bone
   //store this so that we can use it when computing derivatives for the projection
@@ -129,7 +126,7 @@ public:
   RMMatrix4i tetmeshTets;
   
   RMMatrix3d currentBulletVertexPositions;
-  RMMatrix3d localImpulseBasedOffsets;
+  //RMMatrix3d localImpulseBasedOffsets;
 
   double scaleFactor;//scale the object's size by this much
   bool deformedThisFrame = false;
@@ -151,11 +148,12 @@ public:
 
 
   Eigen::MatrixXd boneWeights;
-  Eigen::MatrixXd currentTransformMatrix;
+  //Eigen::MatrixXd currentTransformMatrix;
   
   //an extra term to add to the translation of each handle based on
   //collision impacts
-  Eigen::MatrixXd collisionHandleAdjustments;
+  //Eigen::MatrixXd collisionHandleAdjustments;
+
   //only deform once things cross this point
   double plasticityImpulseYield;
   //scale*(mag(impulse) - yield) gets distributed to handles
@@ -166,15 +164,15 @@ public:
   double plasticityRate; //how slowly to apply this delta
 
 
-  double localPlasticityImpulseYield;
-  double localPlasticityImpulseScale;
+  double localPlasticityImpulseYield;  //unused now
+  double localPlasticityImpulseScale;  //unused now
 
 
   bool hasConstantVelocity = false;
   btVector3 constantVelocity;
 
   //second tells us if po is object0 in the contact
-  std::vector<std::pair<btManifoldPoint, bool>> manifoldPoints;
+  std::vector<std::tuple<const btRigidBody*, btManifoldPoint, bool>> manifoldPoints;
 
   //Eigen::MatrixXd LBSMatrix;
 

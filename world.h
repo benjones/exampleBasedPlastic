@@ -79,7 +79,8 @@ class World{
 
   void timeStepDynamicSprites();
   void timeStepDynamicSpritesNoDouble();
-  void deformBasedOnImpulses();
+
+  //void deformBasedOnImpulses();
   
   void collectImpulses();
 
