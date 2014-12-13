@@ -13,7 +13,7 @@
 //   1 4 2 5 3 6
 #include <string>
 #include <vector>
-#include <Eigen/Core>
+#include "Eigen/Core"
 namespace igl
 {
   // Read a matrix from an ascii dmat file

@@ -268,7 +268,7 @@ void World::timeStepDynamicSprites(){
 	po.saveBulletSnapshots();
   }
   
-  bulletWorld.stepSimulation(dt, 10, dt);
+  bulletWorld.stepSimulation(dt, 20, dt);
   
   collectImpulses();
 
@@ -278,6 +278,7 @@ void World::timeStepDynamicSprites(){
 	po.skinAndUpdate(); //skin pieces and update bullet props
 	po.updateConstraints(); //make sure the point2point constraints are right
 	
+
 	po.restoreBulletSnapshots();
 	
 	if(po.hasConstantVelocity){
@@ -300,7 +301,7 @@ void World::timeStepDynamicSprites(){
 	}
   }
   
-  bulletWorld.stepSimulation(dt, 10, dt);
+  bulletWorld.stepSimulation(dt, 20, dt);
   
   for(auto& po: plasticBodies){
 	for(auto& pp : po.plasticPieces){
@@ -348,7 +349,7 @@ int World::getNumBarrels(){
 }
 
 void World::makeBarrelPyramid(){
-
+  return;
   int barrelCount = getNumBarrels();
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;

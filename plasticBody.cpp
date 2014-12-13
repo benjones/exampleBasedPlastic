@@ -28,6 +28,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   ){
   
   const std::string directory = poi["directory"].asString();
+  std::cout << "reading from directory: " << directory << std::endl;
 
   computeBoneIndices(directory + "/bone_roots.bf");
   numBoneTips = boneIndices.size();
@@ -46,7 +47,8 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	exit(1);
   }
   numPhysicsVertices = vertices.rows();
-
+  std::cout << "vertices read size: " << vertices.rows() << ' ' << vertices.cols() << std::endl;
+  //assert(vertices.allFinite());
   if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
 	std::cout << "couldn't read skinning weights: "
 			  << directory << "/coarseWeights.dmat" << std::endl;
@@ -120,10 +122,13 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	
 	plasticPieces.emplace_back();
 	auto& piece = plasticPieces.back();
+	piece.scaleFactor = scaleFactor;
 	piece.tetmeshVertices = vertices;
 	piece.currentBulletVertexPositions = 
-	  scaleFactor*piece.tetmeshVertices;
+	  piece.scaleFactor*piece.tetmeshVertices;
 	
+	//assert(piece.currentBulletVertexPositions.allFinite());
+
 	//read tets in this piece
 	int nTets;
 	ins >> nTets;
@@ -131,7 +136,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	std::copy(std::istream_iterator<int>(ins),
 	  std::istream_iterator<int>(),
 	  piece.tetmeshTets.data());
-	
+
 	piece.numPhysicsVertices = vertices.rows();
 	piece.computeTriangleFaces(); //and triangles
 	piece.computeVertexNeighbors(); //connectivity in this piece
@@ -175,7 +180,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 					  piece.motionState.get(),
 					  piece.bulletShape.get()}};
 
-	piece.computeMassesAndVolume();
+	piece.computeMassesAndVolume(density);
   }
   //compute whole object mass and COM:
   mass = std::accumulate(
@@ -207,6 +212,8 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	piece.worldTransform = btTransform{rotation, offset};
 	piece.bulletBody->setCenterOfMassTransform(piece.worldTransform);
 	piece.saveBulletSnapshot();
+	piece.updateBulletProperties();
+	piece.saveBulletSnapshot();
 	piece.bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
@@ -214,9 +221,10 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   }
   //setup constraint stuff
   computeConstraints();
+  std::cout << "num constraints: " << constraints.size() << std::endl;
   updateConstraints(); //compute the correct positions
   for(auto& c : constraints){
-	bulletWorld.addConstraint(std::get<3>(c).get());
+	bulletWorld.addConstraint(std::get<3>(c).get(), true);
   }
   
 }
@@ -464,6 +472,7 @@ void PlasticBody::updateConstraints(){
   for(auto& c : constraints){
 	size_t p1, p2, vInd;
 	btPoint2PointConstraint* bcon = std::get<3>(c).get();
+	bcon->setBreakingImpulseThreshold(50);
 	std::tie(p1, p2, vInd, std::ignore) = c;
 	if(bcon->isEnabled()){
 	  
@@ -491,6 +500,7 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 	++objectStart;
 
 	std::string start = base + objectIndexStream.str();
+	std::cout << "writing " << start + '.' + currentFrameString + ".ply" << std::endl;
 	piece.dumpPly(start + '.' + currentFrameString + ".ply");
 	piece.dumpBcc(start + '.' + currentFrameString + ".bcs");
   }

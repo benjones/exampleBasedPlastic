@@ -51,7 +51,7 @@ INCS = -I./bullet-2.82-r2704/src/ -I./bullet-2.82-r2704/Extras -I/usr/local/incl
 #-I./eltopo/eltopo3d -I./eltopo/common
 #-I./Common
 
-EIGEN_INCLUDE=-I/usr/local/include/eigen3
+EIGEN_INCLUDE= #use our local copy
 #FAST_INCLUDE = -I../fastSkinning
 #FAST_LIB = -L../fastSkinning -lskinning
 

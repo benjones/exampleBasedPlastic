@@ -212,7 +212,7 @@ bool igl::readMESH(
   return true;
 }
 
-#include <Eigen/Core>
+#include "Eigen/Core"
 
 template <typename T, class Mat>
 bool list_to_matrix(const std::vector<std::vector<T > > & V,Mat & M)

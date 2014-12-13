@@ -18,6 +18,7 @@ public:
 
   //move only type because of the unique_ptrs
   //also, we should never actually need to copy them
+
   
   PlasticPiece(){}
   ~PlasticPiece() = default;
@@ -26,7 +27,7 @@ public:
   PlasticPiece(const PlasticPiece&) = delete;
   PlasticPiece& operator=(const PlasticPiece&) = delete;
   
-  void computeMassesAndVolume();
+  void computeMassesAndVolume(double density);
 
   void updateBulletProperties();
 
@@ -82,7 +83,7 @@ public:
 
   RMMatrix3d currentBulletVertexPositions;
 
-  double mass, volume, density, scaleFactor;
+  double mass, volume, scaleFactor;
 
   Eigen::Matrix3d inertiaTensor;
   btTransform inertiaAligningTransform, worldTransform;

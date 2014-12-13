@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <Eigen/Core>
+#include "Eigen/Core"
 
 namespace igl
 {

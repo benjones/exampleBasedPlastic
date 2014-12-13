@@ -2,7 +2,7 @@
 	"ground" : true,
 	"dt" : 0.003,
 
-	"plasticObjects" : [
+	"plasticBodies" : [
 		{
 			"directory" : "inputFiles/barrel4Examples/",
 			"offset" : [0,1,0],

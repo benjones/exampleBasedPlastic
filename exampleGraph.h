@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 //#include "Tform.h"
 //#include "Widget.h"
 #include "Quat.h"
@@ -62,8 +62,8 @@ public:
   void setInterpolatedTransform(int selectedSimplex, 
 								const std::vector<double>& barycentricCoords);
   */
-  void save(std::string filename);
-  void load(std::string filename);
+  void save(const std::string& filename);
+  void load(const std::string& filename);
   /*
   int selectedNode; //which node are we moving
   

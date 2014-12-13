@@ -3,7 +3,7 @@
 #include<fstream>
 #include <cstdlib>
 #include <cassert>
-#include <Eigen/Dense>
+#include "Eigen/Dense"
 //#include "Common/slVector.H"
 //#include "Common/slUtil.H"
 
@@ -144,9 +144,10 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
     char filename[1024];
     sprintf(filename, plyFile.c_str(), i, frameNumber);
     std::ifstream test(filename);
+	std::cout << "reading " << filename << std::endl;
     if(test.good()){
 	  
-	  std::cout << "reading " << filename << std::endl;
+	  std::cout << "read " << filename << std::endl;
 	  
 	  globalObjs.back().emplace_back();
 	  auto& oj = globalObjs.back().back();

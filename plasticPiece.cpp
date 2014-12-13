@@ -16,7 +16,7 @@ using benlib::enumerate;
 
 
 
-void PlasticPiece::computeMassesAndVolume(){
+void PlasticPiece::computeMassesAndVolume(double density){
 
   volume = 0;
   mass = 0;
@@ -50,7 +50,7 @@ void PlasticPiece::computeMassesAndVolume(){
 	  tetmeshVertexMasses(tetmeshTets(tetInd,j)) += nodeMass;
 	}
   }
-
+  //assert(tetmeshVertexMasses.allFinite());
 }
 
 void PlasticPiece::updateBulletProperties(){
@@ -100,7 +100,6 @@ void PlasticPiece::updateBulletProperties(){
   bulletShape->postUpdate();
   bulletShape->updateBound();
   bulletBody->setActivationState(DISABLE_DEACTIVATION);
-  
   
   inertiaAligningTransform = btTransform{eigenToBullet(evecs),
   										 eigenToBullet(centerOfMass)};
@@ -153,7 +152,8 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
   perVertexTranslations.resize(numPhysicsVertices*numRealBones);
   perVertexRotations.resize(numPhysicsVertices*numRealBones);
 
-  currentBulletVertexPositions.resize(numPhysicsVertices, 3);
+  //should be a no-op, but could cause issues, i guess?
+  //currentBulletVertexPositions.resize(numPhysicsVertices, 3);
   currentBulletVertexPositions.setZero();
 
 
@@ -197,6 +197,7 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 		}
 	  }
 	});
+  //assert(currentBulletVertexPositions.allFinite());
 }
 
 void PlasticPiece::computeTriangleFaces(){

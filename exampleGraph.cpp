@@ -233,7 +233,7 @@ void ExampleGraph::setTransformsToNode(int selectedNode){
   //  parent->dial_in_each_T;
 }
 */
-void ExampleGraph::save(std::string filename){
+void ExampleGraph::save(const std::string& filename){
   
   std::ofstream out(filename);
   if(!out){
@@ -277,7 +277,7 @@ void ExampleGraph::save(std::string filename){
 }
 
 
-void ExampleGraph::load(std::string filename){
+void ExampleGraph::load(const std::string& filename){
   std::ifstream ins(filename);
   if(!ins){
 	std::cout << "couldn't open example graph file: " << filename << std::endl;
