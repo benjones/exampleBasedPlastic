@@ -61,7 +61,7 @@ public:
 
   double density, plasticityImpulseYield, plasticityImpulseScale,
 	plasticityKernelScale, plasticityRate, jacobianAlpha, scaleFactor,
-	restitution, mass;
+	restitution, mass, breakingThreshold;
 
   bool hasConstantVelocity = false;
   btVector3 constantVelocity;

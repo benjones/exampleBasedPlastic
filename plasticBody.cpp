@@ -58,6 +58,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 
   //read in whole object parameters
   density = poi.get("density", 1000).asDouble();
+  breakingThreshold = poi.get("breakingThreshold", 1e10).asDouble();
   plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
   plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
   plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
@@ -472,7 +473,6 @@ void PlasticBody::updateConstraints(){
   for(auto& c : constraints){
 	size_t p1, p2, vInd;
 	btPoint2PointConstraint* bcon = std::get<3>(c).get();
-	bcon->setBreakingImpulseThreshold(50);
 	std::tie(p1, p2, vInd, std::ignore) = c;
 	if(bcon->isEnabled()){
 	  
