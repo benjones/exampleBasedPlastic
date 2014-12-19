@@ -14,7 +14,7 @@ using benlib::enumerate;
 #include <numeric>
 #include <set>
 
-
+//#include <BulletCollision/BroadphaseCollision/btDbvt.h>
 
 void PlasticPiece::computeMassesAndVolume(double density){
 
@@ -96,9 +96,18 @@ void PlasticPiece::updateBulletProperties(){
 	   ).transpose();
 	
   }
+
+  //update the tet vertices
+  for(auto&& pr : enumerate(bulletTets)){
+	for(auto i : range(4)){
+	  Eigen::Vector3d ePos = currentBulletVertexPositions.row(tetmeshTets(pr.first, i));
+	  pr.second.m_vertices[i] = eigenToBullet(ePos);
+	}
+  }
+  updateAabbs();
   
-  bulletShape->postUpdate();
-  bulletShape->updateBound();
+  //  bulletShape->postUpdate();
+  //  bulletShape->updateBound();
   bulletBody->setActivationState(DISABLE_DEACTIVATION);
   
   inertiaAligningTransform = btTransform{eigenToBullet(evecs),
@@ -347,4 +356,20 @@ void PlasticPiece::dumpPly(const std::string& filename) const{
 
 void PlasticPiece::dumpBcc(const std::string& filename) const{
   writeMatrixBinary(filename, barycentricCoordinates);
+}
+
+void PlasticPiece::updateAabbs(){
+
+  btTransform id;
+  id.setIdentity();
+  for(auto&& pr : enumerate(bulletTets)){
+	auto& tet = pr.second;
+	tet.m_numVertices = 4;
+	tet.recalcLocalAabb();
+	bulletShape->updateChildTransform(pr.first, id, false);
+  }
+  //auto* dbvt = bulletShape->getDynamicAabbTree();
+  //dbvt->optimizeIncremental(4); //??? how many passes?
+  bulletShape->recalculateLocalAabb();
+  
 }

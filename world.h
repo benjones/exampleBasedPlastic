@@ -10,6 +10,8 @@
 #include "rigidBody.h"
 #include "plasticBody.h"
 
+#include "profiler.hpp"
+
 namespace Json{ class Value;}
 
 class World{
@@ -65,4 +67,6 @@ class World{
 
   int currentFrame;
  
+  benlib::Profiler profiler;
+
 };

@@ -9,6 +9,10 @@
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
+#include <BulletCollision/CollisionShapes/btTetrahedronShape.h>
+
+using TetrahedronShape = btBU_Simplex1to4;
 
 
 class ExampleGraph;
@@ -69,9 +73,14 @@ public:
   std::vector<Quat> perVertexRotations;
   //should call world.removeRigidBody....
   std::unique_ptr<btRigidBody> bulletBody;
-  std::unique_ptr<btGImpactMeshShape> bulletShape;
+  //std::unique_ptr<btGImpactMeshShape> bulletShape;
+  std::unique_ptr<btCompoundShape> bulletShape;
+  std::vector<TetrahedronShape> bulletTets;
   std::unique_ptr<btDefaultMotionState> motionState;
-  std::unique_ptr<btTriangleIndexVertexArray> btTriMesh; //only used for trimesh shapes
+  //std::unique_ptr<btTriangleIndexVertexArray> btTriMesh; //only used for trimesh shapes
+  
+  
+
 
   RMMatrix3d tetmeshVertices;
   RMMatrix4i tetmeshTets;
@@ -98,5 +107,7 @@ public:
   void dumpPly(const std::string& filename) const;
   //void dumpImpulses(const std::string& filename) const; //skip for now
   void dumpBcc(const std::string& filename) const;
+
+  void updateAabbs();
 
 };

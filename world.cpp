@@ -192,7 +192,7 @@ World::World(std::string filename)
   loadPlasticBodies(root);
   makeBarrelPyramid();  
 
-  btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
+  //btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 }
 
 void World::dumpFrame(){
@@ -217,6 +217,7 @@ void World::dumpFrame(){
 	  
   currentFrame++;
 
+  profiler.dumpPercentages(std::cout);
 }
 
 
@@ -265,72 +266,86 @@ void World::loadPlasticBodies(const Json::Value& root){
 
 void World::timeStepDynamicSprites(){
   
-  for(auto& po : plasticBodies){
-	po.saveBulletSnapshots();
-	for(auto& constraint: po.constraints){
-	  std::get<3>(constraint)->setBreakingImpulseThreshold(
-		  po.breakingThreshold);
-	}
-  }
-  
-  bulletWorld.stepSimulation(dt, 10, dt);
-  
-  collectImpulses();
-
-
-  //another layer of pararalellism
-  tbb::parallel_for(tbb::blocked_range<size_t>(0, plasticBodies.size()),
-	  [&](const tbb::blocked_range<size_t>& r){
-		//  for(auto& po : plasticBodies){
-		for(auto i = r.begin(); i != r.end(); ++i){
-
-		  auto& po = plasticBodies[i];
-		  po.projectImpulsesOntoExampleManifoldLocally(dt);
-	
-		  po.skinAndUpdate(); //skin pieces and update bullet props
-		  po.updateConstraints(); //make sure the point2point constraints are right
-		  
-		  
-		  po.restoreBulletSnapshots();
-		  
-		  if(po.hasConstantVelocity){
-			for(auto& pp : po.plasticPieces){
-			  pp.bulletBody->setLinearVelocity(po.constantVelocity);
-			}
-		  }
-		  
-		  for(auto& pp : po.plasticPieces){
-			double avgBcNorm = 
-			  pp.deltaBarycentricCoordinates.norm()/pp.activeVertices.size();
-			
-			//auto f1 = [](double a){ return 1 - 100*a;};
-			auto f2 = [](double a){ return exp(-300*a);};
-			
-			double restitutionScale = std::max(0.0, f2(avgBcNorm));
-			pp.bulletBody->setRestitution(
-				std::min(pp.bulletBody->getRestitution(), 
-					restitutionScale*po.restitution));
-			
-		  }
-		  //no breaking in this step
-		  for(auto& constraint : po.constraints){
-			std::get<3>(constraint)->
-			  setBreakingImpulseThreshold(std::numeric_limits<double>::infinity());
-		  }
+  {
+	auto timer = profiler.timeName("save snapshots");
+	for(auto& po : plasticBodies){
+	  po.saveBulletSnapshots();
+	  if(currentFrame > 5){
+		for(auto& constraint: po.constraints){
+		  std::get<3>(constraint)->setBreakingImpulseThreshold(
+			  po.breakingThreshold);
 		}
-	  });
-  
-  bulletWorld.stepSimulation(dt, 10, dt);
-  
-  for(auto& po: plasticBodies){
-	for(auto& pp : po.plasticPieces){
-	  pp.bulletBody->setRestitution(po.restitution);
-	  if(po.hasConstantVelocity){
-		pp.bulletBody->setLinearVelocity(po.constantVelocity);
 	  }
 	}
   }
-  
+  {
+	auto timer = profiler.timeName("bullet step 1");
+	bulletWorld.stepSimulation(dt, 10, dt);
+  }
+  {
+	auto time = profiler.timeName("collect impulses");
+	collectImpulses();
+  }
+
+  {
+	auto timer = profiler.timeName("deform and skin");
+	//another layer of pararalellism
+	tbb::parallel_for(tbb::blocked_range<size_t>(0, plasticBodies.size()),
+		[&](const tbb::blocked_range<size_t>& r){
+		  //  for(auto& po : plasticBodies){
+		  for(auto i = r.begin(); i != r.end(); ++i){
+			
+			auto& po = plasticBodies[i];
+			po.projectImpulsesOntoExampleManifoldLocally(dt);
+			
+			po.skinAndUpdate(); //skin pieces and update bullet props
+			po.updateConstraints(); //make sure the point2point constraints are right
+			
+			
+			po.restoreBulletSnapshots();
+			
+			if(po.hasConstantVelocity){
+			  for(auto& pp : po.plasticPieces){
+				pp.bulletBody->setLinearVelocity(po.constantVelocity);
+			  }
+			}
+			
+			for(auto& pp : po.plasticPieces){
+			  double avgBcNorm = 
+				pp.deltaBarycentricCoordinates.norm()/pp.activeVertices.size();
+			  
+			  //auto f1 = [](double a){ return 1 - 100*a;};
+			  auto f2 = [](double a){ return exp(-300*a);};
+			  
+			  double restitutionScale = std::max(0.0, f2(avgBcNorm));
+			  pp.bulletBody->setRestitution(
+				  std::min(pp.bulletBody->getRestitution(), 
+					  restitutionScale*po.restitution));
+			  
+			}
+			//no breaking in this step
+			for(auto& constraint : po.constraints){
+			  std::get<3>(constraint)->
+				setBreakingImpulseThreshold(std::numeric_limits<double>::infinity());
+			}
+		  }
+		});
+  }
+  {
+	auto timer = profiler.timeName("bullet step 2");
+	bulletWorld.stepSimulation(dt, 10, dt);
+  }
+  {
+	auto timer = profiler.timeName("restitution and constant velocity");
+	for(auto& po: plasticBodies){
+	  for(auto& pp : po.plasticPieces){
+		pp.bulletBody->setRestitution(po.restitution);
+		if(po.hasConstantVelocity){
+		  pp.bulletBody->setLinearVelocity(po.constantVelocity);
+		}
+	  }
+	}
+  }
 }
 
 

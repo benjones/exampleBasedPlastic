@@ -159,7 +159,20 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 
 
 	//setup rigid bodies
-	piece.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
+	
+	piece.bulletTets.resize(piece.tetmeshTets.rows());
+	for(auto& tet : piece.bulletTets){ tet.setMargin(0.001);}
+	//actually fill this stuff in later...
+	piece.bulletShape = std::unique_ptr<btCompoundShape>{
+	  new btCompoundShape{true}};
+	auto idTransform = btTransform{};
+	idTransform.setIdentity();
+	for(auto i : range(piece.bulletTets.size())){
+	  piece.bulletShape->addChildShape(idTransform, &(piece.bulletTets[i]));
+	}
+	piece.bulletShape->setMargin(0.001);
+
+	/*piece.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
 	  new btTriangleIndexVertexArray{
 		static_cast<int>(piece.tetmeshTriangles.rows()),
 		piece.tetmeshTriangles.data(),
@@ -170,7 +183,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	  }};
 	piece.bulletShape = std::unique_ptr<btGImpactMeshShape>{
 	  new btGImpactMeshShape{piece.btTriMesh.get()}};
-	
+	*/
 	piece.motionState = 
 	  std::unique_ptr<btDefaultMotionState>{
 	  new btDefaultMotionState{}};
@@ -215,7 +228,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	piece.saveBulletSnapshot();
 	piece.updateBulletProperties();
 	piece.saveBulletSnapshot();
-	piece.bulletShape->updateBound();
+	piece.updateAabbs();//bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
 	bulletWorld.addRigidBody(piece.bulletBody.get());
@@ -425,7 +438,8 @@ void PlasticBody::computeGeodesicDistances(size_t pieceIndex, size_t vInd, doubl
 			  (std::get<0>(c) == pieceIndex ||
 				  std::get<1>(c) == pieceIndex) &&
 			  (std::get<0>(c) == otherIndex ||
-				  std::get<1>(c) == otherIndex);
+				  std::get<1>(c) == otherIndex) && //and is active
+			  std::get<3>(c)->isEnabled();
 		  });
 	  //assign distances
 	  for(auto seed : seeds){
@@ -480,7 +494,7 @@ void PlasticBody::updateConstraints(){
 	  Eigen::Vector3d pA = plasticPieces[p1].currentBulletVertexPositions.row(vInd).transpose();
 	  Eigen::Vector3d pB = plasticPieces[p2].currentBulletVertexPositions.row(vInd).transpose();
 	  bcon->setPivotA(eigenToBullet(pA));
-	  bcon->setPivotB(eigenToBullet(pB));
+	  bcon->setPivotB(eigenToBullet(pB) + btVector3{0,0, -0.1});
 
 	}
   }
