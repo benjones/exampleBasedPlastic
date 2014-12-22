@@ -27,9 +27,9 @@ OPT = -O3 -g
 TARGETS = fracture
 
 OBJECTS =   main.o world.o jsoncpp.o \
-rigidBody.o plasticObject.o exampleGraph.o \
+rigidBody.o  exampleGraph.o \
 plasticPiece.o plasticBody.o
-#egTraverser.o
+#egTraverser.o plasticObject.o
 #fem.o grip.o globalMatrix.o obstacle.o  couplingConstraintSolver.o kdTree.o
 HEADERS = *.h *.H *.hpp
 #collisions.o, punt on this

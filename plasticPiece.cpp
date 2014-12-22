@@ -1,5 +1,7 @@
 
 #include "plasticPiece.h"
+#include "plasticBody.h"
+
 #include "range.hpp"
 #include "enumerate.hpp"
 using benlib::range;
@@ -71,9 +73,9 @@ void PlasticPiece::updateBulletProperties(){
 	  centerOfMass;
 	inertiaTensor += tetmeshVertexMasses(i)*
 	  (r.squaredNorm()*Eigen::Matrix3d::Identity() -
-	   r*r.transpose());
+		  r*r.transpose());
   }
-  
+    
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(inertiaTensor);
   Eigen::Matrix3d evecs = solver.eigenvectors();
   Eigen::Vector3d evals = solver.eigenvalues();
@@ -96,18 +98,38 @@ void PlasticPiece::updateBulletProperties(){
 	   ).transpose();
 	
   }
+  //update the spliting plane vertices too
+  for(auto i : range(splittingPlaneVertices.rows())){
+	currentBulletSplittingPlaneVertices.row(i) =
+	  (evecs.transpose()*
+		  (currentBulletSplittingPlaneVertices.row(i).transpose() -
+			  centerOfMass)
+		).transpose();
+	if(!currentBulletSplittingPlaneVertices.row(i).allFinite()){
+	  std::cout << "row i sucks: " 
+				<< currentBulletSplittingPlaneVertices.row(i) << std::endl;
+	  exit(1);
+	}
+  }
+  
+
+
 
   //update the tet vertices
   for(auto&& pr : enumerate(bulletTets)){
 	for(auto i : range(4)){
-	  Eigen::Vector3d ePos = currentBulletVertexPositions.row(tetmeshTets(pr.first, i));
+	  Eigen::Vector3d ePos = 
+		currentBulletVertexPositions.row(
+			tetmeshTets(collisionTetIndices[pr.first], i));
 	  pr.second.m_vertices[i] = eigenToBullet(ePos);
 	}
   }
+  fractureMesh->postUpdate();
+  fractureMesh->updateBound();
+
   updateAabbs();
   
-  //  bulletShape->postUpdate();
-  //  bulletShape->updateBound();
+
   bulletBody->setActivationState(DISABLE_DEACTIVATION);
   
   inertiaAligningTransform = btTransform{eigenToBullet(evecs),
@@ -207,6 +229,19 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 	  }
 	});
   //assert(currentBulletVertexPositions.allFinite());
+
+  //skin the clipping plane vertices
+  for(auto i : range(splittingPlaneVertices.rows())){
+	auto& inds = std::get<0>(clippingPlaneTetInfo[i]);
+	auto& bcs = std::get<1>(clippingPlaneTetInfo[i]);
+	currentBulletSplittingPlaneVertices.row(i) =
+	  bcs(0)*currentBulletVertexPositions.row(inds(0)) +
+	  bcs(1)*currentBulletVertexPositions.row(inds(1)) +
+	  bcs(2)*currentBulletVertexPositions.row(inds(2)) +
+	  bcs(3)*currentBulletVertexPositions.row(inds(3));
+  }
+
+
 }
 
 void PlasticPiece::computeTriangleFaces(){
@@ -337,25 +372,61 @@ void PlasticPiece::dumpPly(const std::string& filename) const{
   auto bulletTrans = bulletBody->getCenterOfMassTransform();
   auto eigenRot = bulletToEigen(bulletTrans.getBasis());
   Eigen::Vector3d eigenTrans{bulletToEigen(bulletTrans.getOrigin())};
-  RMMatrix3f transformedVertices(currentBulletVertexPositions.rows(), 3);
-  for(auto i : range(transformedVertices.rows())){
+  RMMatrix3f transformedVertices(currentBulletVertexPositions.rows() + 
+	  currentBulletSplittingPlaneVertices.rows(), 3);
+  for(auto i : range(currentBulletVertexPositions.rows())){
 	Eigen::Vector3d transformedVertex = 
 	  eigenRot*currentBulletVertexPositions.row(i).transpose() +
 	  eigenTrans;
 	Eigen::Vector3f transFloat = transformedVertex.template cast<float>();
 	transformedVertices.row(i) = transFloat.transpose();
-	
+  }
+
+  assert(currentBulletVertexPositions.allFinite());
+  for(auto i : range(currentBulletSplittingPlaneVertices.rows())){
+	Eigen::Vector3d transformedVertex = 
+	  eigenRot*currentBulletSplittingPlaneVertices.row(i).transpose() +
+	  eigenTrans;
+	Eigen::Vector3f transFloat = transformedVertex.template cast<float>();
+	transformedVertices.row(i + currentBulletVertexPositions.rows()) = transFloat.transpose();
   }
   
+  RMMatrix3i combinedTriangles(tetmeshTriangles.rows() +
+	  splittingPlaneTriangles.rows(), 3);
+
+  combinedTriangles.block(0,0,tetmeshTriangles.rows(),3) = tetmeshTriangles;
+
+  combinedTriangles.block(tetmeshTriangles.rows(), 0, 
+	  splittingPlaneTriangles.rows(), 3) = splittingPlaneTriangles;
+  
+  combinedTriangles.block(tetmeshTriangles.rows(), 0,
+	  splittingPlaneTriangles.rows(), 3).array() += currentBulletVertexPositions.rows();
+  
+  assert(transformedVertices.allFinite());
+
+
   std::ofstream plyStream(filename);
-  writePLY(plyStream, transformedVertices, tetmeshTriangles);
+  writePLY(plyStream, transformedVertices, combinedTriangles);
+  //writePLY(plyStream, splittingPlaneVertices, splittingPlaneTriangles);
   plyStream.close();
   
 }
 
 
 void PlasticPiece::dumpBcc(const std::string& filename) const{
-  writeMatrixBinary(filename, barycentricCoordinates);
+  Eigen::MatrixXd paddedBarycentricCoordinates =
+	Eigen::MatrixXd::Zero(barycentricCoordinates.rows() +
+		splittingPlaneVertices.rows(),
+		barycentricCoordinates.cols());
+
+  paddedBarycentricCoordinates.block(0,0,
+	  barycentricCoordinates.rows(), barycentricCoordinates.cols()) = 
+	barycentricCoordinates;
+  paddedBarycentricCoordinates.block(barycentricCoordinates.rows(), 0, 
+	  splittingPlaneVertices.rows(), 1).array() = 1;
+
+  writeMatrixBinary(filename, paddedBarycentricCoordinates);
+  
 }
 
 void PlasticPiece::updateAabbs(){
@@ -372,4 +443,196 @@ void PlasticPiece::updateAabbs(){
   //dbvt->optimizeIncremental(4); //??? how many passes?
   bulletShape->recalculateLocalAabb();
   
+}
+
+
+
+
+void PlasticPiece::initialize(const std::string& directory,
+	const PlasticBody& parent,
+	const RMMatrix3d& verticesIn, 
+	int pieceNumber){
+  
+  scaleFactor = parent.scaleFactor;
+  tetmeshVertices = verticesIn;
+  currentBulletVertexPositions = 
+	scaleFactor*tetmeshVertices;
+	
+  //assert(piece.currentBulletVertexPositions.allFinite());
+
+  //read tets in this piece
+  {
+	
+	std::ifstream ins(
+		directory + "/tetmesh." + std::to_string(pieceNumber) + ".txt");
+	if(ins.good()){
+	  int nTets;
+	  ins >> nTets;
+	  tetmeshTets.resize(nTets, 4);
+	  std::copy(std::istream_iterator<int>(ins),
+		  std::istream_iterator<int>(),
+		  tetmeshTets.data());
+	} //else the parent already set this to all the tets
+	
+  }
+  {
+	std::ifstream ins(
+		directory + "/cutTets." + std::to_string(pieceNumber) + ".txt");
+	if(!ins.good()){
+	  std::cout << "couldn't open " 
+				<< directory + "/cutTets." + std::to_string(pieceNumber) + ".txt" << std::endl;
+	} else{
+	  int nCutTets;
+	  ins >> nCutTets;
+	  cutTets.resize(nCutTets);
+	  std::copy(std::istream_iterator<size_t>(ins),
+		  std::istream_iterator<size_t>(),
+		  cutTets.begin());
+	}
+  }
+
+  numPhysicsVertices = verticesIn.rows();
+  computeTriangleFaces(); //and triangles
+  computeVertexNeighbors(); //connectivity in this piece
+	
+  computeActiveVertices();
+  computeCollisionTetIndices();
+
+  //setup rigid bodies
+  
+  bulletTets.resize(collisionTetIndices.size());
+  for(auto& tet : bulletTets){ tet.setMargin(0.001);}
+  //actually fill this stuff in later...
+  bulletShape = std::unique_ptr<btCompoundShape>{
+	new btCompoundShape{true}};
+  auto idTransform = btTransform{};
+  idTransform.setIdentity();
+  for(auto i : range(bulletTets.size())){
+	bulletShape->addChildShape(idTransform, &(bulletTets[i]));
+  }
+  bulletShape->setMargin(0.001);
+
+  //load the plane ply
+  {
+	std::ifstream ins(
+		directory + "/clippingTriangles." + std::to_string(pieceNumber) + ".ply");
+	if(ins.good()){
+	  RMMatrix3f splitVerticesIn;
+	  readPLY(ins, splitVerticesIn, splittingPlaneTriangles);
+	  splittingPlaneVertices = splitVerticesIn.template cast<double>();
+	  currentBulletSplittingPlaneVertices = 
+		scaleFactor*splittingPlaneVertices;
+	  assert(splittingPlaneVertices.allFinite());
+	  assert(currentBulletSplittingPlaneVertices.allFinite());
+	} else {
+	  std::cout << "object has no clipping triangles" << std::endl;
+	}
+  }
+
+  if(splittingPlaneVertices.rows() > 0){
+	btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
+	  new btTriangleIndexVertexArray{
+		static_cast<int>(splittingPlaneTriangles.rows()),
+		splittingPlaneTriangles.data(),
+		3*sizeof(decltype(splittingPlaneTriangles)::Scalar),
+		static_cast<int>(currentBulletSplittingPlaneVertices.rows()),
+		currentBulletSplittingPlaneVertices.data(),
+		3*sizeof(decltype(currentBulletSplittingPlaneVertices)::Scalar)
+	  }};
+	
+	fractureMesh = std::unique_ptr<btGImpactMeshShape>{
+	  new btGImpactMeshShape{btTriMesh.get()}};
+	
+	bulletShape->addChildShape(idTransform, fractureMesh.get());
+
+	computeClippingPlaneTetInfo();
+  }
+
+
+  //initialize other stuff
+  barycentricCoordinates.resize(numPhysicsVertices,
+	  parent.numNodes);
+  barycentricCoordinates.setZero();
+  barycentricCoordinates.col(0).setOnes();
+  
+  deltaBarycentricCoordinates.resize(numPhysicsVertices,
+	  parent.numNodes);
+  deltaBarycentricCoordinates.setZero();
+  
+  skinMeshVaryingBarycentricCoords(
+	  parent.boneWeights,
+	  parent.boneIndices, 
+	  parent.exampleGraph);
+  
+
+
+
+  motionState = 
+	std::unique_ptr<btDefaultMotionState>{
+	new btDefaultMotionState{}};
+	
+  mass = 1; //worked before...?
+  bulletBody = std::unique_ptr<btRigidBody>{
+	new btRigidBody{mass,
+					motionState.get(),
+					bulletShape.get()}};
+
+  computeMassesAndVolume(parent.density);
+
+
+}
+
+void PlasticPiece::computeCollisionTetIndices(){
+  collisionTetIndices.resize(tetmeshTets.rows() - cutTets.size());
+  auto rangeNum = range(tetmeshTets.rows());
+  //save the ones that aren't cut
+  std::copy_if(rangeNum.begin(), rangeNum.end(),
+	  collisionTetIndices.begin(),
+	  [this](size_t a){
+		return 
+		  !std::binary_search(cutTets.begin(), cutTets.end(), a);
+	  });
+}
+
+
+void PlasticPiece::computeClippingPlaneTetInfo(){
+  clippingPlaneTetInfo.resize(splittingPlaneVertices.size());
+
+  Eigen::Matrix<double,3,4> mat;
+  for(auto i : range(splittingPlaneVertices.rows())){
+	Eigen::Vector3d thisVertex = splittingPlaneVertices.row(i).transpose();
+	for(auto j : cutTets){
+	  for(auto k : range(4)){
+		mat.col(k) = tetmeshVertices.row(tetmeshTets(j, k));
+	  }
+	  Eigen::Vector3d lower = mat.rowwise().minCoeff().transpose();
+	  Eigen::Vector3d upper = mat.rowwise().maxCoeff().transpose();
+
+	  if((lower.array() <= thisVertex.array()).all() &&
+		  (upper.array() >= thisVertex.array()).all()){
+
+		Eigen::Matrix3d bMatrix;
+		bMatrix.col(0)= mat.col(0) - mat.col(3);
+		bMatrix.col(1)= mat.col(1) - mat.col(3);
+		bMatrix.col(2)= mat.col(2) - mat.col(3);
+
+		Eigen::Vector3d barycentricCoords = bMatrix.inverse()*
+		  (thisVertex - mat.col(3));
+		if((barycentricCoords.array() > -0.001).all() &&
+			barycentricCoords.sum() < 1.003){
+		  //in this tet
+		  clippingPlaneTetInfo[i] = std::make_tuple(
+			  Eigen::Vector4i(tetmeshTets(j,0), tetmeshTets(j,1), 
+				  tetmeshTets(j,2), tetmeshTets(j,3)),
+			  Eigen::Vector4d(
+				  barycentricCoords(0),
+				  barycentricCoords(1),
+				  barycentricCoords(2),
+				  1.0 - barycentricCoords.sum()));
+			  
+		  break; //stop checking tets
+		}
+	  }
+	}
+  }
 }

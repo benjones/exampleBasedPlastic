@@ -116,85 +116,27 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   std::string basename = "/tetmesh.";
   for(int i = 0; ; ++i){
 
+
+
+
 	std::string filename = 
 	  directory + basename + std::to_string(i) + ".txt";
 	std::ifstream ins(filename);
-	if(!ins.good()){ break; }
+	if(!ins.good() && i > 0){ //support unsliced meshes
+	  break; 
+	}
 	
 	plasticPieces.emplace_back();
 	auto& piece = plasticPieces.back();
-	piece.scaleFactor = scaleFactor;
-	piece.tetmeshVertices = vertices;
-	piece.currentBulletVertexPositions = 
-	  piece.scaleFactor*piece.tetmeshVertices;
-	
-	//assert(piece.currentBulletVertexPositions.allFinite());
 
-	//read tets in this piece
-	int nTets;
-	ins >> nTets;
-	piece.tetmeshTets.resize(nTets, 4);
-	std::copy(std::istream_iterator<int>(ins),
-	  std::istream_iterator<int>(),
-	  piece.tetmeshTets.data());
-
-	piece.numPhysicsVertices = vertices.rows();
-	piece.computeTriangleFaces(); //and triangles
-	piece.computeVertexNeighbors(); //connectivity in this piece
-	
-	piece.computeActiveVertices();
-
-	//initialize other stuff
-	piece.barycentricCoordinates.resize(piece.numPhysicsVertices,
-	  numNodes);
-	piece.barycentricCoordinates.setZero();
-	piece.barycentricCoordinates.col(0).setOnes();
-
-	piece.deltaBarycentricCoordinates.resize(piece.numPhysicsVertices,
-	  numNodes);
-	piece.deltaBarycentricCoordinates.setZero();
-	
-	piece.skinMeshVaryingBarycentricCoords(boneWeights,
-	  boneIndices, exampleGraph);
-
-
-	//setup rigid bodies
-	
-	piece.bulletTets.resize(piece.tetmeshTets.rows());
-	for(auto& tet : piece.bulletTets){ tet.setMargin(0.001);}
-	//actually fill this stuff in later...
-	piece.bulletShape = std::unique_ptr<btCompoundShape>{
-	  new btCompoundShape{true}};
-	auto idTransform = btTransform{};
-	idTransform.setIdentity();
-	for(auto i : range(piece.bulletTets.size())){
-	  piece.bulletShape->addChildShape(idTransform, &(piece.bulletTets[i]));
+	if(!ins.good()){
+	  piece.tetmeshTets = tets;
 	}
-	piece.bulletShape->setMargin(0.001);
 
-	/*piece.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
-	  new btTriangleIndexVertexArray{
-		static_cast<int>(piece.tetmeshTriangles.rows()),
-		piece.tetmeshTriangles.data(),
-		3*sizeof(decltype(piece.tetmeshTriangles)::Scalar),
-		static_cast<int>(piece.currentBulletVertexPositions.rows()),
-		piece.currentBulletVertexPositions.data(),
-		3*sizeof(decltype(piece.currentBulletVertexPositions)::Scalar)
-	  }};
-	piece.bulletShape = std::unique_ptr<btGImpactMeshShape>{
-	  new btGImpactMeshShape{piece.btTriMesh.get()}};
-	*/
-	piece.motionState = 
-	  std::unique_ptr<btDefaultMotionState>{
-	  new btDefaultMotionState{}};
-	
-	piece.mass = 1; //worked before...?
-	piece.bulletBody = std::unique_ptr<btRigidBody>{
-	  new btRigidBody{piece.mass,
-					  piece.motionState.get(),
-					  piece.bulletShape.get()}};
+	piece.initialize(directory, *this,
+		vertices, i);
 
-	piece.computeMassesAndVolume(density);
+
   }
   //compute whole object mass and COM:
   mass = std::accumulate(
@@ -494,7 +436,7 @@ void PlasticBody::updateConstraints(){
 	  Eigen::Vector3d pA = plasticPieces[p1].currentBulletVertexPositions.row(vInd).transpose();
 	  Eigen::Vector3d pB = plasticPieces[p2].currentBulletVertexPositions.row(vInd).transpose();
 	  bcon->setPivotA(eigenToBullet(pA));
-	  bcon->setPivotB(eigenToBullet(pB) + btVector3{0,0, -0.1});
+	  bcon->setPivotB(eigenToBullet(pB));// + btVector3{0,0, -0.1});
 
 	}
   }

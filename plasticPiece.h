@@ -16,6 +16,7 @@ using TetrahedronShape = btBU_Simplex1to4;
 
 
 class ExampleGraph;
+class PlasticBody;
 
 class PlasticPiece{
 public:
@@ -31,6 +32,12 @@ public:
   PlasticPiece(const PlasticPiece&) = delete;
   PlasticPiece& operator=(const PlasticPiece&) = delete;
   
+  void initialize(const std::string& directory,
+	  const PlasticBody& parent,
+	  const RMMatrix3d& verticesIn,
+	  int pieceNumber);
+
+
   void computeMassesAndVolume(double density);
 
   void updateBulletProperties();
@@ -73,12 +80,14 @@ public:
   std::vector<Quat> perVertexRotations;
   //should call world.removeRigidBody....
   std::unique_ptr<btRigidBody> bulletBody;
-  //std::unique_ptr<btGImpactMeshShape> bulletShape;
+
   std::unique_ptr<btCompoundShape> bulletShape;
   std::vector<TetrahedronShape> bulletTets;
   std::unique_ptr<btDefaultMotionState> motionState;
-  //std::unique_ptr<btTriangleIndexVertexArray> btTriMesh; //only used for trimesh shapes
-  
+
+  //for the planar fracture mesh
+  std::unique_ptr<btTriangleIndexVertexArray> btTriMesh; //only used for trimesh shapes
+  std::unique_ptr<btGImpactMeshShape> fractureMesh;
   
 
 
@@ -103,6 +112,22 @@ public:
 
   void computeActiveVertices();
   std::vector<size_t> activeVertices; //vertices that are actually part of tets
+  void computeCollisionTetIndices();
+  std::vector<size_t> cutTets; //read from slicer output file
+  std::vector<size_t> collisionTetIndices; 
+
+  //indices of the vertices in the containing tet,
+  //and the corresponding barycentric coordinates
+  void computeClippingPlaneTetInfo();
+  std::vector<std::tuple<Eigen::Vector4i,Eigen::Vector4d>> clippingPlaneTetInfo;
+  
+  
+
+  RMMatrix3d splittingPlaneVertices;
+  RMMatrix3d currentBulletSplittingPlaneVertices;
+  RMMatrix3i splittingPlaneTriangles;
+
+
   
   void dumpPly(const std::string& filename) const;
   //void dumpImpulses(const std::string& filename) const; //skip for now

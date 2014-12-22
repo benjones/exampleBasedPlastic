@@ -192,7 +192,7 @@ World::World(std::string filename)
   loadPlasticBodies(root);
   makeBarrelPyramid();  
 
-  //btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
+  btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 }
 
 void World::dumpFrame(){

@@ -76,6 +76,10 @@ void readPLY(std::ifstream& ins, VType& vertices, TType& triangles){
   std::string magic;
   ins >> magic;
   assert(magic == "ply");
+  static_assert(std::is_same<float, typename VType::Scalar>::value, 
+	  "Vertices must be type float");
+  static_assert(std::is_same<int,   typename TType::Scalar>::value,
+	  "Triangles must be type int");
   std::string firstWord;
   //read until we get to the end of the header
   int numVertices{-1};
