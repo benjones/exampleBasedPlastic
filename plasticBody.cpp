@@ -49,6 +49,10 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   numPhysicsVertices = vertices.rows();
   std::cout << "vertices read size: " << vertices.rows() << ' ' << vertices.cols() << std::endl;
   //assert(vertices.allFinite());
+
+  std::cout << "body bounding box:\n" << vertices.colwise().minCoeff() 
+			<< '\n' << vertices.colwise().maxCoeff() << std::endl;
+
   if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
 	std::cout << "couldn't read skinning weights: "
 			  << directory << "/coarseWeights.dmat" << std::endl;
@@ -65,6 +69,9 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
   jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
 
+  useVolumetricCollisions = poi.get("useVolumetricCollisions", true).asBool();
+
+
   perExampleScale.resize(numNodes);
   auto& pesIn = poi["perExampleScale"];
   if(!pesIn.isNull()){
@@ -77,6 +84,8 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   
   scaleFactor = poi.get("scaleFactor", 1).asDouble();
   restitution = poi.get("restitution", 0.8).asDouble();
+  restitutionAddition = poi.get("restitutionAddition", 1.0).asDouble();
+  restitutionExponent = poi.get("restitutionExponent", 300).asDouble();
 
   //apply COM offset stuff
   btVector3 offset(0.0,0.0,0.0); //default to no offset
@@ -109,6 +118,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	constantVelocity = btVector3{constantVelocityIn[0].asDouble(),
 								 constantVelocityIn[1].asDouble(),
 								 constantVelocityIn[2].asDouble()};
+	constantVelocityFrames = poi.get("constantVelocityFrames", 60).asInt();
   }
 
   //read in tets in each piece
@@ -288,7 +298,9 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 		  boneWeights(vInd, weightIndex)*
 		  (node.transformations[boneIndex].translation +
 			  nodeRotation.angle()*
-			  currentRotation.axis().cross(currentRotation*
+			  nodeRotation.axis().cross(
+				  //currentRotation.axis().cross(
+				  currentRotation*
 				  piece.tetmeshVertices.row(vInd).transpose()));
 	  }
 	  

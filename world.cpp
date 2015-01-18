@@ -44,6 +44,8 @@ World::World(std::string filename)
   currentFrame(0)
 {
 
+  btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
+
   std::ifstream ins(filename.c_str());
   Json::Value root;
   Json::Reader reader;
@@ -57,7 +59,9 @@ World::World(std::string filename)
     exit(1);
   }
 
-  auto bulletObjectsIn = root["bulletObjects"];
+  makeBarrels = root.get("makeBarrels", false).asBool();
+  singleStep = root.get("singleStep", false).asBool();
+  auto& bulletObjectsIn = root["bulletObjects"];
 
 
   ground = root.get("ground", true).asBool();
@@ -83,12 +87,19 @@ World::World(std::string filename)
 								 
 	RB.bulletBody->setUserIndex(-1);
 	RB.bulletBody->setRestitution(0.5);
-	
+	//RB.bulletBody->setFriction(0.8);
+	if(!root["groundFriction"].isNull()){
+	  RB.bulletBody->setFriction(root.get("groundFriction", 0.8).asDouble());
+	}
+	if(!root["groundRestitution"].isNull()){
+	  RB.bulletBody->setRestitution(root["groundRestitution"].asDouble());
+	}
     bulletWorld.addRigidBody(RB.bulletBody.get());
 
   }
 
   dt = root.get("dt", 1.0/60.0).asDouble();
+  duration = root.get("duration", 5.0).asDouble();
   friction = root.get("friction", 0.5).asDouble();
 
   auto gravityIn = root["gravity"];
@@ -185,6 +196,7 @@ World::World(std::string filename)
 					  inertiaTensor}};
 	
 	RB.bulletBody->setUserIndex(-1);
+	//RB.bulletBody->setFriction(0.8);
     bulletWorld.addRigidBody(RB.bulletBody.get());
     
   }
@@ -192,7 +204,7 @@ World::World(std::string filename)
   loadPlasticBodies(root);
   makeBarrelPyramid();  
 
-  btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
+
 }
 
 void World::dumpFrame(){
@@ -296,15 +308,18 @@ void World::timeStepDynamicSprites(){
 		  for(auto i = r.begin(); i != r.end(); ++i){
 			
 			auto& po = plasticBodies[i];
+			if(singleStep){
+			  po.saveBulletSnapshots(); //so the update uses the NEW position/velocity
+			}
 			po.projectImpulsesOntoExampleManifoldLocally(dt);
 			
 			po.skinAndUpdate(); //skin pieces and update bullet props
 			po.updateConstraints(); //make sure the point2point constraints are right
 			
-			
-			po.restoreBulletSnapshots();
-			
-			if(po.hasConstantVelocity){
+			if(!singleStep){
+			  po.restoreBulletSnapshots();
+			}
+			if(po.hasConstantVelocity && currentFrame < po.constantVelocityFrames){
 			  for(auto& pp : po.plasticPieces){
 				pp.bulletBody->setLinearVelocity(po.constantVelocity);
 			  }
@@ -315,13 +330,14 @@ void World::timeStepDynamicSprites(){
 				pp.deltaBarycentricCoordinates.norm()/pp.activeVertices.size();
 			  
 			  //auto f1 = [](double a){ return 1 - 100*a;};
-			  auto f2 = [](double a){ return exp(-300*a);};
+			  auto f2 = [&po](double a){ return exp(-po.restitutionExponent*a);};
 			  
 			  double restitutionScale = std::max(0.0, f2(avgBcNorm));
 			  pp.bulletBody->setRestitution(
-				  std::min(pp.bulletBody->getRestitution(), 
-					  restitutionScale*po.restitution));
-			  
+				  std::min(po.restitution, 
+					  std::min(pp.bulletBody->getRestitution() + dt*po.restitutionAddition , 
+						  restitutionScale*po.restitution)));
+			  //std::cout << "restitution: " << pp.bulletBody->getRestitution() << std::endl;
 			}
 			//no breaking in this step
 			for(auto& constraint : po.constraints){
@@ -332,15 +348,19 @@ void World::timeStepDynamicSprites(){
 		});
   }
   {
-	auto timer = profiler.timeName("bullet step 2");
-	bulletWorld.stepSimulation(dt, 10, dt);
+	if(!singleStep){
+	  auto timer = profiler.timeName("bullet step 2");
+	  bulletWorld.stepSimulation(dt, 10, dt);
+	}
   }
   {
 	auto timer = profiler.timeName("restitution and constant velocity");
 	for(auto& po: plasticBodies){
 	  for(auto& pp : po.plasticPieces){
-		pp.bulletBody->setRestitution(po.restitution);
-		if(po.hasConstantVelocity){
+		//if(!singleStep){
+		//  pp.bulletBody->setRestitution(po.restitution);
+		//}
+		if(po.hasConstantVelocity && currentFrame < po.constantVelocityFrames){
 		  pp.bulletBody->setLinearVelocity(po.constantVelocity);
 		}
 	  }
@@ -383,29 +403,29 @@ int World::getNumBarrels(){
 }
 
 void World::makeBarrelPyramid(){
-  return;
+  if(!makeBarrels)
+	return;
   int barrelCount = getNumBarrels();
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;
   
-  double startHeight = 0.235;
+  double startHeight = 0.39;
   double currentHeight = startHeight;
   double deltaHeight = 0.77;
 
   double barrelRadius = 0.34;
-  double startX = 0, startZ = 0;
+  double startX = -3.0, startZ = 0;
 
   //set up most stuff here...
+  std::ifstream ins("inputFiles/barrelStackParams.json");
   Json::Value pbj;
-  pbj["directory"] = "inputFiles/barrel4Examples";
-  pbj["density"] = 1000.0;
-  pbj["restitution"] = 0.8;
-  pbj["plasticityImpulseYield"] = 3e-4;
-  pbj["plasticityImpulseScale"] = 200;
-  pbj["plasticityKernelScale"] = 0.02;
-  pbj["plasticityRate"] = 0.3;
-  pbj["jacobianAlpha"] = 1.0;
-  pbj["scaleFactor"] = 0.01;
+  Json::Reader reader;
+  if(!reader.parse(ins, pbj)){
+	std::cout << "couldn't read barrel params: " << std::endl
+			  << reader.getFormatedErrorMessages();
+	exit(1);
+  }
+
   pbj["offset"].resize(3);
   
   for(auto l : range(pyramidSize)){

@@ -56,10 +56,12 @@ class World{
 
   bool ground;
   double groundHeight;
-  double dt;
+  double dt, duration;
   btVector3 gravity;
   double friction;
   
+  bool makeBarrels;
+  bool singleStep;
 
   std::vector<RigidBody> rigidBodies;
   std::vector<PlasticBody> plasticBodies;

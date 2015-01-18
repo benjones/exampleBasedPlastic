@@ -34,9 +34,10 @@ void RigidBody::dump(std::string filename){
   switch(rbType){
   case  RB_BOX:{
 	
-    //std::vector<btVector3> vertices(12);
-	RMMatrix3f vertices(12, 3);
+	//repeat vertices so texturing works better
+	Eigen::Matrix<float, 14, 3, Eigen::RowMajor> vertices;
     
+
     for(auto i : range(8)){
 	  btVector3 untransformedVertex;
       dynamic_cast<btBoxShape*>(shape.get())->getVertex(i, untransformedVertex);
@@ -46,20 +47,45 @@ void RigidBody::dump(std::string filename){
 	  vertices(i,2) = transformedVertex[2];
       //outs << "v " << vertices[i][0] << ' ' << vertices[i][1] << ' ' << vertices[i][2] << std::endl;
     }
+	vertices.row(8) = vertices.row(4);
+	vertices.row(9) = vertices.row(5);
+	vertices.row(10) = vertices.row(6);
+	vertices.row(11) = vertices.row(7);
+	vertices.row(12) = vertices.row(5);
+	vertices.row(13) = vertices.row(4);
+
+	Eigen::Matrix<float, 14, 1> us;
+	us << 0.5f, 0.25f, 
+	  0.5f, 0.25f, 
+	  0.5f, 0.25f, 
+	  0.5f, 0.25f, 
+	  0.75f, 0.0f, 
+	  0.75f, 0.0f, 
+	  0.25f, 0.5f;
+	Eigen::Matrix<float, 14, 1> vs;
+	vs << 0.75f, 0.75f,
+	  0.5f, 0.5f,
+	  0.0f, 0.0f,
+	  0.25f, 0.25f,
+	  0.75f, 0.75f,
+	  0.5f, 0.5f,
+	  1.0f, 1.0f;
+
+
 	RMMatrix3i triangles(12, 3);
 	triangles << 
 	  0, 1, 2,
-	  1, 3, 2,
-	  0, 5, 1,
-	  0, 4, 5,
-	  0, 2, 6,
-	  0, 6, 4,
-	  1, 5, 3,
-	  3, 5, 7,
+	  1, 2, 3,
 	  2, 3, 6,
-	  3, 7, 6,
-	  4, 6, 5,
-	  5, 6, 7;
+	  3, 6, 7,
+	  4, 5, 7,
+	  4, 6, 7,
+	  0, 8, 10,
+	  0, 2, 10,
+	  1, 3, 9,
+	  9, 11, 3,
+	  0, 1, 12,
+	  0, 12, 13;
 	/*    outs << 
 	    "f 1 2 3" << std::endl
 	 << "f 2 4 3" << std::endl
@@ -74,7 +100,7 @@ void RigidBody::dump(std::string filename){
 	 << "f 5 7 6" << std::endl
 	 << "f 6 7 8" << std::endl;
 	*/
-	writePLY(outs, vertices, triangles);
+	writePLYWithTexture(outs, vertices, us, vs, triangles);
 	break;
   } 
   case RB_PLANE:{
@@ -91,17 +117,26 @@ void RigidBody::dump(std::string filename){
 	//outs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << std::endl;
 	//};
 	RMMatrix3f vertices(4, 3);
-	
+	Eigen::Matrix<float, 4, 1> us;
+	Eigen::Matrix<float, 4, 1> vs;
 	auto tmp = localPoint - 100*span1 - 100*span2;
 	//printPoint(tmp);
 	vertices(0,0) = tmp[0];
 	vertices(0,1) = tmp[1];
 	vertices(0,2) = tmp[2];
+	us(0) = 0;
+	vs(0) = 0;
+
+
 	tmp = localPoint + 100*span1 - 100*span2;
 	//printPoint(tmp);
 	vertices(1,0) = tmp[0];
 	vertices(1,1) = tmp[1];
 	vertices(1,2) = tmp[2];
+	
+	us(1) = 1;
+	vs(1) = 0;
+
 
 	tmp = localPoint + 100*span1 + 100*span2;
 	//printPoint(tmp);
@@ -109,11 +144,17 @@ void RigidBody::dump(std::string filename){
 	vertices(2,1) = tmp[1];
 	vertices(2,2) = tmp[2];
 
+	us(2) = 1;
+	vs(2) = 1;
+
 	tmp = localPoint - 100*span1 + 100*span2;
 	//printPoint(tmp);
 	vertices(3,0) = tmp[0];
 	vertices(3,1) = tmp[1];
 	vertices(3,2) = tmp[2];
+
+	us(3) = 0;
+	vs(3) = 1;
 
 	RMMatrix3i triangles(2, 3);
 	//check winding, which is probably unnecessary since we know the cross product ordering...
@@ -124,7 +165,7 @@ void RigidBody::dump(std::string filename){
 	  //outs << "f 1 3 2\nf 1 4 3" << std::endl;
 	  triangles << 0, 2, 1, 0, 3, 2;
 	}
-	writePLY(outs, vertices, triangles);
+	writePLYWithTexture(outs, vertices, us, vs, triangles);
 	break;
   }
   case RB_TRIMESH:{

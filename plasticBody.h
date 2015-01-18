@@ -61,9 +61,12 @@ public:
 
   double density, plasticityImpulseYield, plasticityImpulseScale,
 	plasticityKernelScale, plasticityRate, jacobianAlpha, scaleFactor,
-	restitution, mass, breakingThreshold;
+	restitution, mass, breakingThreshold, restitutionAddition, restitutionExponent;
+
+  bool useVolumetricCollisions;
 
   bool hasConstantVelocity = false;
+  int constantVelocityFrames;
   btVector3 constantVelocity;
   
   std::vector<std::tuple<const btRigidBody*, btManifoldPoint, bool>> manifoldPoints;

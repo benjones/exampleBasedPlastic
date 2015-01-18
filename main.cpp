@@ -17,7 +17,6 @@ int main(int argc, char *argv[]) {
   }
   World world(argv[1]);
 
-
   //	double dt = 1/900.0 + 1e-12; 
   //	SlVector3 gravity(0.0,0.0,-9.8);
   double framerate = 1/60.0;//60.0;
@@ -25,7 +24,6 @@ int main(int argc, char *argv[]) {
   //double framerate = 0.00011920928956;
 	//	bool ground = true;
 	//	unsigned int frame = 0;
-  double timeSinceLastFrame = 100;
 	//	char framestring[80];
 	//	sprintf(framestring, "frames/foo-%%02i.%%04i.obj");
 	//	double friction = 0.5;
@@ -44,48 +42,13 @@ int main(int argc, char *argv[]) {
 
   //while (time < 0.2){//5) {
   world.dumpFrame();
-  while (time < 9) {
+  double nextFrameTime = 0;
+  while (time < world.duration){
     time += world.dt;
-    timeSinceLastFrame += world.dt;
-    
-    if (timeSinceLastFrame > framerate) {
-      timeSinceLastFrame = 0;
-
-      /*char fname[80];
-			for (unsigned int i=0; i<simulator.nobjects; i++) {
-				sprintf(fname, framestring, i, frame);
-				std::cout<<"writing frame "<<fname<<std::endl;
-				simulator.objects[i].dumpObj(fname);
-			}
-			frame++;*/
+	if(time > nextFrameTime){
       world.dumpFrame();
-	  //	  for(auto& po : world.plasticObjects){
-	  //		std::cout << "plastic: " << std::endl << po.collisionHandleAdjustments << std::endl;
-	  //	  }
-
+	  nextFrameTime += framerate;
     }
     world.timeStepDynamicSprites();
-    //world.timeStepDynamicSpritesNoDouble();
-
-    /*    simulator.computeVelocities(dt, gravity);
-    
-    if (ground) {
-      for (unsigned int i=0; i<simulator.nobjects; i++) {
-	FemObject &o = simulator.objects[i];
-	for (unsigned int j=0; j<o.nv; j++) {
-	  double x = o.pos[j][2]+dt*o.vel[j][2];
-	  if (x < 0.0) {
-	    double impulse = -x / dt;
-	    double nm=0.0,m = sqrt(sqr(o.vel[j][0]) + sqr(o.vel[j][1]));
-	    if (m > 0) nm = std::max<double>(m - impulse*friction, 0.0) / m;
-	    o.vel[j].set(nm*o.vel[j][0], nm*o.vel[j][1], o.vel[j][2]+impulse);
-	  }
-	}
-      }
-    }
-    
-    //simulator.handleSelfCollisions(dt);
-    simulator.updatePositions(dt);
-    */
   }
 }

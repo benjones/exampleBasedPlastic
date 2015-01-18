@@ -52,7 +52,8 @@ public:
 										const ExampleGraph& exampleGraph);
 
 
-  void computeTriangleFaces();
+  RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;
+  RMMatrix3i computeTriangleFaces(const std::vector<size_t>& tetIndices) const;
 
   //neighbors within this piece.  
   //We can just union with vertices
@@ -88,6 +89,11 @@ public:
   //for the planar fracture mesh
   std::unique_ptr<btTriangleIndexVertexArray> btTriMesh; //only used for trimesh shapes
   std::unique_ptr<btGImpactMeshShape> fractureMesh;
+
+  //as an alternative to the tetmesh approach
+  bool useVolumetricCollisions;
+  std::unique_ptr<btTriangleIndexVertexArray> bulkTriMesh;
+  std::unique_ptr<btGImpactMeshShape> bulkMesh;
   
 
 
@@ -121,7 +127,7 @@ public:
   void computeClippingPlaneTetInfo();
   std::vector<std::tuple<Eigen::Vector4i,Eigen::Vector4d>> clippingPlaneTetInfo;
   
-  
+
 
   RMMatrix3d splittingPlaneVertices;
   RMMatrix3d currentBulletSplittingPlaneVertices;
@@ -134,5 +140,25 @@ public:
   void dumpBcc(const std::string& filename) const;
 
   void updateAabbs();
+
+  //maybe should go in plasticBody, but whatever
+  struct Plane{
+	Plane(Eigen::Vector3d n, double o)
+	  :normal{std::move(n)}, offset{o}
+	{}
+
+	Eigen::Vector3d normal;
+	double offset;
+  };
+  std::vector<Plane> planes;
+  Eigen::Vector3d intersectPlane(size_t ind1, size_t ind2, const Plane& plane) const;
+
+  void computeCutTetGeometry();
+  RMMatrix3d cutGeomVertices;
+  RMMatrix3i cutGeomIndices;
+
+  //Eigen::VectorXf texU, texV;
+
+
 
 };

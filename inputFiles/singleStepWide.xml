@@ -1,0 +1,65 @@
+		<integrator type="path">
+<integer name="rrDepth" value="8" />
+		</integrator>
+
+<sensor type="perspective">
+                <float name="farClip" value="1241.42"/>
+                <float name="focusDistance" value="10.5293"/>
+                <float name="fov" value="57.8224"/>
+                <string name="fovAxis" value="x"/>
+                <float name="nearClip" value="2.41421"/>
+                <transform name="toWorld">
+
+                        <lookat target="-3, 1, 0" origin="-10, 3, 0" up="0, 1, 0"/>
+                </transform>
+		<sampler type="sobol">
+			<integer name="sampleCount" value="128"/>
+		</sampler>
+
+
+
+                <film type="hdrfilm">
+                        <integer name="height" value="540"/>
+                        <integer name="width" value="960"/>
+						<boolean name="banner" value="false"/>
+                        <rfilter type="gaussian"/>
+                </film>
+</sensor>
+
+
+<emitter type="spot">
+ <spectrum name="intensity" value="35.0" />
+ <transform name="toWorld">
+   <lookat origin="-10, 12, 10" target="0, 1, 0" />
+ </transform>
+
+</emitter>
+
+
+<emitter type="spot">
+ <spectrum name="intensity" value="25.0" />
+ <transform name="toWorld">
+   <lookat origin="-8, 0.6, -4" target="0, 1.4, 0" />
+ </transform>
+</emitter>
+
+<emitter type="spot">
+ <spectrum name="intensity" value="35.0" />
+ <transform name="toWorld">
+   <lookat origin="2, 20, 3" target="0, 1.5, 0" />
+ </transform>
+</emitter>
+
+<emitter type="point" >
+ <spectrum name="intensity" value="10" />
+ <point name="position" x="0" y="10" z="5" /> 
+</emitter>
+
+<emitter type="point" >
+ <spectrum name="intensity" value="10" />
+ <point name="position" x="-1" y="10" z="-5" /> 
+</emitter>
+
+<emitter type="constant" >
+<spectrum name="radiance" value="0.2" />
+</emitter>

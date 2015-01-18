@@ -1,0 +1,81 @@
+{
+	"ground" : true,
+	
+	"bulletObjects" : [
+		{
+			"mass" : 0,
+			"shape" : "box",
+			"extents" : [1, 0.75, 10],
+			"offset" : [1, 0.75, 0],
+			"shadingXml" : "
+<bsdf type=\"twosided\" >
+  <bsdf type=\"roughdiffuse\">
+    <float name=\"alpha\" value=\"0.6\" />
+    <texture name=\"reflectance\" type=\"bitmap\" >
+      <string name=\"filename\" value=\"concreteTexture.jpg\" />
+      <float name=\"uscale\" value=\"20\" />
+      <float name=\"vscale\" value=\"2\" />
+    </texture>
+   </bsdf>
+</bsdf>
+"
+			
+		},
+		{
+			"mass" : 0,
+			"shape" : "box",
+			"extents" : [1, 5, 10],
+			"offset" : [3, 5, 0],
+			"shadingXml" : "
+<bsdf type=\"twosided\" >
+  <bsdf type=\"roughdiffuse\">
+    <float name=\"alpha\" value=\"0.6\" />
+    <texture name=\"reflectance\" type=\"bitmap\" >
+      <string name=\"filename\" value=\"brickTexture.jpg\" />
+      <float name=\"uscale\" value=\"20\" />
+      <float name=\"vscale\" value=\"20\" />
+    </texture>
+   </bsdf>
+</bsdf>
+"
+			
+		}
+	],
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [0,3,0],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 5.8e1,
+			"plasticityImpulseYield" : 4e-4,//0.0004,
+			"plasticityKernelScale" : 0.015,
+			"localPlasticityImpulseScale" : 0,//3,
+			"localPlasticityImpulseYield" : 0.001,
+			"plasticityRate" : 0.05,
+
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		}
+	],
+
+	"groundShadingXml" : "
+<bsdf type=\"twosided\" >
+
+<bsdf type=\"roughdiffuse\">
+  <float name=\"alpha\" value=\"0.7\" />
+  <rgb name=\"reflectance\" value=\"#444444\" />
+</bsdf>
+</bsdf>
+"
+	
+	
+}
