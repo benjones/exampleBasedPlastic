@@ -332,7 +332,7 @@ void displayFrame(){
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 200);
+  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 500);
 
     //glLineWidth (2.0);
     //glBegin(GL_LINES);

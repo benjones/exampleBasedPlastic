@@ -1,0 +1,80 @@
+<integrator type="path" />
+
+<sensor type="perspective">
+                <float name="farClip" value="1241.42"/>
+                <float name="focusDistance" value="10.5293"/>
+                <float name="fov" value="57.8224"/>
+                <string name="fovAxis" value="x"/>
+                <float name="nearClip" value="2.41421"/>
+                <transform name="toWorld">
+
+                        <lookat target="0, 10, 20" origin="70, 50, 60" up="0, 1, 0"/>
+                </transform>
+		<sampler type="sobol">
+			<integer name="sampleCount" value="64"/>
+		</sampler>
+
+
+
+                <film type="hdrfilm">
+                        <integer name="height" value="540"/>
+                        <integer name="width" value="960"/>
+						<boolean name="banner" value="false"/>
+                        <rfilter type="gaussian"/>
+                </film>
+</sensor>
+
+
+
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="0" y="50" z="0" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="0" y="-50" z="0" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="50" y="30" z="0" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="-50" y="50" z="0" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="0" y="50" z="50" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="0" y="50" z="-50" /> 
+</emitter>
+
+
+
+
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="50" y="30" z="50" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="-50" y="30" z="50" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="50" y="30" z="-50" /> 
+</emitter>
+<emitter type="point" >
+ <spectrum name="intensity" value="70" />
+ <point name="position" x="-50" y="30" z="-50" /> 
+</emitter>
+
+
+
+
+
+<emitter type="constant" >
+<spectrum name="radiance" value="0.001" />
+</emitter>
