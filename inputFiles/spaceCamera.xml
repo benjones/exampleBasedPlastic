@@ -21,33 +21,34 @@
                         <integer name="width" value="960"/>
 						<boolean name="banner" value="false"/>
                         <rfilter type="gaussian"/>
+						<string name="pixelFormat" value="rgba" />
                 </film>
 </sensor>
 
 
 
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="0" y="50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="0" y="-50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="50" y="30" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="-50" y="50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="0" y="50" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="0" y="50" z="-50" /> 
 </emitter>
 
@@ -55,19 +56,19 @@
 
 
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="50" y="30" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="-50" y="30" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="50" y="30" z="-50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="70" />
+ <spectrum name="intensity" value="50" />
  <point name="position" x="-50" y="30" z="-50" /> 
 </emitter>
 

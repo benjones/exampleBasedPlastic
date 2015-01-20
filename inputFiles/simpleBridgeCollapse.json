@@ -1,0 +1,53 @@
+{
+	"ground" : true,
+	"dt" : 0.008333333, //120 fps
+	
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/bridgeTop/",
+			"offset" : [-4,11.05,-5.4],
+			"breakingThreshold" : 1,
+			"plasticityImpulseYield" : 0.005,
+			"plasticityImpulseScale" : 200,
+			"plasticityRate" : 0.1,
+			"plasticityKernelScale" : 0.1,//500.0,
+			"jacobianAlpha" : 1.0,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <texture name=\"reflectance\" type=\"perlinTexture3D\" >
+        <rgb name=\"baseColor\" value=\"#ff6666\" />
+        <float name=\"scale\" value=\"1000\" />
+      </texture>
+    </bsdf>
+    
+
+</bsdf>",
+
+			"useFaceNormals" : true
+		}
+
+	],
+	
+	 "bulletObjects" : [
+		 { 
+			 "mass" : 0,
+			 "offset" : [-16, 5, 0],
+			 "shape" : "box",
+			 "extents" : [2, 5, 2]
+		 },
+		{ 
+			"mass" : 0,
+			"offset" : [16, 5, 0],
+			"shape" : "box",
+			"extents" : [2, 5, 2]
+		}
+	]
+}
+  //<bsdf type=\"bumpmap\" >
+//      <texture  type=\"perlinTexture2D\" >
+//        <float name=\"scale\" value=\"0.3\" />
+//      </texture>
+

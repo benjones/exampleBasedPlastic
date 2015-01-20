@@ -2,6 +2,7 @@
 	"ground" : false,
 	"dt" : 0.0041166666,
 	"gravity" : [0,0,0],
+	"duration" : 10,
 	"plasticBodies" : [
 		{
 			"directory" : "inputFiles/enterprise",
@@ -25,7 +26,21 @@
 
 </bsdf>
 </bsdf>
-"
+",
+
+"emitterPositions" : [
+ [0, 0.9, 3.18],
+ [1.15, 0.9, 0.15],
+ [-1.15, 0.9, 0.15]
+],
+
+"emitterColors" : [
+	"<rgb name=\"radiance\" value=\"#ff0000\" />",
+	"<rgb name=\"radiance\" value=\"#ffff00\" />",
+	"<rgb name=\"radiance\" value=\"#ffff00\" />"
+	
+]
+
 
 		},
 		{

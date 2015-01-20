@@ -2,7 +2,7 @@
 	"ground" : true,
 	"dt" : 0.001,
 	"makeBarrels" : true,
-
+	"useExampleColors" : true,
 	"bulletObjects" : [
 		{
 			"mass" : 0,
@@ -62,15 +62,12 @@
 			"constantVelocityFrames" : 45,
 			"density" : 6000,
 			"useVolumetricCollisions" : false,
-
+			"useExampleColors" : true,
 	"shadingXml" : "
 
 <bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
-<spectrum name=\"specularReflectance\" value=\"0.1\" />
-
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
 </bsdf>
 </bsdf>
 "
@@ -78,6 +75,15 @@
 
 		}
 	],
+
+	"exampleColorShading" :
+	"<bsdf type=\"twosided\" >
+<bsdf type=\"diffuse\">
+<texture name=\"reflectance\" type=\"vertexColors\" />
+</bsdf>
+</bsdf>",
+	
+
 	"groundFriction" : 0.6,
 	"groundShadingXml" : "
 <bsdf type=\"twosided\" >
