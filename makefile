@@ -7,14 +7,14 @@ cc          = clang++
 
 FLAGS=-Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++\
 -DBT_USE_DOUBLE_PRECISION -Wno-deprecated-declarations \
--DBULLET_TRIANGLE_COLLISION
+-DBULLET_TRIANGLE_COLLISION -D__CL_ENABLE_EXCEPTIONS
 
 #-----------------------------------------
 #Optimization ----------------------------
 #OPT   = -O3 -g #-flto for more speed
  #ignore glut deprecation warnings
 #-DPCUBE -DINVENTOR_DEFINED
-OPT = -O3 -g 
+OPT = -O2 -g 
 
 #OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -DBT_USE_DOUBLE_PRECISION  -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 #-DPCUBE -DINVENTOR_DEFINED
 #OPT   = -g -Wall
@@ -41,7 +41,7 @@ LIBS = -lm  -L./bullet-2.82-r2704/build/src/LinearMath \
 -L./bullet-2.82-r2704/build/src/BulletDynamics \
 -llapack -lblas -lBulletDynamics \
 -lBulletCollision -lLinearMath \
--framework OpenGL -L/usr/local/lib -ltbb #./eltopo/eltopo3d/libeltopo_release.a
+-framework OpenGL -framework OpenCL -L/usr/local/lib -ltbb #./eltopo/eltopo3d/libeltopo_release.a
 #-L./Common
 #-L./bullet-2.82-r2704/build/Extras/HACD 
 #-lslcommon

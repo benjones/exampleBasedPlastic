@@ -1,6 +1,6 @@
 {
 	"ground" : true,
-	"dt" : 0.001,
+	"dt" : 0.001,//0.0166666666666666666,
 	"makeBarrels" : true,
 
 	"bulletObjects" : [

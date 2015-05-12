@@ -4,6 +4,8 @@
 #include <vector>
 #include "Quat.h"
 
+#include "cl.hpp"
+
 #include <LinearMath/btTransform.h>
 #include <LinearMath/btDefaultMotionState.h>
 #include <BulletCollision/Gimpact/btGImpactShape.h>
@@ -17,6 +19,7 @@ using TetrahedronShape = btBU_Simplex1to4;
 
 class ExampleGraph;
 class PlasticBody;
+class World;
 
 class PlasticPiece{
 public:
@@ -35,6 +38,7 @@ public:
   void initialize(const std::string& directory,
 	  const PlasticBody& parent,
 	  const RMMatrix3d& verticesIn,
+	  World& world,
 	  int pieceNumber);
 
 
@@ -50,7 +54,8 @@ public:
   void skinMeshVaryingBarycentricCoords(const Eigen::MatrixXd& boneWeights,
 										const std::vector<int>& boneIndices,
 										const ExampleGraph& exampleGraph);
-
+  
+  void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
 
   RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;
   RMMatrix3i computeTriangleFaces(const std::vector<size_t>& tetIndices) const;
@@ -73,8 +78,8 @@ public:
   BulletSnapshot bulletSnapshot;
   
   
-  Eigen::MatrixXd barycentricCoordinates; //per vertex
-  Eigen::MatrixXd deltaBarycentricCoordinates;
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>  barycentricCoordinates; //per vertex
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> deltaBarycentricCoordinates;
 
 
   std::vector<Eigen::Vector3d> perVertexTranslations; 
@@ -159,6 +164,15 @@ public:
 
   //Eigen::VectorXf texU, texV;
 
+  //CL stuff
 
+  std::vector<float> hostBarycentricCoordinates;
+  std::vector<float> hostSkinnedPositions;
+  std::vector<float> hostPerVertexTranslations;
+  std::vector<float> hostPerVertexRotations;
+
+  cl::Buffer deviceBarycentricCoordinates, deviceSkinnedPositions, 
+	devicePerVertexTranslations, devicePerVertexRotations;
+  
 
 };

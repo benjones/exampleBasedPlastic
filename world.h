@@ -71,4 +71,16 @@ class World{
  
   benlib::Profiler profiler;
 
+
+  //openCL stuff
+
+  void initCL();
+
+  cl::Device device;
+  cl::Context context;
+  cl::CommandQueue queue;
+
+  cl::Program clProgram;
+
+
 };

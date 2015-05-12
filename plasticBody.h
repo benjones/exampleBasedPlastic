@@ -14,8 +14,8 @@
 
  */
 namespace Json{ class Value;}
-class btDiscreteDynamicsWorld;
 
+class World;
 class PlasticBody{
 
 public:
@@ -29,7 +29,7 @@ public:
 
 
   void loadFromJson(const Json::Value& poi,
-	btDiscreteDynamicsWorld& bulletWorld,
+	  World& world,
 	int objectIndex);
   
   void projectImpulsesOntoExampleManifoldLocally(double dt);
@@ -84,5 +84,16 @@ public:
 
 
   void skinAndUpdate();
+
+  void skinAndUpdateCL(World& world, cl::Kernel& clKernel);
+
+  //CL stuff
+  std::vector<float> hostTranslations;
+  std::vector<float> hostRotations;
+  std::vector<float> hostBoneWeights;
+  std::vector<float> hostUnskinnedPositions;
+
+  cl::Buffer deviceTranslations, deviceRotations, 
+	deviceBoneWeights, deviceBoneIndices, deviceUnskinnedPositions;
 
 };

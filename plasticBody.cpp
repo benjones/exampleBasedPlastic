@@ -22,10 +22,13 @@ using benlib::enumerate;
 
 #include "json/json.h"
 
+#include "world.h"
+
 void PlasticBody::loadFromJson(const Json::Value& poi,
-	btDiscreteDynamicsWorld& bulletWorld,
+	World& world,
 	int objectIndex /* for user index var */
   ){
+  auto& bulletWorld = world.bulletWorld;
   
   const std::string directory = poi["directory"].asString();
   std::cout << "reading from directory: " << directory << std::endl;
@@ -121,6 +124,54 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	constantVelocityFrames = poi.get("constantVelocityFrames", 60).asInt();
   }
 
+
+
+  //setup CL stuff
+  hostTranslations.resize(3*exampleGraph.nodes.size()*numBoneTips);
+  hostRotations.resize(4*exampleGraph.nodes.size()*numBoneTips);
+  for(auto j : range(numBoneTips)){
+	for(auto k : range(exampleGraph.nodes.size())){
+	  hostTranslations[3*(j*numNodes + k)    ] = 
+		  exampleGraph.nodes[k].transformations[j].translation(0);
+	  hostTranslations[3*(j*numNodes + k) + 1] = 
+		  exampleGraph.nodes[k].transformations[j].translation(1);
+	  hostTranslations[3*(j*numNodes + k) + 2] = 
+		  exampleGraph.nodes[k].transformations[j].translation(2);
+
+	  hostRotations[4*(j*numNodes + k)    ] =
+		exampleGraph.nodes[k].transformations[j].rotation.x();
+	  hostRotations[4*(j*numNodes + k) + 1] =
+		exampleGraph.nodes[k].transformations[j].rotation.y();
+	  hostRotations[4*(j*numNodes + k) + 2] =
+		exampleGraph.nodes[k].transformations[j].rotation.z();
+	  hostRotations[4*(j*numNodes + k) + 3] =
+		exampleGraph.nodes[k].transformations[j].rotation.w();
+
+	}
+  }
+  deviceTranslations = cl::Buffer(world.queue, 
+	  hostTranslations.begin(), hostTranslations.end(),
+	  true);
+	  
+  deviceRotations = cl::Buffer(world.queue,
+	  hostRotations.begin(), hostRotations.end(), true);
+  
+
+  hostBoneWeights.resize(numRealBones*numPhysicsVertices);
+  std::copy(boneWeights.data(), boneWeights.data() + hostBoneWeights.size(), 
+	  hostBoneWeights.begin());
+  deviceBoneWeights = cl::Buffer(world.queue,
+	  hostBoneWeights.begin(), hostBoneWeights.end(), true);
+
+  deviceBoneIndices = cl::Buffer(world.queue,
+	  boneIndices.begin(), boneIndices.end(), true);
+
+  hostUnskinnedPositions.assign(vertices.data(),
+	  vertices.data() + numPhysicsVertices*3);
+  deviceUnskinnedPositions = cl::Buffer(world.queue,
+	  hostUnskinnedPositions.begin(), hostUnskinnedPositions.end(), true);
+  
+
   //read in tets in each piece
   //tetmesh.#.txt
   std::string basename = "/tetmesh.";
@@ -144,7 +195,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	}
 
 	piece.initialize(directory, *this,
-		vertices, i);
+		vertices, world, i);
 
 
   }
@@ -483,3 +534,14 @@ void PlasticBody::skinAndUpdate(){
 	piece.updateBulletProperties();
   }
 }
+
+void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
+
+  for(auto& piece : plasticPieces){
+	piece.skinMeshOpenCL(world, *this, clKernel);
+	piece.updateBulletProperties();
+  }
+  
+
+}
+

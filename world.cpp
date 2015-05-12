@@ -44,6 +44,10 @@ World::World(std::string filename)
   currentFrame(0)
 {
 
+  initCL();
+
+
+
   btGImpactCollisionAlgorithm::registerAlgorithm(dispatcher.get());
 
   std::ifstream ins(filename.c_str());
@@ -243,7 +247,7 @@ void World::loadPlasticBodies(const Json::Value& root){
   for(auto& pbi : plasticBodiesIn){
 	plasticBodies.emplace_back();
 	auto& pb = plasticBodies.back();
-	pb.loadFromJson(pbi, bulletWorld, plasticBodies.size() -1 );
+	pb.loadFromJson(pbi, *this, plasticBodies.size() -1 );
   }
 }
 
@@ -277,7 +281,21 @@ void World::loadPlasticBodies(const Json::Value& root){
   }*/
 
 void World::timeStepDynamicSprites(){
-  
+  /*
+  bulletWorld.stepSimulation(dt, 10, dt);
+  for(auto& po: plasticBodies){
+	for(auto& pp : po.plasticPieces){
+	  //if(!singleStep){
+	  //  pp.bulletBody->setRestitution(po.restitution);
+	  //}
+	  if(po.hasConstantVelocity && currentFrame < po.constantVelocityFrames){
+		pp.bulletBody->setLinearVelocity(po.constantVelocity);
+	  }
+	}
+  }
+  return;*/
+
+
   {
 	auto timer = profiler.timeName("save snapshots");
 	for(auto& po : plasticBodies){
@@ -304,7 +322,10 @@ void World::timeStepDynamicSprites(){
 	//another layer of pararalellism
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, plasticBodies.size()),
 		[&](const tbb::blocked_range<size_t>& r){
-		  //  for(auto& po : plasticBodies){
+		  
+		  
+		  cl::Kernel clKernel(clProgram, "skinVertexVarying");
+		  //for(auto& po : plasticBodies){
 		  for(auto i = r.begin(); i != r.end(); ++i){
 			
 			auto& po = plasticBodies[i];
@@ -313,7 +334,9 @@ void World::timeStepDynamicSprites(){
 			}
 			po.projectImpulsesOntoExampleManifoldLocally(dt);
 			
-			po.skinAndUpdate(); //skin pieces and update bullet props
+			//po.skinAndUpdate(); //skin pieces and update bullet props
+			po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
+
 			po.updateConstraints(); //make sure the point2point constraints are right
 			
 			if(!singleStep){
@@ -444,7 +467,7 @@ void World::makeBarrelPyramid(){
 		pbj["offset"][1] = offset.y();
 		pbj["offset"][2] = offset.z();
 		
-		po.loadFromJson(pbj, bulletWorld, plasticBodies.size() -1);
+		po.loadFromJson(pbj, *this, plasticBodies.size() -1);
 
 	  }
 	}
@@ -454,213 +477,72 @@ void World::makeBarrelPyramid(){
   }
 }
 
-#if 0
-//no longer used
-void World::loadPlasticObjects(const Json::Value& root){
 
-  plasticObjects.clear();
-  auto plasticObjectsIn = root["plasticObjects"];
+void World::initCL(){
 
-  std::cout << "slots reserved: " << plasticObjectsIn.size() + getNumBarrels() << std::endl;
-  plasticObjects.reserve(plasticObjectsIn.size() + getNumBarrels());
-  for(auto i : range(plasticObjectsIn.size())){
-	auto& poi = plasticObjectsIn[i];
+  std::vector<cl::Platform> platforms;
+  cl::Platform::get(&platforms);
+  std::cout << platforms.size() << std::endl;
+ 
+  std::vector<cl::Device> devices;
+
+  for(auto& plat : platforms){
+	std::string s;
+	plat.getInfo(CL_PLATFORM_NAME, &s);
+	std::cout << "Platform: " << s << std::endl;
 	
-	plasticObjects.emplace_back();
-	auto& po = plasticObjects.back();
-	//load meshes
-	po.loadFromFiles(poi["directory"].asString());
-
-
-	po.dt = dt;
-	po.density = poi.get("density", 1000).asDouble();
+	plat.getInfo(CL_PLATFORM_VENDOR, &s);
+	std::cout << "\tVendor:  " << s << std::endl;
 	
-	po.plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
-	po.plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
-	po.plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
-	po.plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
-	po.jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+	plat.getInfo(CL_PLATFORM_VERSION, &s);
+	std::cout << "\tVersion: " << s << std::endl;
 	
+	// Discover number of devices
 
-	po.localPlasticityImpulseYield = poi.get("localPlasticityImpulseYield", 1e6).asDouble();
-	po.localPlasticityImpulseScale = poi.get("localPlasticityImpulseScale", 0).asDouble();
+	plat.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+	std::cout << "\n\tNumber of devices: " << devices.size() << std::endl;
 
-	auto& pesIn = poi["perExampleScale"];
-	if(!pesIn.isNull()){
-	  for(auto j : range(pesIn.size())){
-		po.perExampleScale[j] = pesIn[j].asDouble();
-	  }
-	}
-
-
-	po.scaleFactor = poi.get("scaleFactor", 1).asDouble();
-	
-
-	po.currentBulletVertexPositions = po.scaleFactor*po.tetmeshVertices;
-
-	//po.localImpulseBasedOffsets = RMMatrix3d::Zero(po.numPhysicsVertices, 3);
-	
-	//	po.currentBulletVertexPositions.resize( po.numPhysicsVertices,
-	//											Eigen::NoChange);
-	
-	//make space for the vertex array
-	po.btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
-	  new btTriangleIndexVertexArray{
-		static_cast<int>(po.tetmeshTriangles.rows()),
-		po.tetmeshTriangles.data(),
-		3*sizeof(int), //UGH, THIS IS TURRRRRIBLE
-		static_cast<int>(po.currentBulletVertexPositions.rows()),
-		po.currentBulletVertexPositions.data(),
-		3*sizeof(double), //UGH THIS IS ALSO TURRRRIBLE
-	  }
-	};
-	
-	std::cout << "nverts: " << po.currentBulletVertexPositions.rows() << "  ntris: " 
-			  << po.tetmeshTriangles.rows() << std::endl;
-
-	//	std::cout << "first 3 vertices: " << 
-	//	  po.currentBulletVertexPositions.block(0,0, 3, 3) << std::endl;
-	/*for(auto row : range(po.tetmeshTriangles.rows())){
-	  std::cout  << "row: " << row << " ";
-	  for(auto col : range(po.tetmeshTriangles.cols())){
-		
-		std::cout << po.tetmeshTriangles.data()[row*3 + col] << ' ';
-	  }
-	  std::cout << std::endl;
-	  }*/
-
-	
-	
-
-
-
-	//apply COM offset stuff
-	btVector3 offset(0.0,0.0,0.0); //default to no offset
-	auto offsetIn = poi["offset"];
-	if(!offsetIn.isNull() && offsetIn.isArray()){
-	  assert(offsetIn.size() == 3);
-	  offset = btVector3{offsetIn[0].asDouble(),
-						 offsetIn[1].asDouble(),
-						 offsetIn[2].asDouble()};
-	}
-	
-	auto rotation = btQuaternion::getIdentity();
-	auto rotationIn = poi["rotation"];
-	if(!rotationIn.isNull()){
-	  btVector3 axis{rotationIn["axis"][0].asDouble(),
-		  rotationIn["axis"][1].asDouble(),
-		  rotationIn["axis"][2].asDouble()};
-	  rotation = btQuaternion{axis,
-							  rotationIn["angle"].asDouble()};
-	  
-	  std::cout << "rotation: " << rotation << std::endl;
-	}
-
-	auto constantVelocityIn = poi["constantVelocity"];
-	if(!constantVelocityIn.isNull() && 
-	   constantVelocityIn.isArray() && 
-	   constantVelocityIn.size() == 3){
-	  
-	  po.hasConstantVelocity = true;
-	  po.constantVelocity = btVector3{constantVelocityIn[0].asDouble(),
-									  constantVelocityIn[1].asDouble(),
-									  constantVelocityIn[2].asDouble()};
-	  
+	for (auto& dev : devices){
+	  dev.getInfo(CL_DEVICE_NAME, &s);
+	  std::cout << "\t\tName: " << s << std::endl;
+	    
+	  dev.getInfo(CL_DEVICE_OPENCL_C_VERSION, &s);
+	  std::cout << "\t\tVersion: " << s << std::endl;
+	    
+	  int i;
+	  dev.getInfo(CL_DEVICE_MAX_COMPUTE_UNITS, &i);
+	  std::cout << "\t\tMax. Compute Units: " << i << std::endl;
+	  size_t size;
+	  dev.getInfo(CL_DEVICE_LOCAL_MEM_SIZE, &size);
+	  std::cout << "\t\tLocal Memory Size: " << size/1024 << " KB" << std::endl;
+	    
+	  dev.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &size);
+	  std::cout << "\t\tGlobal Memory Size: " << size/(1024*1024) << " MB" << std::endl;
+	    
+	  dev.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &size);
+	  std::cout << "\t\tMax Alloc Size: " << size/(1024*1024) << " MB" << std::endl;
+	    
+	  dev.getInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE, &size);
+	  std::cout << "\t\tMax Work-group Total Size: " << size << std::endl;
+	    
+	  std::vector<size_t> d;
+	  dev.getInfo(CL_DEVICE_MAX_WORK_ITEM_SIZES, &d);
+	  std::cout << "\t\tMax Work-group Dims: (";
+	  for (auto&& st : d)
+		std::cout << st << " ";
+	  std::cout << "\x08)" << std::endl;
 
 	}
-
-	//place it where it should go
-	//this isn't mass weighted, but is probably close if the mesh
-	//close to uniform
-
-	//actually, just jam this into the worldTransform 
-	/*Eigen::Vector3d centerOfMass = 
-	  po.tetmeshVertices.colwise().sum().transpose()/
-	  po.numPhysicsVertices;
-	
-
-	for(auto i : range(po.currentBulletVertexPositions.rows())){
-	  po.currentBulletVertexPositions.row(i) =
-		(rotation*(po.tetmeshVertices.row(i).transpose() -
-				   centerOfMass) +
-		 offset).transpose();
-	}
-	*/
-
-
-
-
-	po.bulletShape = std::unique_ptr<btGImpactMeshShape>{
-	  new btGImpactMeshShape{po.btTriMesh.get()}};
-	
-
-	//po.compoundShape = std::unique_ptr<btCompoundShape>{
-	//	  new btCompoundShape{}};
-
-	po.motionState = 
-	  std::unique_ptr<btDefaultMotionState>{
-	  new btDefaultMotionState{}};
-	
-
-	
-	po.mass = 1; //save a bit of grief in rb construction
-	po.bulletBody = std::unique_ptr<btRigidBody>{
-	  new btRigidBody{po.mass,
-					  po.motionState.get(),
-					  po.bulletShape.get()}
-					  //po.compoundShape.get()}
-	};
-
-	//compute node masses and volume
-	po.computeMassesAndVolume();
-
-	Eigen::Vector3d com = 
-	  (po.tetmeshVertexMasses.asDiagonal()*
-	   po.currentBulletVertexPositions).colwise().sum()/
-	  po.mass;
-	  
-
-	offset -= quatRotate(rotation, eigenToBullet(com));
-	
-
-
-	//apply the transform now
-	po.inertiaAligningTransform.setIdentity();
-	po.worldTransform = btTransform{rotation, offset};
-	po.bulletBody->setCenterOfMassTransform(po.worldTransform);
-	
-	po.saveBulletSnapshot(); //to get the COM for updateBulletProperties
-	
-	//aliasing issues?
-	po.updateBulletProperties(po.currentBulletVertexPositions,
-							  po.tetmeshTets);
-
-	//once we know the inertia tensor and stuff
-	po.saveBulletSnapshot(); //to save a snapshot with correct inertia
-
-	//po.updateCompoundShape();
-	
-
-	po.bulletShape->updateBound();
-	//	po.compoundShape->updateBound();
-	
-	
-	std::cout << "po mass: " << 1.0/po.bulletBody->getInvMass() << std::endl;
-	std::cout << "po inertia inverse: " << po.bulletBody->getInvInertiaTensorWorld() << std::endl;
-
-	po.restitution = poi.get("restitution", 0.8).asDouble();
-	po.minRestitution = po.restitution;
-	po.bulletBody->setRestitution(po.restitution);
-
-	bulletWorld.addRigidBody(po.bulletBody.get());
-	//user index holds index into the plasticObjects array
-	po.bulletBody->setUserIndex(plasticObjects.size() -1);
-	
-	//	po.egTraverser.restPosition = EGPosition{0, {0,1, 0}};
-	//	po.egTraverser.currentPosition = EGPosition{0, {1,0, 0}};
-	//	po.egTraverser.restSpringStrength = 0.00;//1;
 
   }
+
+  assert(!devices.empty());
+  device = devices[0];
+  context = cl::Context(device); //Use the first one
+  queue = cl::CommandQueue(context);
   
+  std::string programSource = readFile("skinning.cl");
+  clProgram = cl::Program(context, programSource, true);
+  
+
 }
-#endif

@@ -160,3 +160,10 @@ OutputIterator transform_if(
   }
   return result;
 }
+
+
+inline std::string readFile(const std::string& filename){
+  std::ifstream ins(filename);
+  return std::string{std::istreambuf_iterator<char>{ins},
+	  std::istreambuf_iterator<char>{}};
+}

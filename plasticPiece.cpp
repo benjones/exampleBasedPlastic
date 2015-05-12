@@ -1,6 +1,7 @@
 
 #include "plasticPiece.h"
 #include "plasticBody.h"
+#include "world.h"
 
 #include "range.hpp"
 #include "enumerate.hpp"
@@ -158,6 +159,14 @@ void PlasticPiece::updateBulletProperties(){
 
 int PlasticPiece::getNearestVertex(const Eigen::Vector3d& localPoint) const {
 
+  int best = 0;
+  double sqrdist = std::numeric_limits<double>::max();
+  for(auto i : activeVertices){
+	double thisDist = (localPoint - currentBulletVertexPositions.row(i).transpose()).squaredNorm();
+	if(thisDist < sqrdist){ best = i; sqrdist = thisDist;}
+  }
+  return best;
+
   return *std::min_element(activeVertices.begin(), activeVertices.end(),
 	[this, &localPoint](int a, int b){
 	  return 
@@ -210,7 +219,17 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 		for(auto j : range(numBoneTips)){
 		  if(boneIndices[j] < 0){continue;} //bones[j]->get_wi() < 0) //not a real bone
 		  
-		  const auto kRange = range(numNodes);
+		  //const auto kRange = range(numNodes);
+		  Eigen::Vector3d translation = Eigen::Vector3d::Zero();
+		  Eigen::Vector4d rotationCoeffs = Eigen::Vector4d::Zero();
+		  for(auto k : range(numNodes)){
+			translation += barycentricCoordinates(i,k)*
+			  exampleGraph.nodes[k].transformations[j].translation;
+			rotationCoeffs += barycentricCoordinates(i,k)*
+			  exampleGraph.nodes[k].transformations[k].rotation.coeffs();
+		  }
+
+/*
 		  //compute bone transform
 		  const Eigen::Vector3d translation = 
 			std::accumulate(kRange.begin(), kRange.end(),
@@ -226,11 +245,13 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 				return acc + barycentricCoordinates(i, k)*
 				exampleGraph.nodes[k].transformations[j].rotation.coeffs();
 			  });
+*/
 		  Quat rotation(rotationCoeffs);
 		  rotation.normalize();
 		  
+		  //rotation = Quat::Identity();
+
 		  const auto weightIndex = boneIndices[j];//bones[j]->get_wi();
-		  
 		  currentBulletVertexPositions.row(i) +=
 			scaleFactor*boneWeights(i,weightIndex)*
 			(rotation*(tetmeshVertices.row(i).transpose()) + 
@@ -529,6 +550,7 @@ void PlasticPiece::updateAabbs(){
 void PlasticPiece::initialize(const std::string& directory,
 	const PlasticBody& parent,
 	const RMMatrix3d& verticesIn, 
+	World& world,
 	int pieceNumber){
   
   scaleFactor = parent.scaleFactor;
@@ -729,29 +751,28 @@ void PlasticPiece::initialize(const std::string& directory,
   computeMassesAndVolume(parent.density);
 
 
-  //hallucinate texture coordinates
-  auto uFunc = [](double x, double y, double z){
-	return x + y + z;
-  };
-  auto vFunc = [](double x, double y, double z){
-	return x - y - z;
-  };
-  /*  texU.resize(tetmeshVertices.rows() + splittingPlaneVertices.rows());
-  texV.resize(tetmeshVertices.rows() + splittingPlaneVertices.rows());
-  for(auto i : range(tetmeshVertices.rows())){
-	texU(i) = uFunc(tetmeshVertices(i, 0), tetmeshVertices(i,1), tetmeshVertices(i,2));
-	texV(i) = vFunc(tetmeshVertices(i, 0), tetmeshVertices(i,2), tetmeshVertices(i,1));
-  }
-  for(auto i : range(splittingPlaneVertices.rows())){
-	texU(i + tetmeshVertices.rows()) = 
-	  uFunc(splittingPlaneVertices(i, 0), splittingPlaneVertices(i,1), splittingPlaneVertices(i,2));
-	texV(i + tetmeshVertices.rows()) = 
-	  vFunc(splittingPlaneVertices(i, 0), splittingPlaneVertices(i,2), splittingPlaneVertices(i,1));
-  }
-  */
-
-
+  //put stuff on the GPU
+  hostBarycentricCoordinates.resize(
+	  barycentricCoordinates.rows()*barycentricCoordinates.cols());
+  deviceBarycentricCoordinates = cl::Buffer(world.context,
+	  CL_MEM_READ_ONLY, 
+	  hostBarycentricCoordinates.size()*sizeof(float));
   
+  hostSkinnedPositions.resize(3*numPhysicsVertices);
+  deviceSkinnedPositions = cl::Buffer(world.context,
+	  CL_MEM_READ_WRITE,
+	  hostSkinnedPositions.size()*sizeof(float));
+  const auto numRealBones = parent.boneWeights.cols();
+  hostPerVertexTranslations.resize(3*numRealBones*numPhysicsVertices);
+  devicePerVertexTranslations = cl::Buffer(world.context,
+	  CL_MEM_WRITE_ONLY,
+	  hostPerVertexTranslations.size()*sizeof(float));
+  hostPerVertexRotations.resize(4*numRealBones*numPhysicsVertices);
+  devicePerVertexRotations = cl::Buffer(world.context,
+	  CL_MEM_WRITE_ONLY,
+	  hostPerVertexRotations.size()*sizeof(float));
+
+
 
 
 }
@@ -1032,5 +1053,128 @@ void PlasticPiece::computeCutTetGeometry(){
   }
   */
   //exit(1);
+}
+
+
+void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel){
+  
+  const auto numRealBones = parent.boneWeights.cols();
+  const auto numBoneTips = parent.boneIndices.size();
+  const auto numNodes = parent.exampleGraph.nodes.size();
+
+  /*  std::cout << "skinned before" << std::endl;
+  for(auto i : range(10)){
+	std::cout << currentBulletVertexPositions.data()[i] << ' ';
+  }
+  std::cout << std::endl;
+*/
+
+  std::copy(barycentricCoordinates.data(), 
+	  barycentricCoordinates.data() + hostBarycentricCoordinates.size(),
+	  hostBarycentricCoordinates.begin());
+  cl::copy(world.queue, hostBarycentricCoordinates.begin(), hostBarycentricCoordinates.end(),
+	  deviceBarycentricCoordinates);
+
+
+  auto kernelInvoc = cl::make_kernel<int, int, int, int, float,
+									 cl::Buffer&,cl::Buffer&,cl::Buffer&,
+									 cl::Buffer&,cl::Buffer&,cl::Buffer&,
+									 cl::Buffer&,cl::Buffer&,
+									 cl::Buffer&>(clKernel);
+  
+  
+  cl::NDRange clRange(numPhysicsVertices);
+  auto event = kernelInvoc(cl::EnqueueArgs(world.queue, clRange),
+	  numRealBones, numBoneTips, numNodes,
+	  numPhysicsVertices, 
+	  parent.scaleFactor,
+	  parent.deviceUnskinnedPositions,
+	  parent.deviceTranslations,
+	  parent.deviceRotations,
+	  deviceBarycentricCoordinates,
+	  parent.deviceBoneIndices,
+	  parent.deviceBoneWeights,
+	  deviceSkinnedPositions,
+	  devicePerVertexTranslations,
+	  devicePerVertexRotations);
+
+  //  std::cout << "waiting on CL" << std::endl;
+  event.wait(); //skinning done now
+  
+
+  cl::copy(world.queue, deviceSkinnedPositions, hostSkinnedPositions.begin(), hostSkinnedPositions.end());
+  std::copy(hostSkinnedPositions.begin(), hostSkinnedPositions.end(),
+	  currentBulletVertexPositions.data());
+
+  cl::copy(world.queue, devicePerVertexTranslations, 
+	  hostPerVertexTranslations.begin(), hostPerVertexTranslations.end());
+  std::copy(hostPerVertexTranslations.begin(), hostPerVertexTranslations.end(),
+	  perVertexTranslations.front().data());
+
+  cl::copy(world.queue, devicePerVertexRotations,
+	  hostPerVertexRotations.begin(), hostPerVertexRotations.end());
+  std::copy(hostPerVertexRotations.begin(), hostPerVertexRotations.end(),
+	  perVertexRotations.front().coeffs().data());
+
+
+  /*std::cout << "done with CL" << std::endl;
+
+  std::cout << "skinned after" << std::endl;
+  for(auto i : range(10)){
+	std::cout << currentBulletVertexPositions.data()[i] << ' ';
+  }
+  std::cout << std::endl;
+  */
+
+  //should be a no-op, but could cause issues, i guess?
+  //currentBulletVertexPositions.resize(numPhysicsVertices, 3);
+  //currentBulletVertexPositions.setZero();
+  
+  /*
+  //todo just use activeVertices here...
+  for(auto i : range(numPhysicsVertices)){ 
+	for (auto j : range(numBoneTips)) {
+	  if (boneIndices[j] < 0) { continue; } //bones[j]->get_wi() < 0) //not a real bone
+	    
+	  const auto kRange = range(numNodes);
+	  //compute bone transform
+	  Eigen::Vector3d translation = Eigen::Vector3d::Zero().eval(); //TODO: Ron - accumulate
+	  for (auto k : kRange) {
+		translation += barycentricCoordinates(i, k) * exampleGraph.nodes[k].transformations[j].translation;
+	  }
+	    
+	  Eigen::Vector4d rotationCoeffs = Eigen::Vector4d::Zero().eval(); //TODO: Ron - accumulate
+	  for (auto k : kRange){
+		rotationCoeffs += barycentricCoordinates(i, k) * 
+		  exampleGraph.nodes[k].transformations[j].rotation.coeffs();
+	  }
+	  Quat rotation(rotationCoeffs);
+	  rotation.normalize();
+	  
+	  const auto weightIndex = boneIndices[j];
+	    
+	  currentBulletVertexPositions.row(i) +=
+		scaleFactor*boneWeights(i, weightIndex)*
+		(rotation*(tetmeshVertices.row(i).transpose()) +
+			translation).transpose();
+	    
+	  perVertexTranslations[i*numRealBones + weightIndex] = translation;
+	  perVertexRotations[i*numRealBones + weightIndex] = rotation;
+	    
+	}
+  }
+  //assert(currentBulletVertexPositions.allFinite());
+  
+  //skin the clipping plane vertices
+  for (auto i : range(splittingPlaneVertices.rows())) {
+	auto& inds = std::get<0>(clippingPlaneTetInfo[i]);
+	auto& bcs = std::get<1>(clippingPlaneTetInfo[i]);
+	currentBulletSplittingPlaneVertices.row(i) =
+	  bcs(0)*currentBulletVertexPositions.row(inds(0)) +
+	  bcs(1)*currentBulletVertexPositions.row(inds(1)) +
+	  bcs(2)*currentBulletVertexPositions.row(inds(2)) +
+	  bcs(3)*currentBulletVertexPositions.row(inds(3));
+  }
+    */
 }
 
