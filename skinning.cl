@@ -12,9 +12,10 @@ __kernel void skinVertexVarying(
 	const __global float* barycentricCoordinates, //column major, floats
 	const __global int* boneIndices,
 	const __global float* boneWeights, //column major, nVerts x nBones
-	__global float* skinnedPositions,
-	__global float* perVertexTranslations,
-	__global float* perVertexRotations){
+	__global float* skinnedPositions//,
+	//__global float* perVertexTranslations,
+	//__global float* perVertexRotations
+  ){
 
   int i = get_global_id(0);
   if(i < numVertices){
@@ -69,7 +70,7 @@ __kernel void skinVertexVarying(
 		(rotatedVertex + 
 			interpolatedTranslation);
 
-	  
+	  /*
 	  perVertexTranslations[3*(i*numRealBones + weightIndex) ] = interpolatedTranslation.x;
 	  perVertexTranslations[3*(i*numRealBones + weightIndex) + 1] = interpolatedTranslation.y;
 	  perVertexTranslations[3*(i*numRealBones + weightIndex) + 2] = interpolatedTranslation.z;
@@ -78,7 +79,7 @@ __kernel void skinVertexVarying(
 	  perVertexRotations[4*(i*numRealBones + weightIndex) + 1] = interpolatedRotation.y;
 	  perVertexRotations[4*(i*numRealBones + weightIndex) + 2] = interpolatedRotation.z;
 	  perVertexRotations[4*(i*numRealBones + weightIndex) + 3] = interpolatedRotation.w;
-	  
+	  */
 	  }
 	//float3 finalPosition = scaleFactor*unskinnedPosition;
 	skinnedPositions[3*i] = output.x;//finalPosition.x;//output;

@@ -82,8 +82,8 @@ public:
   Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> deltaBarycentricCoordinates;
 
 
-  std::vector<Eigen::Vector3d> perVertexTranslations; 
-  std::vector<Quat> perVertexRotations;
+  //std::vector<Eigen::Vector3d> perVertexTranslations; 
+  //std::vector<Quat> perVertexRotations;
   //should call world.removeRigidBody....
   std::unique_ptr<btRigidBody> bulletBody;
 
@@ -168,11 +168,13 @@ public:
 
   std::vector<float> hostBarycentricCoordinates;
   std::vector<float> hostSkinnedPositions;
-  std::vector<float> hostPerVertexTranslations;
-  std::vector<float> hostPerVertexRotations;
+  //  std::vector<float> hostPerVertexTranslations;
+  //  std::vector<float> hostPerVertexRotations;
 
-  cl::Buffer deviceBarycentricCoordinates, deviceSkinnedPositions, 
-	devicePerVertexTranslations, devicePerVertexRotations;
+  cl::Buffer deviceBarycentricCoordinates, deviceSkinnedPositions;
+  //devicePerVertexTranslations, devicePerVertexRotations;
+
+  int framesToSkin;
   
 
 };

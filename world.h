@@ -11,6 +11,7 @@
 #include "plasticBody.h"
 
 #include "profiler.hpp"
+#include <tbb/tbb.h>
 
 namespace Json{ class Value;}
 
@@ -81,6 +82,8 @@ class World{
   cl::CommandQueue queue;
 
   cl::Program clProgram;
+  
+  tbb::enumerable_thread_specific<cl::Kernel> clKernels;
 
 
 };

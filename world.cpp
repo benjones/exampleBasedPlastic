@@ -323,8 +323,11 @@ void World::timeStepDynamicSprites(){
 	tbb::parallel_for(tbb::blocked_range<size_t>(0, plasticBodies.size()),
 		[&](const tbb::blocked_range<size_t>& r){
 		  
-		  
-		  cl::Kernel clKernel(clProgram, "skinVertexVarying");
+		  bool kernelExists;
+		  cl::Kernel& clKernel = clKernels.local(kernelExists);
+		  if(!kernelExists){
+			clKernel = cl::Kernel(clProgram, "skinVertexVarying");
+		  }
 		  //for(auto& po : plasticBodies){
 		  for(auto i = r.begin(); i != r.end(); ++i){
 			

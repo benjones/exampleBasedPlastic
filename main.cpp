@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  //tbb::task_scheduler_init init(4);
+  tbb::task_scheduler_init init(6);
 
   //  try{
 	World world(argv[1]);

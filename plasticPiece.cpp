@@ -203,8 +203,8 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
   const auto numBoneTips = boneIndices.size();
   const auto numNodes = exampleGraph.nodes.size();
 
-  perVertexTranslations.resize(numPhysicsVertices*numRealBones);
-  perVertexRotations.resize(numPhysicsVertices*numRealBones);
+  //perVertexTranslations.resize(numPhysicsVertices*numRealBones);
+  //perVertexRotations.resize(numPhysicsVertices*numRealBones);
 
   //should be a no-op, but could cause issues, i guess?
   //currentBulletVertexPositions.resize(numPhysicsVertices, 3);
@@ -257,8 +257,8 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 			(rotation*(tetmeshVertices.row(i).transpose()) + 
 			  translation).transpose();
 		  
-		  perVertexTranslations[i*numRealBones + weightIndex] = translation;
-		  perVertexRotations[i*numRealBones + weightIndex] = rotation;
+		  //perVertexTranslations[i*numRealBones + weightIndex] = translation;
+		  //perVertexRotations[i*numRealBones + weightIndex] = rotation;
 		  
 		}
 	  }
@@ -552,7 +552,9 @@ void PlasticPiece::initialize(const std::string& directory,
 	const RMMatrix3d& verticesIn, 
 	World& world,
 	int pieceNumber){
-  
+
+  framesToSkin = 5; //start skinning at the beginning of the sim
+
   scaleFactor = parent.scaleFactor;
   tetmeshVertices = verticesIn;
   currentBulletVertexPositions = 
@@ -763,14 +765,14 @@ void PlasticPiece::initialize(const std::string& directory,
 	  CL_MEM_READ_WRITE,
 	  hostSkinnedPositions.size()*sizeof(float));
   const auto numRealBones = parent.boneWeights.cols();
-  hostPerVertexTranslations.resize(3*numRealBones*numPhysicsVertices);
-  devicePerVertexTranslations = cl::Buffer(world.context,
-	  CL_MEM_WRITE_ONLY,
-	  hostPerVertexTranslations.size()*sizeof(float));
-  hostPerVertexRotations.resize(4*numRealBones*numPhysicsVertices);
-  devicePerVertexRotations = cl::Buffer(world.context,
-	  CL_MEM_WRITE_ONLY,
-	  hostPerVertexRotations.size()*sizeof(float));
+  //hostPerVertexTranslations.resize(3*numRealBones*numPhysicsVertices);
+  //devicePerVertexTranslations = cl::Buffer(world.context,
+  //  CL_MEM_WRITE_ONLY,
+  //  hostPerVertexTranslations.size()*sizeof(float));
+  //hostPerVertexRotations.resize(4*numRealBones*numPhysicsVertices);
+  //devicePerVertexRotations = cl::Buffer(world.context,
+  //  CL_MEM_WRITE_ONLY,
+  //  hostPerVertexRotations.size()*sizeof(float));
 
 
 
@@ -1079,7 +1081,7 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
   auto kernelInvoc = cl::make_kernel<int, int, int, int, float,
 									 cl::Buffer&,cl::Buffer&,cl::Buffer&,
 									 cl::Buffer&,cl::Buffer&,cl::Buffer&,
-									 cl::Buffer&,cl::Buffer&,
+									 //cl::Buffer&,cl::Buffer&,
 									 cl::Buffer&>(clKernel);
   
   
@@ -1094,9 +1096,10 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
 	  deviceBarycentricCoordinates,
 	  parent.deviceBoneIndices,
 	  parent.deviceBoneWeights,
-	  deviceSkinnedPositions,
-	  devicePerVertexTranslations,
-	  devicePerVertexRotations);
+	  deviceSkinnedPositions//,
+	  //devicePerVertexTranslations,
+	  //devicePerVertexRotations
+	);
 
   //  std::cout << "waiting on CL" << std::endl;
   event.wait(); //skinning done now
@@ -1105,7 +1108,7 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
   cl::copy(world.queue, deviceSkinnedPositions, hostSkinnedPositions.begin(), hostSkinnedPositions.end());
   std::copy(hostSkinnedPositions.begin(), hostSkinnedPositions.end(),
 	  currentBulletVertexPositions.data());
-
+  /*
   cl::copy(world.queue, devicePerVertexTranslations, 
 	  hostPerVertexTranslations.begin(), hostPerVertexTranslations.end());
   std::copy(hostPerVertexTranslations.begin(), hostPerVertexTranslations.end(),
@@ -1115,7 +1118,7 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
 	  hostPerVertexRotations.begin(), hostPerVertexRotations.end());
   std::copy(hostPerVertexRotations.begin(), hostPerVertexRotations.end(),
 	  perVertexRotations.front().coeffs().data());
-
+  */
 
   /*std::cout << "done with CL" << std::endl;
 

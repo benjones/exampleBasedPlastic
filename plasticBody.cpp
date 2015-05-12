@@ -342,8 +342,19 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	  for(auto boneIndex : range(numBoneTips)){
 		auto weightIndex = boneIndices[boneIndex];//bones[boneIndex]->get_wi();
 		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
-		Eigen::AngleAxis<double> currentRotation{piece.perVertexRotations[nodeIndex*numRealBones +
-			  weightIndex]};
+		auto kRange = range(numNodes);
+		Eigen::Vector4d currentRotationCoeffs  =
+		  std::accumulate(kRange.begin(), kRange.end(),
+			  Eigen::Vector4d::Zero().eval(),
+			  [this, vInd,boneIndex,&piece](const Eigen::Vector4d& acc, size_t k){
+				return acc + piece.barycentricCoordinates(vInd, k)*
+				exampleGraph.nodes[k].transformations[boneIndex].rotation.coeffs();
+			  });
+		Quat currentRotationQuat(currentRotationCoeffs);
+		currentRotationQuat.normalize();
+		Eigen::AngleAxis<double> currentRotation{currentRotationQuat};
+		//Eigen::AngleAxis<double> currentRotation{piece.perVertexRotations[nodeIndex*numRealBones +
+		//	  weightIndex]};
 		
 		jacobian.col(nodeIndex) += 
 		  boneWeights(vInd, weightIndex)*
@@ -376,11 +387,12 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
 	
 	if(deltaS.squaredNorm() > 0.000001){
-
+	  
 	  computeGeodesicDistances(pieceIndex, vInd, 1.0/plasticityKernelScale);
 	  
 	  //distribute this to evereyone else
 	  for(auto& pp : plasticPieces){
+		pp.framesToSkin = 10;
 		for(auto i : pp.activeVertices){
 		  auto scale = 
 			Kernels::simpleCubic(plasticityKernelScale*pp.geodesicDistances[i]);
@@ -528,18 +540,24 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 
 void PlasticBody::skinAndUpdate(){
   for(auto& piece : plasticPieces){
-	piece.skinMeshVaryingBarycentricCoords(boneWeights,
-		boneIndices,
-		exampleGraph);
-	piece.updateBulletProperties();
+	if(piece.framesToSkin > 0){
+	  piece.skinMeshVaryingBarycentricCoords(boneWeights,
+		  boneIndices,
+		  exampleGraph);
+	  piece.updateBulletProperties();
+	}
+	piece.framesToSkin--;
   }
 }
 
 void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
 
   for(auto& piece : plasticPieces){
-	piece.skinMeshOpenCL(world, *this, clKernel);
-	piece.updateBulletProperties();
+	if(piece.framesToSkin > 0){
+	  piece.skinMeshOpenCL(world, *this, clKernel);
+	  piece.updateBulletProperties();
+	}
+	piece.framesToSkin--;
   }
   
 
