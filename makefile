@@ -24,11 +24,14 @@ OPT = -O2 -g
 #-----------------------------------------
 #-----------------------------------------
 
-TARGETS = fracture
+TARGETS = fracture impulseTester
 
 OBJECTS =   main.o world.o jsoncpp.o \
 rigidBody.o  exampleGraph.o \
 plasticPiece.o plasticBody.o
+
+ITOBJECTS = impulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
+
 #egTraverser.o plasticObject.o
 #fem.o grip.o globalMatrix.o obstacle.o  couplingConstraintSolver.o kdTree.o
 HEADERS = *.h *.H *.hpp
@@ -92,6 +95,8 @@ clean:
 fracture: $(OBJECTS) $(HEADERS)
 	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
 
+impulseTester: $(ITOBJECTS)
+	$(CC) $(LDOPTS) -o impulseTester $(ITOBJECTS) $(LIBS) -framework OpenGL -framework GLUT
 
 openglViewer: openglViewer.cpp
 	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp  \

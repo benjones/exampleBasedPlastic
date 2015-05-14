@@ -155,6 +155,7 @@ void PlasticPiece::updateBulletProperties(){
 
   bulletBody->setMassProps(mass, eigenToBullet(evals));
   bulletBody->updateInertiaTensor(); //rotate it
+  bulletBody->setDamping(0, 0.01);
 }
 
 int PlasticPiece::getNearestVertex(const Eigen::Vector3d& localPoint) const {
@@ -199,7 +200,7 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
   const std::vector<int>& boneIndices,
   const ExampleGraph& exampleGraph){
   
-  const auto numRealBones = boneWeights.cols();
+  //const auto numRealBones = boneWeights.cols();
   const auto numBoneTips = boneIndices.size();
   const auto numNodes = exampleGraph.nodes.size();
 
@@ -546,6 +547,35 @@ void PlasticPiece::updateAabbs(){
 
 
 
+void PlasticPiece::initializeNoDynamics(const std::string& directory, 
+	const PlasticBody& parent,
+	const RMMatrix3d& verticesIn){
+  
+  framesToSkin = 10000;
+  scaleFactor = 1;
+  useVolumetricCollisions = false;
+  tetmeshVertices = verticesIn;
+  currentBulletVertexPositions = tetmeshVertices;
+  numPhysicsVertices = verticesIn.rows();
+  computeVertexNeighbors();
+  computeActiveVertices();
+  barycentricCoordinates.resize(numPhysicsVertices, parent.numNodes);
+  barycentricCoordinates.col(0).setOnes();
+  
+  deltaBarycentricCoordinates.resize(numPhysicsVertices, parent.numNodes);
+  deltaBarycentricCoordinates.setZero();
+
+  computeCollisionTetIndices();
+  tetmeshTriangles = computeTriangleFaces(collisionTetIndices);
+
+  
+  skinMeshVaryingBarycentricCoords(
+	  parent.boneWeights,
+	  parent.boneIndices,
+	  parent.exampleGraph);
+  
+
+}
 
 void PlasticPiece::initialize(const std::string& directory,
 	const PlasticBody& parent,
@@ -764,7 +794,9 @@ void PlasticPiece::initialize(const std::string& directory,
   deviceSkinnedPositions = cl::Buffer(world.context,
 	  CL_MEM_READ_WRITE,
 	  hostSkinnedPositions.size()*sizeof(float));
-  const auto numRealBones = parent.boneWeights.cols();
+
+
+  //const auto numRealBones = parent.boneWeights.cols();
   //hostPerVertexTranslations.resize(3*numRealBones*numPhysicsVertices);
   //devicePerVertexTranslations = cl::Buffer(world.context,
   //  CL_MEM_WRITE_ONLY,
@@ -1108,6 +1140,19 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
   cl::copy(world.queue, deviceSkinnedPositions, hostSkinnedPositions.begin(), hostSkinnedPositions.end());
   std::copy(hostSkinnedPositions.begin(), hostSkinnedPositions.end(),
 	  currentBulletVertexPositions.data());
+
+  //skin the cut vertices
+  for(auto i : range(splittingPlaneVertices.rows())){
+	auto& inds = std::get<0>(clippingPlaneTetInfo[i]);
+	auto& bcs = std::get<1>(clippingPlaneTetInfo[i]);
+	currentBulletSplittingPlaneVertices.row(i) =
+	  bcs(0)*currentBulletVertexPositions.row(inds(0)) +
+	  bcs(1)*currentBulletVertexPositions.row(inds(1)) +
+	  bcs(2)*currentBulletVertexPositions.row(inds(2)) +
+	  bcs(3)*currentBulletVertexPositions.row(inds(3));
+  }
+
+
   /*
   cl::copy(world.queue, devicePerVertexTranslations, 
 	  hostPerVertexTranslations.begin(), hostPerVertexTranslations.end());

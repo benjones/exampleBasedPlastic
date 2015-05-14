@@ -230,6 +230,7 @@ void RigidBody::loadTrimesh(std::string filename){
 	  if(numSlashes == 0){
 		int data;
 		for(auto i : range(3)){
+		  (void)i;//unused
 		  linestream >> data;
 		  meshIndices.push_back(data -1);
 		}
@@ -237,6 +238,7 @@ void RigidBody::loadTrimesh(std::string filename){
 		int data, trash;
 		char slash;
 		for(auto i : range(3)){
+		  (void)i; //unused
 		  linestream >> data >> slash >> trash;
 		  assert(slash == '/');
 		  meshIndices.push_back(data -1);
@@ -246,6 +248,7 @@ void RigidBody::loadTrimesh(std::string filename){
 		  int data, trash;
 		  char slash;
 		  for(auto i : range(3)){
+			(void) i; //unused
 			linestream >> data >> slash;
 			assert(slash == '/');
 			linestream >> slash >> trash;
@@ -256,6 +259,7 @@ void RigidBody::loadTrimesh(std::string filename){
 		  int data, trash1, trash2;
 		  char slash1, slash2;
 		  for(auto i : range(3)){
+			(void)i; //unused
 			linestream >> data >> slash1 >> trash1 >> slash2 >> trash2;
 			assert(slash1 == '/');
 			assert(slash2 == '/');

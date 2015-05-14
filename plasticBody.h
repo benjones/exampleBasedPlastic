@@ -32,6 +32,8 @@ public:
 	  World& world,
 	int objectIndex);
   
+  void loadFromJsonNoDynamics(const Json::Value& poi);
+
   void projectImpulsesOntoExampleManifoldLocally(double dt);
   
   Eigen::Vector3d getDeformationVectorFromImpulse(

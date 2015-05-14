@@ -428,6 +428,7 @@ void specialInput(int key, int x, int y){
     std::cout << "right pressed" << std::endl;
 	int framesToRead = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) ? 10 : 1;
 	for(auto i : range(framesToRead)){
+	  (void)i;//unused
 	  currentFrame++;
 	  std::cout << "currentFrame: " <<currentFrame << std::endl;
 	  //if(globalPInfo[0].positions.size() <= (currentFrame)*3){
@@ -440,6 +441,7 @@ void specialInput(int key, int x, int y){
     std::cout << "left pressed" << std::endl;
 	int framesToBacktrack = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) ? 10 : 1;
 	for(auto i : range(framesToBacktrack)){
+	  (void)i; //unused
 		if(currentFrame != 0)
 		  --currentFrame;
 		std::cout << "currentFrame: " <<currentFrame << std::endl;

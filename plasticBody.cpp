@@ -255,7 +255,9 @@ void PlasticBody::computeBoneIndices(const std::string& boneFile){
 
   while(ins){
 	ins >> wi;
-	for(auto i : range(26)){ ins >> trash;}
+	for(auto i : range(26)){ 
+	  (void)i;//unused 
+	  ins >> trash;}
 	if(ins.good()){
 	  boneIndices.push_back(wi);
 	}
@@ -563,3 +565,57 @@ void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
 
 }
 
+void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
+  const std::string directory = poi["directory"].asString();
+  std::cout << "reading from directory: " << directory << std::endl;
+
+  computeBoneIndices(directory + "/bone_roots.bf");
+  numBoneTips = boneIndices.size();
+
+  exampleGraph.load(directory + "/exampleGraph.txt");
+  numNodes = exampleGraph.nodes.size();
+
+  RMMatrix3d vertices;
+  RMMatrix4i tets;
+  RMMatrix3i triangles;
+
+  if(!igl::readMESH(directory + "/mesh.mesh",
+	  vertices, tets, triangles)){
+	std::cout << "couldn't read tetmesh: " 
+			  << directory << "/mesh.mesh" << std::endl;
+	exit(1);
+  }
+  numPhysicsVertices = vertices.rows();
+  std::cout << "vertices read size: " << vertices.rows() << ' ' << vertices.cols() << std::endl;
+  //assert(vertices.allFinite());
+
+  std::cout << "body bounding box:\n" << vertices.colwise().minCoeff() 
+			<< '\n' << vertices.colwise().maxCoeff() << std::endl;
+
+  if(!igl::readDMAT(directory + "/coarseWeights.dmat", boneWeights)){
+	std::cout << "couldn't read skinning weights: "
+			  << directory << "/coarseWeights.dmat" << std::endl;
+	exit(1);
+  }
+  numRealBones = boneWeights.cols();
+
+  plasticityImpulseYield = poi.get("plasticityImpulseYield", 1e6).asDouble();
+  plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
+  plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
+  plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
+  jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+  scaleFactor = 1;
+
+  //offset/rotation set to identity... wait, they don't matter
+
+  //make it just one piece
+  plasticPieces.emplace_back();
+  auto& piece = plasticPieces.back();
+  piece.tetmeshTets = tets;
+  piece.initializeNoDynamics(
+	  directory,
+	  *this,
+	  vertices
+	);
+
+}

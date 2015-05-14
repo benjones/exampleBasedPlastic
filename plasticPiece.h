@@ -41,6 +41,9 @@ public:
 	  World& world,
 	  int pieceNumber);
 
+  void initializeNoDynamics(const std::string& directory, 
+	  const PlasticBody& parent,
+	  const RMMatrix3d& verticesIn);
 
   void computeMassesAndVolume(double density);
 
