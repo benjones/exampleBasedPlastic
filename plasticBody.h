@@ -35,7 +35,8 @@ public:
   void loadFromJsonNoDynamics(const Json::Value& poi);
 
   void projectImpulsesOntoExampleManifoldLocally(double dt);
-  
+  Eigen::VectorXd projectSingleImpulse( 
+	  const PlasticPiece& piece, const Eigen::Vector3d& impulseAtContact, int vInd) const;
   Eigen::Vector3d getDeformationVectorFromImpulse(
 	  const PlasticPiece& piece,
 	  const btManifoldPoint& manPoint,

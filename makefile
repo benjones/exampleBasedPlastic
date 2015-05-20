@@ -14,7 +14,7 @@ FLAGS=-Wall -DTIMING -Wno-c++11-extensions -std=c++11 -stdlib=libc++\
 #OPT   = -O3 -g #-flto for more speed
  #ignore glut deprecation warnings
 #-DPCUBE -DINVENTOR_DEFINED
-OPT = -O2 -g 
+OPT = -O0 -g 
 
 #OPT   = -O3 -g -Wall -DTIMING -Wno-c++11-extensions -std=c++11 -DBT_USE_DOUBLE_PRECISION  -I/usr/include/c++/4.8 -I/usr/include/x86_64-linux-gnu/c++/4.8 #-DPCUBE -DINVENTOR_DEFINED
 #OPT   = -g -Wall

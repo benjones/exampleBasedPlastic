@@ -89,7 +89,11 @@
     </texture>
   </bsdf>
 </bsdf>
-"
+",
 	
+	"testImpulse" : {
+		"vertexIndex" : 1697,
+		"invertNormal" : false
+	}	
 	
 }

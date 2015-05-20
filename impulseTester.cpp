@@ -16,6 +16,7 @@
 
 #include "json/json.h"
 #include "plasticBody.h"
+#include "kernels.h"
 
 #include "range.hpp"
 using benlib::range;
@@ -37,7 +38,14 @@ Camera camera;
 Eigen::Vector2i mouse;
 PlasticBody plasticBody;
 
+struct ImpulseInfo{
+  Eigen::Vector3d initialImpulse, tangent;
+  int vertexIndex;
+};
 
+ImpulseInfo impulseInfo;
+
+int currentFrame = 0;
 
 
 void keyInput(unsigned char key, int x, int y);
@@ -46,8 +54,39 @@ void reshape(int width, int height);
 void mouseClicks(int button, int state, int x, int y);
 void mouseMove(int x, int y);
 void displayFrame();
+void idleFunc();
+
+
+Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v, double maxScale, int timestep);
+
 
 void drawTriangles(bool changeColor);
+Eigen::Vector3d get3dMousePos(int x, int y);
+
+Eigen::Vector3d get3dMousePos(int x, int y)
+{
+  GLint viewport[4];
+  GLdouble modelview[16];
+  GLdouble projection[16];
+  GLdouble winX, winY;
+  GLfloat winZ;
+  GLdouble posX, posY, posZ;
+ 
+  glGetDoublev( GL_MODELVIEW_MATRIX, modelview );
+  glGetDoublev( GL_PROJECTION_MATRIX, projection );
+  glGetIntegerv( GL_VIEWPORT, viewport );
+ 
+  winX = static_cast<double>(x);
+  winY = static_cast<double>(viewport[3]) - static_cast<double>(y);
+  glReadPixels( x, int(winY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &winZ );
+ 
+  gluUnProject( winX, winY, winZ, 
+	  modelview, projection, viewport, 
+	  &posX, &posY, &posZ);
+ 
+  return {posX, posY, posZ};
+}
+
 
 int main(int argc, char** argv){
 
@@ -82,6 +121,44 @@ int main(int argc, char** argv){
   plasticBody.loadFromJsonNoDynamics(pbIn);
 
   PlasticPiece& plasticPiece = plasticBody.plasticPieces.front();
+  
+  //impulse stuff
+  auto& impulseIn = root["testImpulse"];
+  impulseInfo.vertexIndex = impulseIn["vertexIndex"].asInt();
+  //compute normal at that point
+  
+  Eigen::Vector3d normalSoFar = Eigen::Vector3d::Zero();
+  for(auto i : range(plasticPiece.tetmeshTriangles.rows())){
+	if((plasticPiece.tetmeshTriangles.row(i).array() == 
+			impulseInfo.vertexIndex).any()){
+	  Eigen::Vector3i tri = plasticPiece.tetmeshTriangles.row(i);
+	  Eigen::Vector3d v1 = plasticPiece.currentBulletVertexPositions.row(tri(0));
+	  Eigen::Vector3d v2 = plasticPiece.currentBulletVertexPositions.row(tri(1));
+	  Eigen::Vector3d v3 = plasticPiece.currentBulletVertexPositions.row(tri(2));
+	  
+	  Eigen::Vector3d thisNormal = (v1 - v2).cross(v1 - v3);
+	  if(thisNormal.dot(normalSoFar) < 0){
+		thisNormal *= -1;
+	  }
+	  normalSoFar += thisNormal;
+	}
+  }
+  normalSoFar.normalize();
+  impulseInfo.initialImpulse = plasticBody.plasticityImpulseYield*normalSoFar;
+  if(impulseIn.get("invertNormal", false).asBool()){
+	impulseInfo.initialImpulse *= -1;
+  }
+
+  
+  //get a tangent vector	auto 
+  Eigen::Vector3d start = impulseInfo.initialImpulse.normalized();
+  Eigen::Vector3d c1 = start.cross(Eigen::Vector3d(1,0,0));
+  while(c1.norm() < 1e-2){
+	c1 = start.cross(Eigen::Vector3d::Random());
+  }
+  Eigen::Vector3d tangent = c1.cross(start);
+  tangent.normalize();
+  impulseInfo.tangent = tangent;
 
   Eigen::Vector3d bbMin = plasticPiece.currentBulletVertexPositions.colwise().minCoeff();
   Eigen::Vector3d bbMax = plasticPiece.currentBulletVertexPositions.colwise().maxCoeff();
@@ -107,7 +184,7 @@ int main(int argc, char** argv){
   glutReshapeFunc(reshape);
   glutMouseFunc(mouseClicks);
   glutMotionFunc(mouseMove);
-
+  glutIdleFunc(idleFunc);
 
   glClearColor(0,0,0,0);
   glEnable(GL_DEPTH_TEST);
@@ -216,7 +293,25 @@ void displayFrame(){
   drawTriangles(false);
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   
+
+  Eigen::Vector3d startPoint = 
+	plasticBody.plasticPieces.front().currentBulletVertexPositions.row(
+		impulseInfo.vertexIndex);
+  Eigen::Vector3d endPoint = startPoint -
+	5*getVectorForFrame(impulseInfo.initialImpulse,
+		plasticBody.plasticityImpulseYield +
+		100*plasticBody.plasticityImpulseScale,
+		currentFrame);
   
+  glDisable(GL_DEPTH_TEST);
+  glColor3d(0,1,0);
+  glLineWidth(3);
+  glBegin(GL_LINES);
+  glVertex3dv(startPoint.data());
+  glVertex3dv(endPoint.data());
+  glEnd();
+  glEnable(GL_DEPTH_TEST);
+  glLineWidth(1);
   glFlush();
   glutSwapBuffers();
 
@@ -229,6 +324,10 @@ void keyInput(unsigned char key, int x, int y) {
   switch (key) {
   case 27: // ESC
 	exit(0);
+	break;
+  case 'r':
+	currentFrame = 0;
+	std::cout << "current frame reset" << std::endl;
 	break;
   default:
 	; //do nothing
@@ -249,6 +348,11 @@ void specialInput(int key, int x, int y){
 void mouseClicks(int button, int state, int x, int y){
   mouse.x() = x;
   mouse.y() = y;
+
+  auto mouse3D = get3dMousePos(x, y);
+  auto nearest = plasticBody.plasticPieces.front().getNearestVertex(mouse3D);
+
+  std::cout << "nearest vertex: " << nearest << std::endl;
 }
 
 void mouseMove(int x, int y){
@@ -276,4 +380,91 @@ void mouseMove(int x, int y){
   camera.eye = camera.center - eyeToCenter;
   glutPostRedisplay();
   
+}
+
+//scale, then spiral out
+Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v, double maxScale, int timestep){
+
+  const double nScaleTimesteps = 120;
+  const double nSpiralTimesteps = 120;
+
+  timestep = timestep % static_cast<int>(nScaleTimesteps + nSpiralTimesteps);
+
+  if(timestep < nScaleTimesteps){
+	return maxScale*std::min(timestep/nScaleTimesteps, 1.0)*v;
+  } else {
+	Eigen::Vector3d start = maxScale*v;
+
+	auto fakeTimestep = timestep - nScaleTimesteps;
+	std::cout << "faketimestep: " << fakeTimestep << std::endl;
+	Eigen::AngleAxis<double> tangentRot(M_PI_2*fakeTimestep/nSpiralTimesteps, impulseInfo.tangent);
+	Eigen::AngleAxis<double> normalRot(2*M_PI*fakeTimestep/nSpiralTimesteps, v.normalized());
+	
+	return normalRot*(tangentRot*start);
+	
+  }
+}
+
+void idleFunc(){
+  
+  auto impulse = getVectorForFrame(
+	  impulseInfo.initialImpulse,
+	  plasticBody.plasticityImpulseYield +
+	  100*plasticBody.plasticityImpulseScale,
+	  currentFrame);
+  auto deltaS = 
+	plasticBody.projectSingleImpulse(plasticBody.plasticPieces.front(),
+		impulse,
+		impulseInfo.vertexIndex);
+		
+  std::cout << "impulse: " << impulse << '\n'
+			<< "deltaS: " << deltaS << std::endl;
+  auto& pp = plasticBody.plasticPieces.front();
+
+
+  pp.geodesicDistances.assign(pp.currentBulletVertexPositions.rows(),
+	  std::numeric_limits<double>::infinity());  
+  pp.geodesicDistances[impulseInfo.vertexIndex] = 0;
+  pp.geodesicDistancesPropogate(
+	  {static_cast<size_t>(impulseInfo.vertexIndex)},
+	  1.0/plasticBody.plasticityKernelScale);
+
+
+  pp.deltaBarycentricCoordinates.resize(
+	  pp.barycentricCoordinates.rows(),
+	  pp.barycentricCoordinates.cols());
+  pp.deltaBarycentricCoordinates.setZero();
+  for(auto i : pp.activeVertices){
+	auto scale = 
+	  Kernels::simpleCubic(
+		  plasticBody.plasticityKernelScale*pp.geodesicDistances[i]);
+	pp.deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
+  }  
+  pp.barycentricCoordinates.setZero();
+  pp.barycentricCoordinates.col(0).setOnes();
+  
+  pp.barycentricCoordinates += pp.deltaBarycentricCoordinates;
+
+  
+  //clamp and rescale:
+  for(auto i : pp.activeVertices){
+	for(auto j : range(plasticBody.exampleGraph.nodes.size())){
+	  pp.barycentricCoordinates(i, j) = 
+		std::max(pp.barycentricCoordinates(i,j), 0.0);
+	}
+	const double sum = pp.barycentricCoordinates.row(i).sum();
+	if(fabs(sum) < 0.0001){
+	  pp.barycentricCoordinates(i, 0) = 1;
+	} else {
+	  pp.barycentricCoordinates.row(i) /= sum;
+	}
+  }
+  
+  pp.skinMeshVaryingBarycentricCoords(
+	  plasticBody.boneWeights,
+	  plasticBody.boneIndices,
+	  plasticBody.exampleGraph);
+
+  ++currentFrame;
+  glutPostRedisplay();
 }

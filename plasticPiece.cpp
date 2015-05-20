@@ -439,6 +439,7 @@ void PlasticPiece::computeActiveVertices(){
 	activeVertices.end());
 
   activeVertices.shrink_to_fit();
+  std::cout << "num activeVertices: " << activeVertices.size() << std::endl;
 }
 
 void PlasticPiece::dumpPly(const std::string& filename) const{

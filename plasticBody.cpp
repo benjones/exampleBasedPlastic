@@ -307,12 +307,76 @@ Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
 
 }
 
+Eigen::VectorXd PlasticBody::projectSingleImpulse(
+	const PlasticPiece& piece,
+	const Eigen::Vector3d& impulseAtContact,
+	int vInd) const{
+  Eigen::MatrixXd jacobian(3, numNodes);
+  jacobian.setZero();
+  
+  for(auto nodeIndex : range(numNodes)){
+	auto& node = exampleGraph.nodes[nodeIndex];
+	for(auto boneIndex : range(numBoneTips)){
+	  auto weightIndex = boneIndices[boneIndex];//bones[boneIndex]->get_wi();
+	  Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
+	  auto kRange = range(numNodes);
+	  Eigen::Vector4d currentRotationCoeffs  =
+		std::accumulate(kRange.begin(), kRange.end(),
+			Eigen::Vector4d::Zero().eval(),
+			[this, vInd,boneIndex,&piece](const Eigen::Vector4d& acc, size_t k){
+				return acc + piece.barycentricCoordinates(vInd, k)*
+				exampleGraph.nodes[k].transformations[boneIndex].rotation.coeffs();
+			});
+	  Quat currentRotationQuat(currentRotationCoeffs);
+	  currentRotationQuat.normalize();
+	  Eigen::AngleAxis<double> currentRotation{currentRotationQuat};
+	  //Eigen::AngleAxis<double> currentRotation{piece.perVertexRotations[nodeIndex*numRealBones +
+	  //	  weightIndex]};
+	  
+	  jacobian.col(nodeIndex) += 
+		boneWeights(vInd, weightIndex)*
+		(node.transformations[boneIndex].translation +
+			  nodeRotation.angle()*
+			nodeRotation.axis().cross(
+				//currentRotation.axis().cross(
+				currentRotation*
+				piece.tetmeshVertices.row(vInd).transpose()));
+	}
+	
+  }
+	
+  std::cout << "jacobian:\n " << jacobian << std::endl;
+	
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
+	  Eigen::ComputeThinU | 
+	  Eigen::ComputeThinV);
+  
+  Eigen::VectorXd singularVectorContribution = 
+	svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
+		svd.matrixU().transpose()*
+		impulseAtContact).normalized();
+  
+  std::cout << "sv contrib:\n " << singularVectorContribution << std::endl;
+
+  Eigen::VectorXd jacobianTransposeContribution = 
+	jacobian.transpose()*impulseAtContact;
+
+  std::cout << "jt: \n" << jacobianTransposeContribution << std::endl;
+
+  Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
+	(1.0 - jacobianAlpha)*jacobianTransposeContribution;
+  
+  //scale it
+  deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
+  return deltaS;
+}
+
 void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
   if(plasticityImpulseScale == 0){
 	return;
   }
 
-  Eigen::MatrixXd jacobian;
+
   for(auto& tup : manifoldPoints){
 	const auto* body = std::get<0>(tup);
 	auto& manPoint = std::get<1>(tup);
@@ -335,59 +399,8 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	  getDeformationVectorFromImpulse(piece, manPoint, dt, isObject0);
 	if(impulseAtContact.squaredNorm() <= 0){continue;} //ignore 0 impulses
 
-	//compute the derivative
-	jacobian.resize(3, numNodes);
-	jacobian.setZero();
-	
-	for(auto nodeIndex : range(numNodes)){
-	  auto& node = exampleGraph.nodes[nodeIndex];
-	  for(auto boneIndex : range(numBoneTips)){
-		auto weightIndex = boneIndices[boneIndex];//bones[boneIndex]->get_wi();
-		Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
-		auto kRange = range(numNodes);
-		Eigen::Vector4d currentRotationCoeffs  =
-		  std::accumulate(kRange.begin(), kRange.end(),
-			  Eigen::Vector4d::Zero().eval(),
-			  [this, vInd,boneIndex,&piece](const Eigen::Vector4d& acc, size_t k){
-				return acc + piece.barycentricCoordinates(vInd, k)*
-				exampleGraph.nodes[k].transformations[boneIndex].rotation.coeffs();
-			  });
-		Quat currentRotationQuat(currentRotationCoeffs);
-		currentRotationQuat.normalize();
-		Eigen::AngleAxis<double> currentRotation{currentRotationQuat};
-		//Eigen::AngleAxis<double> currentRotation{piece.perVertexRotations[nodeIndex*numRealBones +
-		//	  weightIndex]};
-		
-		jacobian.col(nodeIndex) += 
-		  boneWeights(vInd, weightIndex)*
-		  (node.transformations[boneIndex].translation +
-			  nodeRotation.angle()*
-			  nodeRotation.axis().cross(
-				  //currentRotation.axis().cross(
-				  currentRotation*
-				  piece.tetmeshVertices.row(vInd).transpose()));
-	  }
-	  
-	}
-	
-	
-	Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
-										  Eigen::ComputeThinU | 
-										  Eigen::ComputeThinV);
+	auto deltaS = projectSingleImpulse(piece, impulseAtContact, vInd);
 
-	Eigen::VectorXd singularVectorContribution = 
-	  svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
-		  svd.matrixU().transpose()*
-		  impulseAtContact).normalized();
-	Eigen::VectorXd jacobianTransposeContribution = 
-	  jacobian.transpose()*impulseAtContact;
-
-	Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
-	  (1.0 - jacobianAlpha)*jacobianTransposeContribution;
-
-	//scale it
-	deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
-	
 	if(deltaS.squaredNorm() > 0.000001){
 	  
 	  computeGeodesicDistances(pieceIndex, vInd, 1.0/plasticityKernelScale);
