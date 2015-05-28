@@ -43,7 +43,11 @@ __kernel void skinVertexVarying(
 			rotations[4*(j*numNodes + k) + 2],
 			rotations[4*(j*numNodes + k) + 3]);
 		interpolatedTranslation += bc*readTranslation;
-		interpolatedRotation += bc*readRotation;
+		if(dot(readRotation, interpolatedRotation) > 0){
+		  interpolatedRotation += bc*readRotation;
+		} else {
+		  interpolatedRotation -= bc*readRotation;
+		}
 	  }
 	  
 	  normalize(interpolatedRotation);

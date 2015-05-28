@@ -1,24 +1,120 @@
 {
 	"ground" : true,
-	"dt" : 0.004166666667, //0.008333333, //120 fps
+	"dt" : 0.00833333333333,
 	"duration" : 10,
 	"groundRestitution" : 0,
 	"plasticBodies" : [
 		{
-			"directory" : "inputFiles/craneRigid/",
+			"directory" : "inputFiles/craneDan1/",
 			"scaleFactor" : 50,
 			"offset" : [0,118,0],
 			"breakingThreshold" : 20000,
-			"plasticityImpulseYield" : 1e3,
-			"plasticityImpulseScale" : 160,
-			"plasticityRate" : 0.05,
-			"plasticityKernelScale" : 0.09,
+			"plasticityImpulseYield" : 1e-2,
+			"plasticityImpulseScale" : 1.5,
+			"plasticityRate" : 0.04,
+			"plasticityKernelScale" : 0.1,
 			"jacobianAlpha" : 1.0,
 			"restitutionAddition" : 0.01,
 			"restitutionExponent" : 3000,
 			"restitution" : 0.4,
 			//"useVolumetricCollisions" : false,
 //			"density" : 5000,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <texture name=\"reflectance\" type=\"perlinTexture3D\" >
+        <rgb name=\"baseColor\" value=\"#ff6666\" />
+        <float name=\"scale\" value=\"1000\" />
+      </texture>
+    </bsdf>
+    
+
+</bsdf>",
+
+			"useFaceNormals" : true
+		},
+		{
+			"directory" : "inputFiles/craneDanFracture/",
+			"scaleFactor" : 50,
+			"offset" : [-150,118,0],
+			"breakingThreshold" : 20000,
+			"plasticityImpulseYield" : 1e-2,
+			"plasticityImpulseScale" : 1.5,
+			"plasticityRate" : 0.04,
+			"plasticityKernelScale" : 0.1,
+			"jacobianAlpha" : 1.0,
+			"restitutionAddition" : 0.01,
+			"restitutionExponent" : 3000,
+			"restitution" : 0.4,
+			//"useVolumetricCollisions" : false,
+//			"density" : 5000,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <texture name=\"reflectance\" type=\"perlinTexture3D\" >
+        <rgb name=\"baseColor\" value=\"#ff6666\" />
+        <float name=\"scale\" value=\"1000\" />
+      </texture>
+    </bsdf>
+    
+
+</bsdf>",
+
+			"useFaceNormals" : true
+		},
+		{
+			"directory" : "inputFiles/craneDan1/",
+			"scaleFactor" : 50,
+			"offset" : [-300,118,0],
+			"breakingThreshold" : 20000,
+			"plasticityImpulseYield" : 1e-2,
+			"plasticityImpulseScale" : 1.5,
+			"plasticityRate" : 0.04,
+			"plasticityKernelScale" : 0.1,
+			"jacobianAlpha" : 1.0,
+			"restitutionAddition" : 0.01,
+			"restitutionExponent" : 3000,
+			"restitution" : 0.4,
+			//"useVolumetricCollisions" : false,
+//			"density" : 5000,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <texture name=\"reflectance\" type=\"perlinTexture3D\" >
+        <rgb name=\"baseColor\" value=\"#ff6666\" />
+        <float name=\"scale\" value=\"1000\" />
+      </texture>
+    </bsdf>
+    
+
+</bsdf>",
+
+			"useFaceNormals" : true
+		},
+		{
+			"directory" : "inputFiles/enterpriseDan/",
+			"scaleFactor" : 30,
+			"rotation" : {"angle" : -1.0, "axis" : [-0.1, 1, 0] },
+			"offset" : [400,290,-80],
+			"breakingThreshold" : 20000,
+			"plasticityImpulseYield" : 2e-5,
+			"plasticityImpulseScale" : 8,
+			"plasticityRate" : 0.05,
+			"plasticityKernelScale" : 0.2,
+			"jacobianAlpha" : 1.0,
+			"restitutionAddition" : 0.01,
+			"restitutionExponent" : 3000,
+			"restitution" : 0.4,
+			"constantVelocity" : [-150, -60, 35],
+			"constantVelocityFrames" : 30,
+			//"useVolumetricCollisions" : false,
+			"density" : 5000,
 			"shadingXml" :
 			"
 <bsdf type=\"twosided\">
