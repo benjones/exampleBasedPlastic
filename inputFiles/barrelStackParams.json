@@ -4,7 +4,7 @@
 	"restitution" : 0.8,
 	"restitutionAddition" : 1.0,
 	"restitutionExponent" : 300,
-	"plasticityImpulseYield" : 1e-3,
+	"plasticityImpulseYield" : 3e-3,//1e-3,
 	"plasticityImpulseScale" : 200,
 	"plasticityKernelScale" : 0.02,
 	"plasticityRate" : 0.3,

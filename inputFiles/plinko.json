@@ -1,0 +1,450 @@
+{
+	"ground" : false,
+	"dt" : 0.004,
+	"duration" : 10,
+	"bulletObjects" : [
+		{
+			"mass" : 0,
+			"shape" : "plane",
+			"normal" : [0, 0, -1],
+			"offset" : -1,
+			"dontRender" : true
+		},
+		{
+			"mass" : 0,
+			"shape" : "plane",
+			"normal" : [0, 0, 1],
+			"offset" : -1,
+			"dontRender" : true
+		},
+		{
+			"mass" : 0,
+			"shape" : "plane",
+			"normal" : [-1, 0, 0],
+			"offset" : -4.2,
+			"dontRender" : true
+		},
+		{
+			"mass" : 0,
+			"shape" : "plane",
+			"normal" : [1, 0, 0],
+			"offset" : -4.2,
+			"dontRender" : true
+		},
+
+
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [0,0,-1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [1.5,0,-1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-1.5,0,-1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [3, 0, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-3.0, 0, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-0.75, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [0.75, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [2.25, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-2.25, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [3.75, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-3.75, -1.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [0,-3,-1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [1.5, -3, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-1.5, -3 ,-1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [3, -3, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-3.0, -3, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-0.75, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [0.75, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [2.25, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-2.25, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [3.75, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		},
+		{
+			"mass" : 0,
+			"shape" : "mesh",
+			"filename" : "inputFiles/pipe.obj",
+			"offset" : [-3.75, -4.5, -1.1],
+			"rotation" : [0.707107, 0, 0, 0.707107],
+			"scale" : 0.2
+		}
+	],
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [0,3,0],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [0.3,4.1,0.35],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [-0.2,5,-0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [-2,5,-0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [-1,5,0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [-3,5,0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [-3.5,5,-0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [3.5,5,-0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+		{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [2,5,0.4],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 3.8e1,
+			"plasticityImpulseYield" : 5e-4,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"plinkoObject" : true,
+			
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+
+</bsdf>
+</bsdf>
+"
+
+		}
+	],
+
+	"groundShadingXml" : "
+<bsdf type=\"twosided\" >
+  <bsdf type=\"bumpmap\" >
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <rgb name=\"reflectance\" value=\"#444444\" />
+    </bsdf>
+    <texture type=\"bitmap\" >
+      <string name=\"filename\" value=\"concreteTexture.jpg\" />
+      <float name=\"uscale\" value=\"30\" />
+      <float name=\"vscale\" value=\"30\" />
+      <float name=\"gamma\" value=\"1.0\" />
+    </texture>
+  </bsdf>
+</bsdf>
+"
+	
+	
+}

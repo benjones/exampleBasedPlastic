@@ -1,6 +1,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 #ifdef __APPLE__
 #include<GLUT/glut.h>
@@ -11,6 +13,10 @@
 #include<GL/gl.h>
 #include<GL/glu.h>
 #endif
+
+
+#include <png.h>
+#include <cstdio>
 
 #include "Eigen/Dense"
 
@@ -41,6 +47,7 @@ PlasticBody plasticBody;
 struct ImpulseInfo{
   Eigen::Vector3d initialImpulse, tangent;
   int vertexIndex;
+  double maxScale;
 };
 
 ImpulseInfo impulseInfo;
@@ -57,10 +64,26 @@ void displayFrame();
 void idleFunc();
 
 
-Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v, double maxScale, int timestep);
+Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v,  int timestep);
 
 
 void drawTriangles(bool changeColor);
+
+std::pair<Eigen::Vector3d, Eigen::Vector3d> inline getTangents(Eigen::Vector3d vec){
+  
+  vec.normalize();
+  Eigen::Vector3d v1 = vec.cross(Eigen::Vector3d(1,0,0));
+  while(v1.norm() < 1e-2){
+	v1 = vec.cross(Eigen::Vector3d::Random());
+  }
+  Eigen::Vector3d t1 = vec.cross(v1).normalized();
+  Eigen::Vector3d t2 = t1.cross(vec).normalized();
+  return {t1, t2};
+
+}
+
+void drawArrow(const Eigen::Vector3d& direction, const Eigen::Vector3d& pointPosition);
+
 Eigen::Vector3d get3dMousePos(int x, int y);
 
 Eigen::Vector3d get3dMousePos(int x, int y)
@@ -88,14 +111,23 @@ Eigen::Vector3d get3dMousePos(int x, int y)
 }
 
 
+bool dumpMitsuba;
+std::string mitsubaBaseName;
+
+void dumpMitsubaFrame();
+void dumpPng();
 int main(int argc, char** argv){
 
-  const std::string usage = "./impulseTester <inputJsonFile>";
-  if(argc != 2){
+  const std::string usage = "./impulseTester <inputJsonFile> [impulseFrames/]";
+  if(argc < 2){
 	std::cout << usage << std::endl;
 	return 1;
   }
-
+  dumpMitsuba = argc > 2;
+  if(dumpMitsuba){
+	mitsubaBaseName = std::string(argv[2]);
+  }
+  
   std::ifstream ins(argv[1]);
   Json::Value root;
   Json::Reader reader;
@@ -149,6 +181,8 @@ int main(int argc, char** argv){
 	impulseInfo.initialImpulse *= -1;
   }
 
+  impulseInfo.maxScale = 
+	impulseIn.get("maxScale", 1.0).asDouble();
   
   //get a tangent vector	auto 
   Eigen::Vector3d start = impulseInfo.initialImpulse.normalized();
@@ -167,11 +201,19 @@ int main(int argc, char** argv){
   
   camera.center = (bbMax + bbMin)/2;
   camera.up = Eigen::Vector3d(0,1,0);
-  camera.eye = camera.center + width*Eigen::Vector3d(1,0,0);
+  
+  if(root["eye"].size() == 3){
+	camera.eye = Eigen::Vector3d(
+		root["eye"][0].asDouble(),
+		root["eye"][1].asDouble(),
+		root["eye"][2].asDouble());
+  } else {
+	camera.eye = camera.center + width*Eigen::Vector3d(1,0,0);
+  }
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
-  glutInitWindowSize(800,800);
+  glutInitWindowSize(960,540);
   
   glutCreateWindow("Mesh Viewer");
   camera.width = glutGet(GLUT_SCREEN_WIDTH);
@@ -294,30 +336,68 @@ void displayFrame(){
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   
 
+  Eigen::Vector3d frameVec = getVectorForFrame(impulseInfo.initialImpulse, currentFrame);
+  
   Eigen::Vector3d startPoint = 
 	plasticBody.plasticPieces.front().currentBulletVertexPositions.row(
 		impulseInfo.vertexIndex);
-  Eigen::Vector3d endPoint = startPoint -
-	5*getVectorForFrame(impulseInfo.initialImpulse,
-		plasticBody.plasticityImpulseYield +
-		100*plasticBody.plasticityImpulseScale,
-		currentFrame);
+  //Eigen::Vector3d endPoint = startPoint - 5*frameVec;
   
   glDisable(GL_DEPTH_TEST);
-  glColor3d(0,1,0);
+  /*glColor3d(0,1,0);
   glLineWidth(3);
   glBegin(GL_LINES);
   glVertex3dv(startPoint.data());
   glVertex3dv(endPoint.data());
   glEnd();
-  glEnable(GL_DEPTH_TEST);
+
   glLineWidth(1);
+  */
+  glColor3f(1,1,1);
+  drawArrow(frameVec, startPoint);
+  glEnable(GL_DEPTH_TEST);  
+
   glFlush();
   glutSwapBuffers();
 
   
 
 }
+
+void drawArrow(const Eigen::Vector3d& direction, const Eigen::Vector3d& pointPosition){
+  
+  auto tangents = getTangents(direction);
+  double length = 10*direction.norm();
+  double tipHeight = length/10.0;
+  double tipWidth = tipHeight;
+  double cylinderWidth = tipWidth*0.5;
+
+  Eigen::Vector3d dNorm = direction.normalized();
+  
+  glBegin(GL_TRIANGLE_FAN);
+  glVertex3dv(pointPosition.data());
+  int nDivs = 20;
+  for(auto i : range(nDivs + 1)){
+	Eigen::Vector3d pos = pointPosition - tipHeight*dNorm +
+	  cos(i*2.0*M_PI/nDivs)*tipWidth*tangents.first +
+	  sin(i*2.0*M_PI/nDivs)*tipWidth*tangents.second;
+	glVertex3dv(pos.data());
+  }
+  glEnd();
+
+  //draw cylinder
+  glBegin(GL_QUAD_STRIP);
+  for(auto i : range(nDivs + 1)){
+	Eigen::Vector3d p1 = pointPosition - tipHeight*dNorm +
+	  cos(i*2.0*M_PI/nDivs)*cylinderWidth*tangents.first +
+	  sin(i*2.0*M_PI/nDivs)*cylinderWidth*tangents.second;
+	Eigen::Vector3d p2 = p1 - length*dNorm;
+	glVertex3dv(p1.data());
+	glVertex3dv(p2.data());
+  }
+  glEnd();
+}
+
 
 
 void keyInput(unsigned char key, int x, int y) {
@@ -383,21 +463,24 @@ void mouseMove(int x, int y){
 }
 
 //scale, then spiral out
-Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v, double maxScale, int timestep){
 
-  const double nScaleTimesteps = 120;
-  const double nSpiralTimesteps = 120;
 
-  timestep = timestep % static_cast<int>(nScaleTimesteps + nSpiralTimesteps);
+const double nScaleTimesteps = 120;
+const double nSpiralTimesteps = 120;
+
+Eigen::Vector3d getVectorForFrame(const Eigen::Vector3d v, int timestep){
+
+  //timestep = timestep % static_cast<int>(nScaleTimesteps + nSpiralTimesteps);
 
   if(timestep < nScaleTimesteps){
-	return maxScale*std::min(timestep/nScaleTimesteps, 1.0)*v;
+	return impulseInfo.maxScale*std::min(timestep/nScaleTimesteps, 1.0)*v;
   } else {
-	Eigen::Vector3d start = maxScale*v;
+	Eigen::Vector3d start = impulseInfo.maxScale*v;
 
 	auto fakeTimestep = timestep - nScaleTimesteps;
-	std::cout << "faketimestep: " << fakeTimestep << std::endl;
-	Eigen::AngleAxis<double> tangentRot(M_PI_2*fakeTimestep/nSpiralTimesteps, impulseInfo.tangent);
+	//std::cout << "faketimestep: " << fakeTimestep << std::endl;
+	Eigen::AngleAxis<double> tangentRot(
+		0.5*M_PI_2*std::min(fakeTimestep, nSpiralTimesteps)/nSpiralTimesteps, impulseInfo.tangent);
 	Eigen::AngleAxis<double> normalRot(2*M_PI*fakeTimestep/nSpiralTimesteps, v.normalized());
 	
 	return normalRot*(tangentRot*start);
@@ -409,16 +492,14 @@ void idleFunc(){
   
   auto impulse = getVectorForFrame(
 	  impulseInfo.initialImpulse,
-	  plasticBody.plasticityImpulseYield +
-	  100*plasticBody.plasticityImpulseScale,
 	  currentFrame);
   auto deltaS = 
 	plasticBody.projectSingleImpulse(plasticBody.plasticPieces.front(),
 		impulse,
 		impulseInfo.vertexIndex);
 		
-  std::cout << "impulse: " << impulse << '\n'
-			<< "deltaS: " << deltaS << std::endl;
+  //std::cout << "impulse: " << impulse << '\n'
+  //<< "deltaS: " << deltaS << std::endl;
   auto& pp = plasticBody.plasticPieces.front();
 
 
@@ -466,5 +547,144 @@ void idleFunc(){
 	  plasticBody.exampleGraph);
 
   ++currentFrame;
+  if(dumpMitsuba && currentFrame < (nScaleTimesteps + 2*nSpiralTimesteps) ){
+	dumpPng();
+	//dumpMitsubaFrame();
+  }
   glutPostRedisplay();
+}
+
+void dumpMitsubaFrame(){
+  std::ostringstream paddedFrameStream;
+  paddedFrameStream << std::setw(4)  << std::setfill('0') << currentFrame;
+  std::string frameString = paddedFrameStream.str();
+  //std::cout << frameString  << std::endl;
+
+  const std::string meshFilename = std::string("mesh_") + frameString + ".ply";
+  plasticBody.plasticPieces.front().dumpColoredShapeOnly(mitsubaBaseName + "/" + meshFilename);
+
+  std::ofstream outs(mitsubaBaseName + "/mitsubaFrame_" + paddedFrameStream.str() + ".xml");
+  
+  outs << "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n"
+	   "<scene version=\"0.5.0\">\n"
+	"<integrator type=\"direct\" ><boolean name=\"hideEmitters\" value=\"true\" /></integrator>\n"
+	"<sensor type=\"perspective\">\n"
+	"<float name=\"farClip\" value=\"1241.42\"/>\n"
+	"<float name=\"focusDistance\" value=\"10.5293\"/>\n"
+	"<float name=\"fov\" value=\"40\"/>\n"
+	"<string name=\"fovAxis\" value=\"y\"/>\n"
+	"<float name=\"nearClip\" value=\"2.41421\"/>\n"
+	"<transform name=\"toWorld\">"
+	
+	"<lookat target=\"" << camera.center.x() << ',' << camera.center.y() << ',' << camera.center.z() << 
+	"\" origin=\"" << camera.eye.x() << ',' << camera.eye.y() << ',' << camera.eye.z() << 
+	"\" up=\"0, 1, 0\"/>\n"
+	"</transform>\n <sampler type=\"sobol\"> <integer name=\"sampleCount\" value=\"128\"/> </sampler>\n"
+	"<film type=\"hdrfilm\">\n"
+	"<integer name=\"height\" value=\"540\"/> <integer name=\"width\" value=\"960\"/>\n"
+	"<boolean name=\"banner\" value=\"false\"/> <rfilter type=\"gaussian\"/> </film></sensor>\n";
+
+  outs << "<shape type=\"ply\" ><string name=\"filename\" value=\""
+	   << meshFilename << "\" />\n"
+	"<boolean name=\"faceNormals\" value=\"true\" /><boolean name=\"srgb\" value=\"true\" />\n"
+	"<bsdf type=\"twosided\"><bsdf type=\"diffuse\" >\n"
+	"<texture name=\"reflectance\" type=\"vertexColors\" /></bsdf></bsdf></shape>\n";
+	   
+  //arrow
+  Eigen::Vector3d vertexPosition = 
+	plasticBody.plasticPieces.front().currentBulletVertexPositions.row(
+		impulseInfo.vertexIndex);
+  
+  auto arrow = 
+	getVectorForFrame(impulseInfo.initialImpulse, 
+		currentFrame < nScaleTimesteps ? nScaleTimesteps -1 : currentFrame);
+  auto axis = Eigen::Vector3d(0,1,0).cross(arrow);
+
+  //  if(axis.norm() < 1e-2){
+  //	axis = Eigen::Vector3d::Random().cross(arrow)
+  //  }
+
+  //std::cout << "axis: " << axis << std::endl;
+  axis.normalize();
+  //std::cout << "axis normalized: " << axis << std::endl;
+
+  double angle = acos(std::max(-1.0, std::min(1.0, Eigen::Vector3d(0,1,0).dot(arrow.normalized()))));
+  //std::cout << "angle: " << angle << std::endl;
+
+  double scaleValue = 10*getVectorForFrame(impulseInfo.initialImpulse, currentFrame).norm();
+  
+  outs << "<shape type=\"obj\" ><string name=\"filename\" value=\"arrow.obj\" /><bsdf type=\"diffuse\" >\n"
+	"<rgb name=\"reflectance\" value=\"#ffffff\" /></bsdf>\n"
+	"<transform name=\"toWorld\" >\n"
+	"<scale y=\"" << scaleValue << "\" />\n"
+	"<rotate x=\"" << axis.x() << "\" y=\"" << axis.y() << "\" z=\"" << axis.z() << "\" angle=\""
+	   << angle*180.0/M_PI << "\" />\n"
+	"<translate x=\"" << vertexPosition.x() << "\" y=\"" << vertexPosition.y() << "\" z=\""
+	   << vertexPosition.z() << "\" />\n"
+	"</transform></shape>\n";
+
+
+  outs << "<emitter type=\"constant\" ><spectrum name=\"radiance\" value=\"0.1\" /></emitter>\n";
+  outs << "<emitter type=\"point\"><spectrum name=\"radiance\" value=\"1\" />\n"
+	"<point name=\"position\" x=\"" << camera.eye.x() << "\" y=\"" 
+	   << camera.eye.y() << "\" z=\"" << camera.eye.z() << "\" />\n"
+	"</emitter>";
+  outs << "</scene>" << std::endl;
+
+  
+}
+void dumpPng(){
+  std::ostringstream paddedFrameStream;
+  paddedFrameStream << std::setw(4)  << std::setfill('0') << currentFrame;
+  std::string frameString = paddedFrameStream.str();
+  
+  std::string filename = mitsubaBaseName + "/frame_" + frameString + ".png";
+
+  FILE* fp = fopen(filename.c_str(), "wb");
+  if(!fp){
+    std::cout << "couldn't open png file to write" << std::endl;
+  }
+
+  png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, 
+						NULL, NULL, NULL);
+  if (!png_ptr)
+    return;
+  png_infop info_ptr = png_create_info_struct(png_ptr);
+  if (!info_ptr){
+    png_destroy_write_struct(&png_ptr,
+			     (png_infopp)NULL);
+    return;
+  }
+  
+  png_init_io(png_ptr, fp);
+
+  
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  
+  //read opengl stuff
+  GLubyte* glPixelData = new GLubyte[viewport[2]*viewport[3]*4];
+  glReadPixels(viewport[0], viewport[1], viewport[2], viewport[3],
+	       GL_RGBA, GL_UNSIGNED_BYTE, glPixelData);
+
+  png_set_IHDR(png_ptr, info_ptr, viewport[2], viewport[3],
+	       8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+	       PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+  png_bytep* row_pointers = new png_bytep[viewport[3]];
+  for(int i = 0; i < viewport[3]; ++i){
+    row_pointers[i] = glPixelData + 4*(viewport[3] - i -1)*viewport[2];
+  }
+  png_write_info(png_ptr, info_ptr);
+  
+  png_write_image(png_ptr, row_pointers);
+
+  png_write_end(png_ptr, NULL);
+
+
+  delete [] glPixelData;
+  delete [] row_pointers;
+  fclose(fp);
+
+
 }

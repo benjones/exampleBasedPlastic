@@ -198,7 +198,7 @@ void RigidBody::dump(std::string filename){
 }
 
 
-void RigidBody::loadTrimesh(std::string filename){
+void RigidBody::loadTrimesh(std::string filename, double scale){
   std::cout << "reading: " << filename << std::endl;
   std::ifstream ins(filename);
   if(!ins){
@@ -219,11 +219,11 @@ void RigidBody::loadTrimesh(std::string filename){
 	if(lineType == "v"){
 	  double data;
 	  linestream >> data;
-	  meshVertices.push_back(data);
+	  meshVertices.push_back(scale*data);
 	  linestream >> data;
-	  meshVertices.push_back(data);
+	  meshVertices.push_back(scale*data);
 	  linestream >> data;
-	  meshVertices.push_back(data);
+	  meshVertices.push_back(scale*data);
 
 	} else if(lineType == "f"){
 	  auto numSlashes = std::count(begin(line), end(line), '/');

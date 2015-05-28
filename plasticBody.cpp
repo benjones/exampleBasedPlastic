@@ -22,6 +22,10 @@ using benlib::enumerate;
 
 #include "json/json.h"
 
+//for auto diff
+#include "FADBAD++/fadiff.h"
+
+
 #include "world.h"
 
 void PlasticBody::loadFromJson(const Json::Value& poi,
@@ -172,6 +176,8 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	  hostUnskinnedPositions.begin(), hostUnskinnedPositions.end(), true);
   
 
+  bool plinkoObject = poi.get("plinkoObject", false).asBool();
+
   //read in tets in each piece
   //tetmesh.#.txt
   std::string basename = "/tetmesh.";
@@ -196,7 +202,8 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 
 	piece.initialize(directory, *this,
 		vertices, world, i);
-
+	
+	piece.plinkoObject = plinkoObject;
 
   }
   //compute whole object mass and COM:
@@ -314,6 +321,66 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
   Eigen::MatrixXd jacobian(3, numNodes);
   jacobian.setZero();
   
+  //compute using autodiff
+  using fadbad::FwdDiff;
+  using FwdDiff3 = Eigen::Matrix<FwdDiff<double>, 3, 1>;
+  using FwdDiff4 = Eigen::Matrix<FwdDiff<double>, 4, 1>;
+  Eigen::Matrix<FwdDiff<double>, Eigen::Dynamic, 1> weightsAuto(numNodes, 1);
+  for(auto i : range(numNodes)){
+	weightsAuto(i) = piece.barycentricCoordinates(vInd, i);
+	weightsAuto(i).diff(i, numNodes);
+  }
+  //do skinning
+  FwdDiff3 skinnedPosition;
+  skinnedPosition.setZero();
+  //do the skinning
+  for(auto j : range(numBoneTips)){
+	if(boneIndices[j] < 0){ continue;}
+	FwdDiff3 translation;
+	translation.setZero();
+	FwdDiff4 rotationCoeffs;
+	rotationCoeffs.setZero();
+	
+	for(auto k : range(numNodes)){
+	  for(auto l : range(3)){
+		translation(l) += 
+		  weightsAuto(k)*exampleGraph.nodes[k].transformations[j].translation(l);
+	  }
+	  for(auto l : range(4)){
+		rotationCoeffs(l) += 
+		  weightsAuto(k)*exampleGraph.nodes[k].transformations[j].rotation.coeffs()(l);
+	  }
+	}
+	
+	Eigen::Quaternion<FwdDiff<double>> rotation(rotationCoeffs);
+	rotation.normalize();
+	
+	const auto weightIndex = boneIndices[j];
+	FwdDiff3 unskinnedVert;
+	for(auto l : range(3)){ unskinnedVert(l) = piece.tetmeshVertices(vInd, l);}
+	//do rotation myself...
+	FwdDiff3 uv = rotation.vec().cross(unskinnedVert);
+	uv += uv; //multiply by 2 I guess?
+	FwdDiff3 tmp = uv;
+	for(auto l : range(3)){
+	  tmp(l) = rotation.w()*tmp(l);
+	}
+	FwdDiff3 rotationPart = unskinnedVert + tmp + rotation.vec().cross(uv);
+
+	skinnedPosition +=
+	  scaleFactor*boneWeights(vInd, weightIndex)*
+	  (rotationPart + translation).transpose();
+
+  }
+
+  for(auto i : range(numNodes)){
+	for(auto j : range(3)){
+	  jacobian(j, i) = skinnedPosition(j).d(i);
+	}
+  }
+
+
+  /*
   for(auto nodeIndex : range(numNodes)){
 	auto& node = exampleGraph.nodes[nodeIndex];
 	for(auto boneIndex : range(numBoneTips)){
@@ -344,9 +411,28 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 	}
 	
   }
+  */
+  //std::cout << "jacobian:\n " << jacobian << std::endl;
 	
-  std::cout << "jacobian:\n " << jacobian << std::endl;
-	
+  //scale columns --actually don't...
+  /*  for(auto i : range(jacobian.cols())){
+	if(jacobian.col(i).norm() > 1){
+	  jacobian.col(i) /= jacobian.col(i).norm();
+	}
+	}*/
+
+  Eigen::VectorXd jacobianTransposeContribution = 
+	jacobian.transpose()*impulseAtContact;
+
+  
+
+  Eigen::VectorXd singularVectorContribution =
+	impulseAtContact.norm()*(
+		jacobianTransposeContribution.norm() > 1e-4 ?
+		jacobianTransposeContribution.normalized() :
+		Eigen::VectorXd::Zero(numNodes));
+
+  /*
   Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
 	  Eigen::ComputeThinU | 
 	  Eigen::ComputeThinV);
@@ -355,13 +441,11 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 	svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
 		svd.matrixU().transpose()*
 		impulseAtContact).normalized();
-  
-  std::cout << "sv contrib:\n " << singularVectorContribution << std::endl;
+  */
+  //std::cout << "sv contrib:\n " << singularVectorContribution << std::endl;
 
-  Eigen::VectorXd jacobianTransposeContribution = 
-	jacobian.transpose()*impulseAtContact;
 
-  std::cout << "jt: \n" << jacobianTransposeContribution << std::endl;
+  //std::cout << "jt: \n" << jacobianTransposeContribution << std::endl;
 
   Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
 	(1.0 - jacobianAlpha)*jacobianTransposeContribution;

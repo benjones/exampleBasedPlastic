@@ -1,0 +1,45 @@
+{
+	"ground" : true,
+	"dt" : 0.004166666667, //0.008333333, //120 fps
+	"duration" : 10,
+	"groundRestitution" : 0,
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/craneRigid/",
+			"scaleFactor" : 50,
+			"offset" : [0,118,0],
+			"breakingThreshold" : 20000,
+			"plasticityImpulseYield" : 1e3,
+			"plasticityImpulseScale" : 160,
+			"plasticityRate" : 0.05,
+			"plasticityKernelScale" : 0.09,
+			"jacobianAlpha" : 1.0,
+			"restitutionAddition" : 0.01,
+			"restitutionExponent" : 3000,
+			"restitution" : 0.4,
+			//"useVolumetricCollisions" : false,
+//			"density" : 5000,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+    <bsdf type=\"roughdiffuse\">
+      <float name=\"alpha\" value=\"0.7\" />
+      <texture name=\"reflectance\" type=\"perlinTexture3D\" >
+        <rgb name=\"baseColor\" value=\"#ff6666\" />
+        <float name=\"scale\" value=\"1000\" />
+      </texture>
+    </bsdf>
+    
+
+</bsdf>",
+
+			"useFaceNormals" : true
+		}
+
+	]
+}
+  //<bsdf type=\"bumpmap\" >
+//      <texture  type=\"perlinTexture2D\" >
+//        <float name=\"scale\" value=\"0.3\" />
+//      </texture>
+

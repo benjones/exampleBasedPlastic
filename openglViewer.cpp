@@ -332,7 +332,7 @@ void displayFrame(){
 
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 500);
+  gluPerspective(40*zoomFactor, (double)(windWidth)/windHeight, .5, 1000);
 
     //glLineWidth (2.0);
     //glBegin(GL_LINES);
@@ -482,8 +482,11 @@ void mouseMove(int x, int y){
   double dy = y - lastMouseY;
   lastMouseX = x;
   lastMouseY = y;
+  
+  
+  double sideScale = eyeToCenter.norm();
 
-  eyeToCenter -= (-4*dx)/(.5*windWidth) * xDirection + (4*dy)/(.5*windHeight) * yDirection;
+  eyeToCenter -= (-sideScale*dx)/(.5*windWidth) * xDirection + (sideScale*dy)/(.5*windHeight) * yDirection;
 
 
   eyeToCenter.normalize();

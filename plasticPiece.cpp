@@ -443,7 +443,7 @@ void PlasticPiece::computeActiveVertices(){
 }
 
 void PlasticPiece::dumpPly(const std::string& filename) const{
-  std::ofstream outs(filename);
+
   
   auto bulletTrans = bulletBody->getCenterOfMassTransform();
   auto eigenRot = bulletToEigen(bulletTrans.getBasis());
@@ -504,6 +504,33 @@ void PlasticPiece::dumpPly(const std::string& filename) const{
   
 }
 
+void PlasticPiece::dumpColoredShapeOnly(const std::string& filename) const{
+  std::ofstream outs(filename);
+  
+  RMMatrix3f floatVertices = currentBulletVertexPositions.cast<float>();
+  
+  RMMatrix3f exampleColors(7,3);
+  exampleColors << 
+	1.f, 1.f, 1.f,
+	1.f, 0.f, 0.f,
+	0.f, 1.f, 0.f,
+	0.f, 0.f, 1.f,
+	1.f, 1.f, 0.f,
+	1.f, 0.f, 1.f,
+	0.f, 1.f, 1.f;
+  
+  RMMatrix3f colors = RMMatrix3f::Zero(floatVertices.rows(), 3);
+  for(auto i : range(currentBulletVertexPositions.rows())){
+	for(auto j : range(barycentricCoordinates.cols())){
+	  colors.row(i) += barycentricCoordinates(i, j)*exampleColors.row(j);
+	}
+  }
+  
+  std::ofstream plyStream(filename);
+  writePLYWithColor(plyStream, floatVertices, colors, tetmeshTriangles);
+  
+
+}
 
 void PlasticPiece::dumpBcc(const std::string& filename) const{
   Eigen::MatrixXd paddedBarycentricCoordinates =

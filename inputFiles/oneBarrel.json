@@ -92,8 +92,11 @@
 ",
 	
 	"testImpulse" : {
-		"vertexIndex" : 1697,
-		"invertNormal" : false
-	}	
+		"vertexIndex" : 1275,
+		"invertNormal" : true,
+		"maxScale" : 3000
+	}	,
+
+	"eye" : [ 0, 50, 150]
 	
 }

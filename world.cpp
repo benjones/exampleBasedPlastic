@@ -64,7 +64,7 @@ World::World(std::string filename)
   }
 
   makeBarrels = root.get("makeBarrels", false).asBool();
-  singleStep = root.get("singleStep", false).asBool();
+  singleStep = root.get("singleStep", true).asBool();
   auto& bulletObjectsIn = root["bulletObjects"];
 
 
@@ -180,8 +180,19 @@ World::World(std::string filename)
       
     } else if(shapeTypeIn.asString() == "mesh"){
 	  RB.rbType = RigidBody::RBType::RB_TRIMESH;
-	  RB.loadTrimesh(bo["filename"].asString());
+	  RB.loadTrimesh(bo["filename"].asString(), bo.get("scale", 1.0).asDouble());
 
+	}else if (shapeTypeIn.asString() == "plane"){
+
+	  RB.rbType = RigidBody::RBType::RB_PLANE;
+	  btVector3 normal;
+	  for(auto k : range(3)){
+		normal[k] = bo["normal"][k].asDouble();
+	  }
+	  normal.normalize();
+	  double offset = bo.get("offset", 0.0).asDouble();
+	  RB.shape = std::unique_ptr<btCollisionShape>(
+		  new btStaticPlaneShape(normal, offset));
 	}else { //add other shape types here
       std::cout << "unknown shape: " << bo["shape"].asString() << std::endl;
       exit(1);
@@ -388,6 +399,9 @@ void World::timeStepDynamicSprites(){
 		//}
 		if(po.hasConstantVelocity && currentFrame < po.constantVelocityFrames){
 		  pp.bulletBody->setLinearVelocity(po.constantVelocity);
+		}
+		if(pp.plinkoObject && pp.bulletBody->getCenterOfMassPosition().y() < -5){
+		  pp.bulletBody->translate(btVector3(0,8, 0));
 		}
 	  }
 	}

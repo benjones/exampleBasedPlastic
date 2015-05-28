@@ -29,7 +29,7 @@ class RigidBody{
 
 
   std::unique_ptr<btTriangleIndexVertexArray> triMesh; //only used for trimesh shapes
-  void loadTrimesh(std::string filename);
+  void loadTrimesh(std::string filename, double scale);
   std::vector<double> meshVertices;
   std::vector<int> meshIndices;
 

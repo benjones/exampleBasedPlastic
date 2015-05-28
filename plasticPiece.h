@@ -147,6 +147,8 @@ public:
   //void dumpImpulses(const std::string& filename) const; //skip for now
   void dumpBcc(const std::string& filename) const;
 
+  void dumpColoredShapeOnly(const std::string& filename) const;
+
   void updateAabbs();
 
   //maybe should go in plasticBody, but whatever
@@ -178,6 +180,7 @@ public:
   //devicePerVertexTranslations, devicePerVertexRotations;
 
   int framesToSkin;
-  
+
+  bool plinkoObject;
 
 };
