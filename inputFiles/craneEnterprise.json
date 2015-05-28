@@ -5,12 +5,12 @@
 	"groundRestitution" : 0,
 	"plasticBodies" : [
 		{
-			"directory" : "inputFiles/craneDan1/",
+			"directory" : "inputFiles/craneDanFracture/",
 			"scaleFactor" : 50,
-			"offset" : [0,118,0],
-			"breakingThreshold" : 20000,
+			"offset" : [0,201.6, -10],
+			"breakingThreshold" : 5e8,
 			"plasticityImpulseYield" : 1e-2,
-			"plasticityImpulseScale" : 1.5,
+			"plasticityImpulseScale" : 1.0,
 			"plasticityRate" : 0.04,
 			"plasticityKernelScale" : 0.1,
 			"jacobianAlpha" : 1.0,
@@ -36,7 +36,7 @@
 			"useFaceNormals" : true
 		},
 		{
-			"directory" : "inputFiles/craneDanFracture/",
+			"directory" : "inputFiles/craneDan1/",
 			"scaleFactor" : 50,
 			"offset" : [-150,118,0],
 			"breakingThreshold" : 20000,
