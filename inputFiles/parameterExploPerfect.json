@@ -1,7 +1,7 @@
 {
 	"ground" : true,
 	"dt" : 0.0041166666,
-
+	"singleStep" : true,
 	"bulletObjects" : [
 		{
 			"mass" : 0,

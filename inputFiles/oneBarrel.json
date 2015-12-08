@@ -92,11 +92,11 @@
 ",
 	
 	"testImpulse" : {
-		"vertexIndex" : 1275,
+		"vertexIndex" : 1181,//1275,
 		"invertNormal" : true,
 		"maxScale" : 3000
 	}	,
-
-	"eye" : [ 0, 50, 150]
+//y = 50
+	"eye" : [ 0, 50, 160] //90
 	
 }

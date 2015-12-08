@@ -1,8 +1,8 @@
 {
 	"ground" : true,
 	"dt" : 0.0041166666,
-	"singleStep" : true,
-	"bulletObjects" : [
+
+/*	"bulletObjects" : [
 		{
 			"mass" : 0,
 			"shape" : "box",
@@ -47,65 +47,19 @@
 "
 			
 		}
-	],
+	],*/
 	"plasticBodies" : [
 		{
-			"directory" : "inputFiles/barrel2",
+			"directory" : "inputFiles/crownVic2",
 			"offset" : [0,3,0],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
-			"plasticityRate" : 0.05,
+			"plasticityImpulseScale" : 4.8e8,
+			"plasticityImpulseYield" : 4e-12,
+			"plasticityKernelScale" : 0.2,
+			"plasticityRate" : 0.005,
 			"useFaceNormals" : false,
 			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,
-			"shadingXml" : "
 
-<bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
-
-</bsdf>
-</bsdf>
-"
-
-		},
-		{
-			"directory" : "inputFiles/barrel2",
-			"offset" : [0.3,4.1,0.35],
-			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
-			"plasticityRate" : 0.05,
-			"useFaceNormals" : false,
-			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,			
-			"shadingXml" : "
-
-<bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
-
-</bsdf>
-</bsdf>
-"
-
-		},
-		{
-			"directory" : "inputFiles/barrel2",
-			"offset" : [-0.2,5,-0.4],
-			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
-			"plasticityRate" : 0.05,
-			"useFaceNormals" : false,
-			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,	
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
@@ -135,7 +89,14 @@
     </texture>
   </bsdf>
 </bsdf>
-"
+",
 	
+	"testImpulse" : {
+		"vertexIndex" : 2585,//1275,
+		"invertNormal" : true,
+		"maxScale" : 8
+	}	,
+//y = 50
+	"eye" : [ -4.3, 3.23, -1.82] //90
 	
 }

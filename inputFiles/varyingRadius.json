@@ -2,6 +2,7 @@
 	"ground" : true,
 	"dt" : 0.0041166666,
 	"singleStep" : true,
+
 	"bulletObjects" : [
 		{
 			"mass" : 0,
@@ -51,68 +52,104 @@
 	"plasticBodies" : [
 		{
 			"directory" : "inputFiles/barrel2",
+			"offset" : [0,3,-2],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 8.8e1,
+			"plasticityImpulseYield" : 4e-4,
+			"plasticityKernelScale" : 1.0,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"useExampleColors" : true,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/barrel2",
+			"offset" : [0,3,-1],
+			"scaleFactor" : 0.01,
+			"plasticityImpulseScale" : 8.8e1,
+			"plasticityImpulseYield" : 4e-4,
+			"plasticityKernelScale" : 0.02,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"useVolumetricCollisions" : false,
+			"useExampleColors" : true,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/barrel2",
 			"offset" : [0,3,0],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
+			"plasticityImpulseScale" : 8.8e1,
 			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityKernelScale" : 0.01,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,
+			"useExampleColors" : true,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
-
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
 </bsdf>
 </bsdf>
 "
 
 		},
-		{
+{
 			"directory" : "inputFiles/barrel2",
-			"offset" : [0.3,4.1,0.35],
+			"offset" : [0,3,1],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
+			"plasticityImpulseScale" : 8.8e1,
 			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityKernelScale" : 0.008,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,			
+			"useExampleColors" : true,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
-
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
 </bsdf>
 </bsdf>
 "
 
 		},
-		{
+{
 			"directory" : "inputFiles/barrel2",
-			"offset" : [-0.2,5,-0.4],
+			"offset" : [0,3,2],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
+			"plasticityImpulseScale" : 8.8e1,
 			"plasticityImpulseYield" : 4e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityKernelScale" : 0.001,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"useVolumetricCollisions" : false,
-			"restitutionExponent" : 0,	
+			"useExampleColors" : true,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
-<bsdf type=\"phong\" >
-
-<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
-
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
 </bsdf>
 </bsdf>
 "

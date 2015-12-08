@@ -226,7 +226,9 @@ void PlasticPiece::skinMeshVaryingBarycentricCoords(
 		  for(auto k : range(numNodes)){
 			translation += barycentricCoordinates(i,k)*
 			  exampleGraph.nodes[k].transformations[j].translation;
-			if(rotationCoeffs.dot(exampleGraph.nodes[k].transformations[j].rotation.coeffs())){
+			if(exampleGraph.nodes[0].transformations[j].rotation.coeffs().dot(
+					exampleGraph.nodes[k].transformations[j].rotation.coeffs())){
+
 			  rotationCoeffs += barycentricCoordinates(i,k)*
 				exampleGraph.nodes[k].transformations[j].rotation.coeffs();
 			} else {

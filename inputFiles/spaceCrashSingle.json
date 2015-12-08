@@ -48,16 +48,16 @@
 			"directory" : "inputFiles/tieFighter/",
 			"offset" : [-30,30,0],
 			"scaleFactor" : 0.08,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 2e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"restitution" : 0.8,
 			//"useVolumetricCollisions" : false,
 			"constantVelocity" : [30, -30, 10],
 			"constantVelocityFrames" : 3,
-			"breakingThreshold" : 15000,
+			"breakingThreshold" : 12000,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
@@ -78,16 +78,16 @@
 		"axis" : [1, 1, 0]
 	},
 			"scaleFactor" : 0.08,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 2e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"restitution" : 0.8,
 			//"useVolumetricCollisions" : false,
 			"constantVelocity" : [5, -30, 30],
 			"constantVelocityFrames" : 3,
-	        "breakingThreshold" : 15000,
+	        "breakingThreshold" : 12000,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
@@ -108,16 +108,16 @@
 		"axis" : [1, 0, 0]
 	},
 			"scaleFactor" : 0.08,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 2e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"restitution" : 0.8,
 			//"useVolumetricCollisions" : false,
 			"constantVelocity" : [-10, -30, -36],
 			"constantVelocityFrames" : 3,
-	        "breakingThreshold" : 15000,
+	        "breakingThreshold" : 12000,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">
@@ -138,16 +138,106 @@
 		"axis" : [1, 0, 0.3]
 	},
 			"scaleFactor" : 0.08,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 2e-4,
-			"plasticityKernelScale" : 0.015,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
 			"restitution" : 0.8,
 			//"useVolumetricCollisions" : false,
 			"constantVelocity" : [-20, -30, 15],
 			"constantVelocityFrames" : 3,
-	        "breakingThreshold" : 15000,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter2/",
+			"offset" : [-15,15,70],
+	"rotation" : {
+		"angle" : 2,
+		"axis" : [1, 0.3, 0.3]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [20, -30, -25],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [30,30,40],
+	"rotation" : {
+		"angle" : 1,
+		"axis" : [1, 1, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [-25, -35, -5],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [-30,30,40],
+	"rotation" : {
+		"angle" : 1,
+		"axis" : [1, 1, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [25, -35, -5],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
 			"shadingXml" : "
 
 <bsdf type=\"twosided\">

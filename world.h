@@ -17,6 +17,10 @@ namespace Json{ class Value;}
 
 class World{
   public:
+
+  World()
+	:bulletWorld{nullptr, nullptr, nullptr, nullptr}
+  {} //default construct to nothing, although the bulletWorld will alloc stuff... stupid.
   
   World(std::string filename);
   World(const World& other) = delete;  //no moving or copying

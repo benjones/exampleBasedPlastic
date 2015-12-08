@@ -1,6 +1,7 @@
 {
 	"ground" : true,
 	"dt" : 0.0041166666,
+	"singleStep" : true,
 
 	"bulletObjects" : [
 		{
@@ -53,8 +54,8 @@
 			"directory" : "inputFiles/barrel2",
 			"offset" : [0,3,0],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
+			"plasticityImpulseScale" : 4.8e2,
+			"plasticityImpulseYield" : 4e-5,
 			"plasticityKernelScale" : 0.015,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
@@ -76,8 +77,8 @@
 			"directory" : "inputFiles/barrel2",
 			"offset" : [0.3,4.1,0.35],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
+			"plasticityImpulseScale" : 4.8e2,
+			"plasticityImpulseYield" : 4e-5,
 			"plasticityKernelScale" : 0.015,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,
@@ -99,8 +100,8 @@
 			"directory" : "inputFiles/barrel2",
 			"offset" : [-0.2,5,-0.4],
 			"scaleFactor" : 0.01,
-			"plasticityImpulseScale" : 4.8e1,
-			"plasticityImpulseYield" : 4e-4,
+			"plasticityImpulseScale" : 4.8e2,
+			"plasticityImpulseYield" : 4e-5,
 			"plasticityKernelScale" : 0.015,
 			"plasticityRate" : 0.05,
 			"useFaceNormals" : false,

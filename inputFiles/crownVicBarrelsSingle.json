@@ -2,7 +2,8 @@
 	"ground" : true,
 	"dt" : 0.005,//0.0166666666666666666,
 	"makeBarrels" : true,
-
+	"singleStep" : true,
+	"duration" : 6.0,
 	"bulletObjects" : [
 		{
 			"mass" : 0,

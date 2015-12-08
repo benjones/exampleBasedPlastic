@@ -93,7 +93,7 @@ World::World(std::string filename)
 	RB.bulletBody->setRestitution(0.5);
 	//RB.bulletBody->setFriction(0.8);
 	if(!root["groundFriction"].isNull()){
-	  RB.bulletBody->setFriction(root.get("groundFriction", 0.8).asDouble());
+	  RB.bulletBody->setFriction(root.get("groundFriction", 0.99).asDouble());
 	}
 	if(!root["groundRestitution"].isNull()){
 	  RB.bulletBody->setRestitution(root["groundRestitution"].asDouble());

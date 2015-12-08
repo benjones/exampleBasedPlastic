@@ -24,9 +24,9 @@ OPT = -O2 -g
 #-----------------------------------------
 #-----------------------------------------
 
-TARGETS = fracture impulseTester
+TARGETS = fracture impulseTester libdestruction.a
 
-OBJECTS =   main.o world.o jsoncpp.o \
+OBJECTS =  world.o jsoncpp.o \
 rigidBody.o  exampleGraph.o \
 plasticPiece.o plasticBody.o
 
@@ -92,8 +92,11 @@ clean:
 #-----------------------------------------
 #-----------------------------------------
 
-fracture: $(OBJECTS) $(HEADERS)
-	$(CC) $(LDOPTS) -o fracture $(OBJECTS) $(LIBS) 
+libdestruction.a: $(OBJECTS) main.o
+	ar rcs libdestruction.a $(OBJECTS)
+
+fracture: libdestruction.a main.cpp
+	$(CC) $(LDOPTS) -o fracture main.o $(LIBS) -L. -ldestruction 
 
 impulseTester: $(ITOBJECTS)
 	$(CC) $(LDOPTS) -o impulseTester $(ITOBJECTS) $(LIBS) -framework OpenGL -framework GLUT -lpng

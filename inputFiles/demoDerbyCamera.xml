@@ -3,14 +3,14 @@
 </integrator>
 
 <sensor type="perspective">
-                <float name="farClip" value="1241.42"/>
+                <float name="farClip" value="1000.42"/>
                 <float name="focusDistance" value="10.5293"/>
                 <float name="fov" value="57.8224"/>
                 <string name="fovAxis" value="x"/>
                 <float name="nearClip" value="2.41421"/>
                 <transform name="toWorld">
 
-                        <lookat target="0, 10, 0" origin="0, 10, -40" up="0, 1, 0"/>
+                        <lookat target="0, 1, 0" origin="-17, 8, 3" up="0, 1, 0"/>
                 </transform>
 		<sampler type="sobol">
 			<integer name="sampleCount" value="512"/>
@@ -26,4 +26,22 @@
                 </film>
 </sensor>
 
+<emitter type="spot"> <transform name="toWorld">
+<lookat origin="-10, 10, 5" target="0, 1, 0"/> </transform>
+<spectrum name="intensity" value="200" />
+<float name="cutoffAngle" value="45" />
+</emitter>
+
+
+<emitter type="spot"> <transform name="toWorld">
+<lookat origin="-5, 20, 10" target="0, 1, 0"/> </transform>
+<spectrum name="intensity" value="200" />
+<float name="cutoffAngle" value="45" />
+</emitter>
+
+<emitter type="spot"> <transform name="toWorld">
+<lookat origin="-5, 20, -10" target="0, 1, 0"/> </transform>
+<spectrum name="intensity" value="200" />
+<float name="cutoffAngle" value="45" />
+</emitter>
 

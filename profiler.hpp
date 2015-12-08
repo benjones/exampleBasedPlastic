@@ -61,6 +61,18 @@ namespace benlib{
 	  }
 	}
 
+	template <typename units>
+	double totalTime() const{
+	  return std::chrono::duration_cast<units>(std::accumulate(counts.begin(), 
+			  counts.end(),
+			  duration<double>{})).count();
+	  
+	}
+
+	void clear(){
+	  for(auto & c : counts){ c = duration<double>{0};}
+	}
+
   private:
 	void addTime(size_t index, duration<double> diff){
 	  counts[index] += diff;

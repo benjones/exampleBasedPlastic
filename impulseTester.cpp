@@ -176,7 +176,8 @@ int main(int argc, char** argv){
 	}
   }
   normalSoFar.normalize();
-  impulseInfo.initialImpulse = plasticBody.plasticityImpulseYield*normalSoFar;
+  impulseInfo.initialImpulse = //plasticBody.plasticityImpulseYield*
+	normalSoFar;
   if(impulseIn.get("invertNormal", false).asBool()){
 	impulseInfo.initialImpulse *= -1;
   }
@@ -246,7 +247,8 @@ void reshape(int width, int height){
 
 void drawTriangles(bool changeColor){
   RMMatrix3d drawableColors(5, 3);
-  drawableColors << 1, 0, 0,
+  drawableColors << 
+	1, 0, 0,
 	0, 1, 0,
 	0, 0, 1,
 	0, 0, 0,
@@ -367,7 +369,7 @@ void displayFrame(){
 void drawArrow(const Eigen::Vector3d& direction, const Eigen::Vector3d& pointPosition){
   
   auto tangents = getTangents(direction);
-  double length = 10*direction.norm();
+  double length = (direction.norm()/impulseInfo.maxScale);
   double tipHeight = length/10.0;
   double tipWidth = tipHeight;
   double cylinderWidth = tipWidth*0.5;
@@ -422,6 +424,7 @@ void specialInput(int key, int x, int y){
 	camera.eye -= 0.1*(camera.center - camera.eye);
     glutPostRedisplay();
   }
+  std::cout << camera.eye << std::endl;
 }
 
 
@@ -548,8 +551,8 @@ void idleFunc(){
 
   ++currentFrame;
   if(dumpMitsuba && currentFrame < (nScaleTimesteps + 2*nSpiralTimesteps) ){
-	dumpPng();
-	//dumpMitsubaFrame();
+	//dumpPng();
+	dumpMitsubaFrame();
   }
   glutPostRedisplay();
 }
@@ -587,8 +590,14 @@ void dumpMitsubaFrame(){
   outs << "<shape type=\"ply\" ><string name=\"filename\" value=\""
 	   << meshFilename << "\" />\n"
 	"<boolean name=\"faceNormals\" value=\"true\" /><boolean name=\"srgb\" value=\"true\" />\n"
+	"<bsdf type=\"mixturebsdf\"><string name=\"weights\" value=\"0.5, 0.5\"/>\n"
 	"<bsdf type=\"twosided\"><bsdf type=\"diffuse\" >\n"
-	"<texture name=\"reflectance\" type=\"vertexColors\" /></bsdf></bsdf></shape>\n";
+	"<texture name=\"reflectance\" type=\"vertexColors\" /></bsdf></bsdf>\n"
+	"<bsdf type=\"twosided\"><bsdf type=\"diffuse\">\n"
+	"<texture name=\"reflectance\" type=\"wireframe\" >\n"
+	"<spectrum name=\"interiorColor\" value=\"1.0\" /><spectrum name=\"color1\" value=\"0.0\" />\n"
+	"</texture></bsdf></bsdf></bsdf>\n"
+	"</shape>\n";
 	   
   //arrow
   Eigen::Vector3d vertexPosition = 
@@ -624,11 +633,11 @@ void dumpMitsubaFrame(){
 	"</transform></shape>\n";
 
 
-  outs << "<emitter type=\"constant\" ><spectrum name=\"radiance\" value=\"0.1\" /></emitter>\n";
-  outs << "<emitter type=\"point\"><spectrum name=\"radiance\" value=\"1\" />\n"
-	"<point name=\"position\" x=\"" << camera.eye.x() << "\" y=\"" 
-	   << camera.eye.y() << "\" z=\"" << camera.eye.z() << "\" />\n"
-	"</emitter>";
+  outs << "<emitter type=\"constant\" ><spectrum name=\"radiance\" value=\"1\" /></emitter>\n";
+  //outs << "<emitter type=\"point\"><spectrum name=\"radiance\" value=\"1\" />\n"
+  //	"<point name=\"position\" x=\"" << camera.eye.x() << "\" y=\"" 
+  //	   << camera.eye.y() << "\" z=\"" << camera.eye.z() << "\" />\n"
+  //	"</emitter>";
   outs << "</scene>" << std::endl;
 
   

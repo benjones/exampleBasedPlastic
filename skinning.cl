@@ -30,6 +30,11 @@ __kernel void skinVertexVarying(
 	  
 	  float3 interpolatedTranslation = (float3)(0,0,0);
 	  float4 interpolatedRotation = (float4)(0,0,0,0);
+	  float4 readRotation0 = (float4)(
+			rotations[4*(j*numNodes)],
+			rotations[4*(j*numNodes) + 1],
+			rotations[4*(j*numNodes) + 2],
+			rotations[4*(j*numNodes) + 3]);
 	  for(int k = 0; k < numNodes; ++k){
 		float bc = barycentricCoordinates[i*numNodes + k];
 		float3 readTranslation = (float3)(
@@ -43,7 +48,7 @@ __kernel void skinVertexVarying(
 			rotations[4*(j*numNodes + k) + 2],
 			rotations[4*(j*numNodes + k) + 3]);
 		interpolatedTranslation += bc*readTranslation;
-		if(dot(readRotation, interpolatedRotation) > 0){
+		if(dot(readRotation, readRotation0) > 0){
 		  interpolatedRotation += bc*readRotation;
 		} else {
 		  interpolatedRotation -= bc*readRotation;

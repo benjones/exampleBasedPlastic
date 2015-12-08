@@ -89,6 +89,8 @@ float lightAmbient[4] = {.2f, .2f, .2f, 1.0f};
 bool useBarycentricColors;
 bool drawImpulses;
 
+
+
 int main(int argc, char** argv){
   if(argc < 2){
     std::cout << "Usage: ./openglViewer plyFormatString [barycentricCoordinatesString] [impulse files string]\n"
@@ -129,10 +131,17 @@ int main(int argc, char** argv){
   glEnable(GL_DEPTH_TEST);
 
   center = Vector3{0, 1, 0};
-  eye = Vector3{0, 1, 4};
+  std::ifstream eyeIn(".eye.txt");
+  if(eyeIn.good()){
+	eyeIn >> eye(0) >> eye(1) >> eye(2);
+  } else {
+	eye = Vector3{0, 1, 4};
+  }
+  std::cout << "eye: " << eye << std::endl;
   upVector = Vector3{0, 1, 0};
-
+  //glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
   glutMainLoop();
+
 }
 
 //number of particles subject to change
@@ -402,13 +411,15 @@ void displayFrame(){
     glutSwapBuffers();
 	//writeMitsuba();
 	glutSetWindowTitle((std::string("Mesh viewer: Frame ") + std::to_string(currentFrame)).c_str());
+	std::ofstream eyeOut(".eye.txt");
+	eyeOut << eye(0) << " " << eye(1) << " " << eye(2) << std::endl;
 }
 
 void keyInput(unsigned char key, int x, int y) {
     switch (key) {
     case 27: // ESC
-        exit(0);
-
+	  exit(0);
+	  break;
     case '0':
         currentFrame = 1;
         specialInput(GLUT_KEY_LEFT, 0, 0);
