@@ -7,7 +7,7 @@
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
-#include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
+
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <iostream>
@@ -22,6 +22,7 @@ using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3i = Eigen::Matrix<int,   Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
+
 
 
 //write out an obj for this object
@@ -105,66 +106,28 @@ void RigidBody::dump(std::string filename){
   } 
   case RB_PLANE:{
 	auto* planeShape = dynamic_cast<btStaticPlaneShape*>(shape.get());
-	auto normal = planeShape->getPlaneNormal();
-	auto localPoint = -planeShape->getPlaneConstant()*normal;
-	
-	auto span1 = normal.cross(btVector3{1, 0, 0});
-	if(span1.length2() < 1e-3){ //normal is nearly parallel to 1, 0, 0, so don't use it
-	  span1 = normal.cross(btVector3{0, 0, 1});
-	}
-	auto span2 = span1.cross(normal);
 	//auto printPoint = [&](const btVector3& p){ 
 	//outs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << std::endl;
 	//};
-	RMMatrix3f vertices(4, 3);
+	auto vertices = getPlaneVertices(planeShape);
 	Eigen::Matrix<float, 4, 1> us;
 	Eigen::Matrix<float, 4, 1> vs;
-	auto tmp = localPoint - 100*span1 - 100*span2;
-	//printPoint(tmp);
-	vertices(0,0) = tmp[0];
-	vertices(0,1) = tmp[1];
-	vertices(0,2) = tmp[2];
 	us(0) = 0;
 	vs(0) = 0;
-
-
-	tmp = localPoint + 100*span1 - 100*span2;
-	//printPoint(tmp);
-	vertices(1,0) = tmp[0];
-	vertices(1,1) = tmp[1];
-	vertices(1,2) = tmp[2];
 	
 	us(1) = 1;
 	vs(1) = 0;
 
-
-	tmp = localPoint + 100*span1 + 100*span2;
-	//printPoint(tmp);
-	vertices(2,0) = tmp[0];
-	vertices(2,1) = tmp[1];
-	vertices(2,2) = tmp[2];
-
 	us(2) = 1;
 	vs(2) = 1;
-
-	tmp = localPoint - 100*span1 + 100*span2;
-	//printPoint(tmp);
-	vertices(3,0) = tmp[0];
-	vertices(3,1) = tmp[1];
-	vertices(3,2) = tmp[2];
 
 	us(3) = 0;
 	vs(3) = 1;
 
 	RMMatrix3i triangles(2, 3);
-	//check winding, which is probably unnecessary since we know the cross product ordering...
-	if(normal.dot(span1.cross(span2)) > 0){
-	  //outs << "f 1 2 3\nf 1 3 4" << std::endl;
-	  triangles << 0, 1, 2, 0, 2, 3;
-	} else {
-	  //outs << "f 1 3 2\nf 1 4 3" << std::endl;
-	  triangles << 0, 2, 1, 0, 3, 2;
-	}
+	//fuck it... 2 sided
+	triangles << 0, 1, 2, 0, 2, 3;
+
 	writePLYWithTexture(outs, vertices, us, vs, triangles);
 	break;
   }

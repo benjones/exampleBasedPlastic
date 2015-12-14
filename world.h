@@ -18,13 +18,11 @@ namespace Json{ class Value;}
 class World{
   public:
 
-  World()
-	:bulletWorld{nullptr, nullptr, nullptr, nullptr}
-  {} //default construct to nothing, although the bulletWorld will alloc stuff... stupid.
+  //  World() {} 
   
   World(std::string filename);
-  World(const World& other) = delete;  //no moving or copying
-  World(World&& other) = delete;
+  World(const World& other) = delete;  //no copying
+  World(World&& other) = delete;//moving only
 
   World& operator=(World&& other) = delete;
   World& operator=(const World& other) = delete;
@@ -57,7 +55,7 @@ class World{
   //maybe using the MLCP solver makes sense, since it's supposed to give higher fidelity results
   std::unique_ptr<btSequentialImpulseConstraintSolver> bulletSolver;
 
-  btDiscreteDynamicsWorld bulletWorld;
+  std::unique_ptr<btDiscreteDynamicsWorld> bulletWorld;
 
   bool ground;
   double groundHeight;

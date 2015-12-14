@@ -28,20 +28,21 @@ using benlib::enumerate;
 
 
 World::World(std::string filename)
-  :broadphaseInterface
-   (std::unique_ptr<btBroadphaseInterface>(new btDbvtBroadphase())),
-   collisionConfiguration
-   (std::unique_ptr<btCollisionConfiguration>(new btDefaultCollisionConfiguration())),
-   dispatcher
-   (std::unique_ptr<btCollisionDispatcher>(new btCollisionDispatcher(collisionConfiguration.get()))),
-   bulletSolver
-   (std::unique_ptr<btSequentialImpulseConstraintSolver>
-    (new btSequentialImpulseConstraintSolver())),
-   bulletWorld(dispatcher.get(), 
-	       broadphaseInterface.get(), 
-	       bulletSolver.get(), 
-	       collisionConfiguration.get()),
-  currentFrame(0)
+  :broadphaseInterface{std::unique_ptr<btBroadphaseInterface>{
+	new btDbvtBroadphase()}},
+   collisionConfiguration{std::unique_ptr<btCollisionConfiguration>{
+	   new btDefaultCollisionConfiguration()}},
+   dispatcher{std::unique_ptr<btCollisionDispatcher>{
+	   new btCollisionDispatcher{collisionConfiguration.get()}}},
+   bulletSolver{std::unique_ptr<btSequentialImpulseConstraintSolver>{
+	   new btSequentialImpulseConstraintSolver()}},
+   bulletWorld{std::unique_ptr<btDiscreteDynamicsWorld>{
+	   new btDiscreteDynamicsWorld{
+	   dispatcher.get(), 
+		 broadphaseInterface.get(), 
+		 bulletSolver.get(), 
+		 collisionConfiguration.get()}}},
+   currentFrame{0}
 {
 
   initCL();
@@ -98,7 +99,7 @@ World::World(std::string filename)
 	if(!root["groundRestitution"].isNull()){
 	  RB.bulletBody->setRestitution(root["groundRestitution"].asDouble());
 	}
-    bulletWorld.addRigidBody(RB.bulletBody.get());
+    bulletWorld->addRigidBody(RB.bulletBody.get());
 
   }
 
@@ -118,7 +119,7 @@ World::World(std::string filename)
   }
 
 
-  bulletWorld.setGravity(gravity);
+  bulletWorld->setGravity(gravity);
   for(auto i : range(bulletObjectsIn.size())){
     std::cout << "adding rb: " << i << std::endl;
     auto bo = bulletObjectsIn[i];
@@ -212,7 +213,7 @@ World::World(std::string filename)
 	
 	RB.bulletBody->setUserIndex(-1);
 	//RB.bulletBody->setFriction(0.8);
-    bulletWorld.addRigidBody(RB.bulletBody.get());
+    bulletWorld->addRigidBody(RB.bulletBody.get());
     
   }
 
@@ -321,7 +322,7 @@ void World::timeStepDynamicSprites(){
   }
   {
 	auto timer = profiler.timeName("bullet step 1");
-	bulletWorld.stepSimulation(dt, 10, dt);
+	bulletWorld->stepSimulation(dt, 10, dt);
   }
   {
 	auto time = profiler.timeName("collect impulses");
@@ -387,7 +388,7 @@ void World::timeStepDynamicSprites(){
   {
 	if(!singleStep){
 	  auto timer = profiler.timeName("bullet step 2");
-	  bulletWorld.stepSimulation(dt, 10, dt);
+	  bulletWorld->stepSimulation(dt, 10, dt);
 	}
   }
   {

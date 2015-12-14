@@ -241,14 +241,14 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 	piece.updateAabbs();//bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
-	bulletWorld.addRigidBody(piece.bulletBody.get());
+	bulletWorld->addRigidBody(piece.bulletBody.get());
   }
   //setup constraint stuff
   computeConstraints();
   std::cout << "num constraints: " << constraints.size() << std::endl;
   updateConstraints(); //compute the correct positions
   for(auto& c : constraints){
-	bulletWorld.addConstraint(std::get<3>(c).get(), true);
+	bulletWorld->addConstraint(std::get<3>(c).get(), true);
   }
   
 }
