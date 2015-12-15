@@ -75,7 +75,9 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
   plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
   jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+  localDeformationScale = poi.get("localDeformationScale", 0).asDouble();
 
+  
   useVolumetricCollisions = poi.get("useVolumetricCollisions", true).asBool();
 
 
@@ -461,6 +463,8 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
   }
 
 
+  std::normal_distribution<> normalDist(0.5, 0.5);
+	
   for(auto& tup : manifoldPoints){
 	const auto* body = std::get<0>(tup);
 	auto& manPoint = std::get<1>(tup);
@@ -485,6 +489,8 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 
 	auto deltaS = projectSingleImpulse(piece, impulseAtContact, vInd);
 
+
+	
 	if(deltaS.squaredNorm() > 0.000001){
 	  
 	  computeGeodesicDistances(pieceIndex, vInd, 1.0/plasticityKernelScale);
@@ -496,6 +502,9 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 		  auto scale = 
 			Kernels::simpleCubic(plasticityKernelScale*pp.geodesicDistances[i]);
 		  pp.deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
+
+		  pp.localOffsets.row(i) += localDeformationScale*normalDist(randGen)*scale*impulseAtContact;
+		  
 		}
 	  }
 	}

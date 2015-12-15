@@ -1,5 +1,6 @@
 #pragma once
 
+#include <random>
 
 #include "plasticPiece.h"
 #include "exampleGraph.h"
@@ -64,7 +65,8 @@ public:
 
   double density, plasticityImpulseYield, plasticityImpulseScale,
 	plasticityKernelScale, plasticityRate, jacobianAlpha, scaleFactor,
-	restitution, mass, breakingThreshold, restitutionAddition, restitutionExponent;
+	restitution, mass, breakingThreshold, restitutionAddition, restitutionExponent,
+	localDeformationScale;
 
   bool useVolumetricCollisions;
 
@@ -98,5 +100,9 @@ public:
 
   cl::Buffer deviceTranslations, deviceRotations, 
 	deviceBoneWeights, deviceBoneIndices, deviceUnskinnedPositions;
+
+
+  std::mt19937 randGen;
+  
 
 };

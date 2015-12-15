@@ -625,6 +625,9 @@ void PlasticPiece::initialize(const std::string& directory,
   currentBulletVertexPositions = 
 	scaleFactor*tetmeshVertices;
 
+  localOffsets.resize(currentBulletVertexPositions.rows(), 3);
+  localOffsets.setZero();
+  
   useVolumetricCollisions = parent.useVolumetricCollisions;
 
   //assert(piece.currentBulletVertexPositions.allFinite());
@@ -1173,9 +1176,12 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
   
 
   cl::copy(world.queue, deviceSkinnedPositions, hostSkinnedPositions.begin(), hostSkinnedPositions.end());
+
   std::copy(hostSkinnedPositions.begin(), hostSkinnedPositions.end(),
 	  currentBulletVertexPositions.data());
 
+  currentBulletVertexPositions += localOffsets.template cast<double>();
+  
   //skin the cut vertices
   for(auto i : range(splittingPlaneVertices.rows())){
 	auto& inds = std::get<0>(clippingPlaneTetInfo[i]);

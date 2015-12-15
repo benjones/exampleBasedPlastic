@@ -11,6 +11,7 @@
 	"jacobianAlpha" : 1.0,
 	"scaleFactor" : 0.01,
 	"useVolumetricCollisions" : false,
+	"localDeformationScale" : 0.001,
 	"shadingXml" : "
 
 <bsdf type=\"twosided\">

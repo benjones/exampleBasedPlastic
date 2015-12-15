@@ -61,6 +61,7 @@
 			"constantVelocity" : [7.4, 0, -7.5],
 			"constantVelocityFrames" : 45,
 			"density" : 6000,
+			"localDeformationScale" : 0.02,
 			"useVolumetricCollisions" : false,
 
 	"shadingXml" : "

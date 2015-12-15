@@ -61,6 +61,8 @@
 			"constantVelocity" : [10, 0, 0],
 			"constantVelocityFrames" : 30,
 			"density" : 6000,
+			"localDeformationScale" : 0.05,
+			
 			"useVolumetricCollisions" : false,
 
 	"shadingXml" : "
@@ -91,7 +93,9 @@
 			"plasticityRate" : 0.1,
 			"constantVelocity" : [0, 0, -10],
 			"constantVelocityFrames" : 30,
-			"density" : 6000,
+	"density" : 6000,
+				"localDeformationScale" : 0.05,
+
 			"useVolumetricCollisions" : false,
 
 	"shadingXml" : "
@@ -122,7 +126,8 @@
 			"plasticityRate" : 0.1,
 			"constantVelocity" : [0, 0, 10],
 			"constantVelocityFrames" : 30,
-			"density" : 6000,
+	"density" : 6000,
+					"localDeformationScale" : 0.05,
 			"useVolumetricCollisions" : false,
 
 	"shadingXml" : "
@@ -154,6 +159,7 @@
 			"constantVelocity" : [10, 0, -5],
 			"constantVelocityFrames" : 30,
 			"density" : 6000,
+							"localDeformationScale" : 0.05,
 			"useVolumetricCollisions" : false,
 
 	"shadingXml" : "
@@ -183,7 +189,8 @@
 			"plasticityKernelScale" : 0.3,
 			"plasticityRate" : 0.1,
 			"constantVelocity" : [10, 0, 5],
-			"constantVelocityFrames" : 60,
+	"constantVelocityFrames" : 60,
+					"localDeformationScale" : 0.05,
 			"density" : 6000,
 			"useVolumetricCollisions" : false,
 
@@ -215,6 +222,7 @@
 			"plasticityRate" : 0.1,
 			"constantVelocity" : [25, 0, 0],
 			"constantVelocityFrames" : 60,
+							"localDeformationScale" : 0.05,
 			"density" : 6000,
 			"useVolumetricCollisions" : false,
 

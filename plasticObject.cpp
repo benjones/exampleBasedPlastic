@@ -7,27 +7,15 @@
 #include <numeric> //accumulate
 #include <deque>
 #include <set>
+#include <random>
 
 #include <tbb/tbb.h>
 
-//#include <skeleton.h>
-//#include <read_BF.h>
-//#include <lbs_matrix.h>
-//#include <gather_transformations.h>
-//#include <columnize.h>
 
 #include "readDMAT.h"
-//#include <igl/readOBJ.h>
-//#include <igl/writeOBJ.h>
 #include "readMESH.h"
-//#include <igl/cotmatrix.h>
-//#include <igl/adjacency_matrix.h>
-//#include <igl/sum.h>
-//#include <igl/diag.h>
 
 #include "plyIO.hpp"
-
-//#include <Eigen/QR>
 
 #include "utils.h"
 
@@ -574,7 +562,11 @@ btVector3 PlasticObject::getLocalDeformationVectorFromImpulse(const btManifoldPo
   return displacementToApply;
 }
 
+
+
 bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
+
+  
   if(plasticityImpulseScale == 0){
 	return false;
   }
@@ -617,8 +609,6 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 		Eigen::AngleAxis<double> currentRotation{perVertexRotations[nodeIndex*numRealBones +
 																	weightIndex]};
 		
-		//		std::cout << "node rotaiton: " << nodeRotation.angle() << ", " << nodeRotation.axis() << std::endl;
-		//		std::cout << "current rotation: " << currentRotation.angle() << ", " << currentRotation.axis()  << std::endl;
 		jacobian.col(nodeIndex) += 
 		  boneWeights(vInd, weightIndex)*
 		  (node.transformations[boneIndex].translation +
@@ -629,20 +619,11 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 	  
 	}
 	
-	//	std::cout << "jacobian: " << jacobian << std::endl;
-	//scale the columns
-	//std::cout << "col norms: " << jacobian.colwise().norm() << std::endl;
-
-	//jacobian = (jacobian*perExampleScale.asDiagonal().inverse()).eval();
-	
 	Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
 										  Eigen::ComputeThinU | 
 										  Eigen::ComputeThinV);
-	//	std::cout << "singular values: " << svd.singularValues() << std::endl;
-	//	Eigen::VectorXd modifiedSingularValues = sqrt(svd.singularValues().array());
 
 	Eigen::VectorXd singularVectorContribution = 
-	  //(svd.matrixV()*svd.singularValues())*impulseAtContact.norm();
 	  svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
 											 svd.matrixU().transpose()*
 											 impulseAtContact).normalized();
@@ -651,26 +632,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 
 	Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
 	  (1.0 - jacobianAlpha)*jacobianTransposeContribution;
-	//	  modifiedSingularValues.asDiagonal()*
-	//	  svd.matrixU().transpose()*
-	//	  impulseAtContact;
 
-	  //(1.0*jacobian.colwise().norm().maxCoeff())*jacobian.transpose()*impulseAtContact;
-	
-	//std::cout << "deltaS " << deltaS << std::endl;
-	/*	if((impulseAtContact - jacobian*deltaS).norm() > impulseAtContact.norm()){
-	  std::cout << "norm grew from " << impulseAtContact.norm() 
-				<< " to " << (impulseAtContact - jacobian*deltaS).norm() << std::endl;
-	  std::cout << "i - jj^t norm: " << (Eigen::MatrixXd::Identity(jacobian.rows(), jacobian.rows()) -
-										 jacobian*jacobian.transpose()).norm() << std::endl;
-
-	}
-	*/
-	//	deltaS = jacobian.jacobiSvd(Eigen::ComputeThinU | 
-	//								Eigen::ComputeThinV).solve(impulseAtContact -
-	//													   jacobian*deltaS);
-
-  //	std::cout << "deltaS both: " << deltaS << std::endl;
 	
 	//scale it
 	deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
@@ -688,7 +650,7 @@ bool PlasticObject::projectImpulsesOntoExampleManifoldLocally(){
 		deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
 	  }
 	}
-  }
+  } //end loop over man points
 
   //hit the delta with the laplacian to smooth it
   /*for(auto i : range(8)){

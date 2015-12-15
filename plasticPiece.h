@@ -113,8 +113,14 @@ public:
   int numPhysicsVertices; //include the ones that aren't actually part of any
   //tets in this piece
 
-  RMMatrix3d currentBulletVertexPositions;
 
+
+  RMMatrix3d currentBulletVertexPositions;
+  RMMatrix3f localOffsets;
+
+
+
+  
   double mass, volume, scaleFactor;
 
   Eigen::Matrix3d inertiaTensor;
