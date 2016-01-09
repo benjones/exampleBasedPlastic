@@ -1,0 +1,372 @@
+{
+	"ground" : true,
+	"dt" : 0.004,//0.0166666666666666666,
+	"makeBarrels" : false,
+	"duration" : 10.0,
+	"bulletObjects" : [
+		{
+			"mass" : 0,
+			"shape" : "box",
+			"extents" : [7, 3, 5],
+			"offset" : [0, -1.2, 12],
+			"rotation" :  [0.17364817766693033, 0, 0, 0.984807753012208],
+			"shadingXml" : "
+<bsdf type=\"twosided\" >
+  <bsdf type=\"roughdiffuse\">
+    <float name=\"alpha\" value=\"0.6\" />
+    <texture name=\"reflectance\" type=\"bitmap\" >
+      <string name=\"filename\" value=\"concreteTexture.jpg\" />
+      <float name=\"uscale\" value=\"20\" />
+      <float name=\"vscale\" value=\"2\" />
+    </texture>
+   </bsdf>
+</bsdf>
+"
+			
+		},
+{
+			"mass" : 0,
+			"shape" : "box",
+			"extents" : [7, 3, 5],
+			"offset" : [0, -1.2, -12],
+			"rotation" :  [-0.17364817766693033, 0, 0, 0.984807753012208],
+			"shadingXml" : "
+<bsdf type=\"twosided\" >
+  <bsdf type=\"roughdiffuse\">
+    <float name=\"alpha\" value=\"0.6\" />
+    <texture name=\"reflectance\" type=\"bitmap\" >
+      <string name=\"filename\" value=\"concreteTexture.jpg\" />
+      <float name=\"uscale\" value=\"20\" />
+      <float name=\"vscale\" value=\"2\" />
+    </texture>
+   </bsdf>
+</bsdf>
+"
+			
+		}
+	],
+
+
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,30],
+			"rotation" :{
+				"angle" : 0,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, -28],
+			"constantVelocityFrames" : 30,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,-30],
+			"rotation" :{
+				"angle" : 3.14,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, 28],
+			"constantVelocityFrames" : 30,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#11ff11\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,50],
+			"rotation" :{
+				"angle" : 0,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, -25],
+			"constantVelocityFrames" : 40,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,-50],
+			"rotation" :{
+				"angle" : 3.14,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, 25],
+			"constantVelocityFrames" : 30,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,70],
+			"rotation" :{
+				"angle" : 0,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, -25],
+			"constantVelocityFrames" : 70,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#11ff11\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,-70],
+			"rotation" :{
+				"angle" : 3.14,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, 25],
+			"constantVelocityFrames" : 70,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		}
+,
+
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,90],
+			"rotation" :{
+				"angle" : 0,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, -25],
+			"constantVelocityFrames" : 100,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		},
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,-90],
+			"rotation" :{
+				"angle" : 3.14,
+				"axis" : [0,1,0]
+			},
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 5000,
+			"plasticityImpulseYield" : 1.1e-2,
+			"plasticityKernelScale" : 0.025,
+			"plasticityRate" : 0.01,
+			"constantVelocity" : [0, 0, 25],
+			"constantVelocityFrames" : 100,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#ff1111\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		}/*,
+	{
+			"directory" : "inputFiles/newCrate/",
+			"offset" : [-1.7, 3.25, -2],
+			"rotation" : {
+				"axis" : [0, 0, 1],
+				"angle" : 1.665
+			},
+			"breakingThreshold" : 100,
+			"plasticityImpulseYield" : 0.006,
+			"plasticityImpulseScale" : 150,
+			"plasticityRate" : 0.2,
+			"plasticityKernelScale" : 0.3,//500.0,
+			"jacobianAlpha" : 1.0,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+<bsdf type=\"roughdiffuse\">
+<float name=\"alpha\" value=\"0.7\" />
+<rgb name=\"reflectance\" value=\"#aaaa22\" />
+</bsdf>
+</bsdf>",
+			
+			"useFaceNormals" : true,
+			"useVolumetricCollisions" : false
+		},
+	{
+			"directory" : "inputFiles/newCrate/",
+			"offset" : [1.7, 3.25, 2.0],
+			"rotation" : {
+				"axis" : [0, 0, 1],
+				"angle" : 1.665
+			},
+			"breakingThreshold" : 100,
+			"plasticityImpulseYield" : 0.006,
+			"plasticityImpulseScale" : 150,
+			"plasticityRate" : 0.2,
+			"plasticityKernelScale" : 0.3,//500.0,
+			"jacobianAlpha" : 1.0,
+			"shadingXml" :
+			"
+<bsdf type=\"twosided\">
+<bsdf type=\"roughdiffuse\">
+<float name=\"alpha\" value=\"0.7\" />
+<rgb name=\"reflectance\" value=\"#aaaa22\" />
+</bsdf>
+</bsdf>",
+			
+			"useFaceNormals" : true,
+			"useVolumetricCollisions" : false
+		}*/
+	],
+	"groundFriction" : 0.6,
+	"groundShadingXml" : "
+<bsdf type=\"twosided\" >
+
+<bsdf type=\"roughdiffuse\">
+  <float name=\"alpha\" value=\"0.7\" />
+  <rgb name=\"reflectance\" value=\"#444444\" />
+</bsdf>
+</bsdf>
+"
+
+}
