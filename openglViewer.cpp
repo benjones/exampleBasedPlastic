@@ -202,12 +202,15 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
 
 
 void drawTriangles(bool changeColor){
-  RMMatrix3d drawableColors(5, 3);
+  RMMatrix3d drawableColors(8, 3);
   drawableColors << 1, 0, 0,
 	0, 1, 0,
 	0, 0, 1,
 	0, 0, 0,
-	1, 1, 1;
+	1, 1, 1,
+	0, 1, 1,
+	1, 1, 0,
+	1, 0, 1;
 
 
   glBegin(GL_TRIANGLES);
