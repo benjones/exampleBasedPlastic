@@ -74,7 +74,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
   plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
   plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
-  jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+  jacobianAlpha = poi.get("jacobianAlpha", 0.0).asDouble();
   localDeformationScale = poi.get("localDeformationScale", 0).asDouble();
 
   
@@ -304,13 +304,13 @@ Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
   const btVector3 displacementLocal = 
 	quatRotate(currentRotation.inverse(), displacementGlobal);
   
-  if(displacementLocal.norm() < plasticityImpulseYield){
+  double yield = displacementLocal.norm() - plasticityImpulseYield;
+  if(yield < 0.0){
 	return Eigen::Vector3d::Zero();
   }
   
   const auto normalizedDisplacement = displacementLocal.normalized();
-  const auto displacementToApply = plasticityImpulseScale*
-	(displacementLocal - plasticityImpulseYield*normalizedDisplacement);
+  const auto displacementToApply = yield*normalizedDisplacement;
   
   return bulletToEigen(displacementToApply);
 
@@ -453,7 +453,8 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 	(1.0 - jacobianAlpha)*jacobianTransposeContribution;
   
   //scale it
-  deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
+  deltaS = plasticityImpulseScale*impulseAtContact.norm()* (deltaS / deltaS.norm());
+  //deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
   return deltaS;
 }
 
@@ -497,7 +498,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	  
 	  //distribute this to evereyone else
 	  for(auto& pp : plasticPieces){
-		pp.framesToSkin = 10;
+		pp.framesToSkin = 1.0/plasticityRate;
 		for(auto i : pp.activeVertices){
 		  auto scale = 
 			Kernels::simpleCubic(plasticityKernelScale*pp.geodesicDistances[i]);
@@ -709,7 +710,7 @@ void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
   plasticityImpulseScale = poi.get("plasticityImpulseScale", 0).asDouble();
   plasticityKernelScale = poi.get("plasticityKernelScale", 1.0).asDouble();
   plasticityRate = poi.get("plasticityRate", 1.0).asDouble();
-  jacobianAlpha = poi.get("jacobianAlpha", 1.0).asDouble();
+  jacobianAlpha = poi.get("jacobianAlpha", 0.0).asDouble();
   scaleFactor = 1;
 
   //offset/rotation set to identity... wait, they don't matter
