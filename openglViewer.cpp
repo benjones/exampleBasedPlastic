@@ -190,7 +190,12 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
 
 				 }*/
 	else{
-	  break;
+	  if(frameNumber == 0 || i >= globalObjs[0].size()){
+		break;
+	  } else {
+		std::cout << "copying object " << i << " from frame 0" << std::endl;
+		globalObjs.back().push_back(globalObjs[0][i]);
+	  }
 	}
 	//	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
 	//	std::cout << "pt 2: " << globalObjs.back().back().pts[1] << std::endl;

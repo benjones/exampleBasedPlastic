@@ -234,8 +234,11 @@ void World::dumpFrame(){
   char fname[80];
 
   for(auto& rigidBody : rigidBodies){
-    sprintf(fname, framestring, objectCount, currentFrame);
-    rigidBody.dump(fname);
+
+	if(currentFrame == 0 || rigidBody.bulletBody->getInvMass() != 0){
+	  sprintf(fname, framestring, objectCount, currentFrame);
+	  rigidBody.dump(fname);
+	}
 	objectCount++;
   }
   
