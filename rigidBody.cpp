@@ -7,6 +7,7 @@
 #include <BulletCollision/CollisionShapes/btCollisionShape.h>
 #include <BulletDynamics/Dynamics/btRigidBody.h>
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
 
 #include <BulletCollision/Gimpact/btGImpactShape.h>
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
@@ -28,13 +29,13 @@ using RMMatrix4i = Eigen::Matrix<int,   Eigen::Dynamic, 4, Eigen::RowMajor>;
 //write out an obj for this object
 void RigidBody::dump(std::string filename){
 
-  std::ofstream outs(filename.c_str());
 
   auto transform = bulletBody->getWorldTransform();
   
   switch(rbType){
   case  RB_BOX:{
-	
+	  std::ofstream outs(filename.c_str());
+
 	//repeat vertices so texturing works better
 	Eigen::Matrix<float, 14, 3, Eigen::RowMajor> vertices;
     
@@ -105,6 +106,8 @@ void RigidBody::dump(std::string filename){
 	break;
   } 
   case RB_PLANE:{
+	  std::ofstream outs(filename.c_str());
+
 	auto* planeShape = dynamic_cast<btStaticPlaneShape*>(shape.get());
 	//auto printPoint = [&](const btVector3& p){ 
 	//outs << "v " << p.x() << ' ' << p.y() << ' ' << p.z() << std::endl;
@@ -132,6 +135,8 @@ void RigidBody::dump(std::string filename){
 	break;
   }
   case RB_TRIMESH:{
+	  std::ofstream outs(filename.c_str());
+
 	std::vector<float> outputVertices(meshVertices.size());
 	for(auto i : range(meshVertices.size()/3)){
 	  btVector3 pos{meshVertices[3*i],
@@ -156,8 +161,17 @@ void RigidBody::dump(std::string filename){
 
 	break;
   }
-  }
+  case RB_SPHERE:{
+	std::ofstream outs(filename + ".sphere");
+	outs << transform.getOrigin().x()
+		 << ' ' << transform.getOrigin().y()
+		 << ' ' << transform.getOrigin().z() << std::endl
+		 << dynamic_cast<btSphereShape*>(shape.get())->getRadius() << std::endl;
 
+	
+  }
+  }
+  
 }
 
 

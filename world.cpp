@@ -9,6 +9,7 @@
 #include <LinearMath/btVector3.h>
 
 #include <BulletCollision/CollisionShapes/btBoxShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
 #include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
 
 #include "json/json.h"
@@ -194,7 +195,13 @@ World::World(std::string filename)
 	  double offset = bo.get("offset", 0.0).asDouble();
 	  RB.shape = std::unique_ptr<btCollisionShape>(
 		  new btStaticPlaneShape(normal, offset));
-	}else { //add other shape types here
+	} else if(shapeTypeIn.asString() == "sphere"){
+	  RB.rbType = RigidBody::RBType::RB_SPHERE;
+	  double sphereRadius = bo["radius"].asDouble();
+	  RB.shape = std::unique_ptr<btCollisionShape>(
+		  new btSphereShape(sphereRadius));
+	  
+	} else { //add other shape types here
       std::cout << "unknown shape: " << bo["shape"].asString() << std::endl;
       exit(1);
     }

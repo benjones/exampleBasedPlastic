@@ -1,0 +1,206 @@
+{
+  "ground" : true,
+  "dt" : 0.004,
+  "duration" : 10,
+  "bulletObjects" : [
+
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.000524975004784, 6.0, -1.24409872643], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.0093569744697, 6.5, -0.779914539344], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ -0.268339942719, 7.0, 0.28604475075], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.135696825763, 7.5, -1.17435453685], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ -0.362511092453, 8.0, -0.890673040933], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.27708835953, 8.5, -1.24705414857], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.449097210172, 9.0, 1.62998533922], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ 0.322268881306, 9.5, 1.21087785008], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ -0.389128363459, 10.0, 0.959557354921], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+        ,
+    {
+    "mass" : 20000, "shape" : "sphere", "radius" : 0.4,
+    "offset" : [ -0.197782470193, 10.5, 0.983273631641], 
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"phong\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+    <spectrum name=\"specularReflectance\" value=\"0.1\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+         ],
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/AdamsCrownVic/",
+			"offset" : [0,0.75,0],
+			"scaleFactor" : 1.0,
+			"restitution": 0.5,
+			"plasticityImpulseScale" : 2000,
+			"plasticityImpulseYield" : 0.9e-2,
+			"plasticityKernelScale" : 0.5,
+			"plasticityRate" : 0.01,
+			"density" : 6000,
+			"useVolumetricCollisions" : false,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#1111ff\" />
+<spectrum name=\"specularReflectance\" value=\"0.1\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		}	],
+	"groundFriction" : 0.6,
+	"groundShadingXml" : "
+<bsdf type=\"twosided\" >
+
+<bsdf type=\"roughdiffuse\">
+  <float name=\"alpha\" value=\"0.7\" />
+  <rgb name=\"reflectance\" value=\"#444444\" />
+</bsdf>
+</bsdf>
+"
+
+}
+

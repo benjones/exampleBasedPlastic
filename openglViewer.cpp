@@ -39,6 +39,9 @@ struct objStruct {
   Eigen::MatrixXd barycentricCoordinates;
   //  std::vector<SlVector3> pts;
   //  std::vector<SlTri> tris;
+  bool isSphere;
+  Eigen::Vector3f sphereCenter;
+  double sphereRadius;
   
 };
 
@@ -160,6 +163,7 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
 	  
 	  globalObjs.back().emplace_back();
 	  auto& oj = globalObjs.back().back();
+	  oj.isSphere = false;
 	  readPLY(test, oj.pts, oj.tris);
 	  
 	  //SlVector3 uc, lc;
@@ -190,11 +194,25 @@ void readFrame(const std::string &plyFile, size_t frameNumber){
 
 				 }*/
 	else{
-	  if(frameNumber == 0 || i >= globalObjs[0].size()){
-		break;
+	  std::string sphereFilename(filename);
+	  sphereFilename += ".sphere";
+	  std::ifstream sphereIns(sphereFilename);
+
+	  if(sphereIns.good()){
+		globalObjs.back().emplace_back();
+		auto& oj = globalObjs.back().back();
+		oj.isSphere = true;
+		sphereIns >> oj.sphereCenter.x() >> oj.sphereCenter.y() >> oj.sphereCenter.z()
+				  >> oj.sphereRadius;
+		
 	  } else {
-		std::cout << "copying object " << i << " from frame 0" << std::endl;
-		globalObjs.back().push_back(globalObjs[0][i]);
+		
+		if(frameNumber == 0 || i >= globalObjs[0].size()){
+		  break;
+		} else {
+		  std::cout << "copying object " << i << " from frame 0" << std::endl;
+		  globalObjs.back().push_back(globalObjs[0][i]);
+		}
 	  }
 	}
 	//	std::cout << "pt 1: " << globalObjs.back().back().pts[0] << std::endl;
@@ -224,51 +242,65 @@ void drawTriangles(bool changeColor){
 	if(changeColor){
 	  auto greenChannel = static_cast<double>(e.first)/globalObjs[currentFrame].size();
 		
-		glColor4d(.5,greenChannel,.5,1);
+	  glColor4d(.5,greenChannel,.5,1);
 	}
-	//std::cout << "using beginning triangles: " << (oj.tris.size() ? "no" : "yes") << std::endl;
-	const auto& tris = oj.tris;
-    for(size_t i = 0; i < tris.rows(); ++i){
-      Vector3 v1 = oj.pts.row(tris(i,0)).transpose();
-	  Vector3 v2 = oj.pts.row(tris(i,1)).transpose();
-	  Vector3 v3 = oj.pts.row(tris(i,2)).transpose();
-	  //		v2 = oj.pts[tris[i].indices[1]],
-	  //		v3 = oj.pts[tris[i].indices[2]];
-      //glBegin(GL_LINE_LOOP);
-      Vector3 normal =(v2 - v1).cross(v3 -v1);
-      normal.normalize();
-      glNormal3fv(normal.data());
-	  //hack.  Fix to use more than 3 barycentric coordinates
-	  if(changeColor && useBarycentricColors && oj.barycentricCoordinates.rows() > 0){
-		Eigen::Vector3d color = Eigen::Vector3d::Zero();
-		for(auto j : range(oj.barycentricCoordinates.cols())){
-		  color += oj.barycentricCoordinates(tris(i, 0),j)*drawableColors.row(j);
-		}
-		glColor3dv(color.data());
-		glVertex3fv(v1.data());
-		color = Eigen::Vector3d::Zero();
-		for(auto j : range(oj.barycentricCoordinates.cols())){
-		  color += oj.barycentricCoordinates(tris(i, 1),j)*drawableColors.row(j);
-		}
-		glColor3dv(color.data());
 
-		glVertex3fv(v2.data());
+	if(oj.isSphere){
+	  glEnd(); //GL_TRIANGLES
 
-		color = Eigen::Vector3d::Zero();
-		for(auto j : range(oj.barycentricCoordinates.cols())){
-		  color += oj.barycentricCoordinates(tris(i, 2),j)*drawableColors.row(j);
+	  glMatrixMode(GL_MODELVIEW);
+	  glPushMatrix();
+	  glTranslatef(oj.sphereCenter.x(), oj.sphereCenter.y(), oj.sphereCenter.z());
+	  
+	  glutSolidSphere(oj.sphereRadius, 10, 10);
+	  glPopMatrix();
+
+	  glBegin(GL_TRIANGLES);
+	} else {
+	  //std::cout << "using beginning triangles: " << (oj.tris.size() ? "no" : "yes") << std::endl;
+	  const auto& tris = oj.tris;
+	  for(size_t i = 0; i < tris.rows(); ++i){
+		Vector3 v1 = oj.pts.row(tris(i,0)).transpose();
+		Vector3 v2 = oj.pts.row(tris(i,1)).transpose();
+		Vector3 v3 = oj.pts.row(tris(i,2)).transpose();
+		//		v2 = oj.pts[tris[i].indices[1]],
+		//		v3 = oj.pts[tris[i].indices[2]];
+		//glBegin(GL_LINE_LOOP);
+		Vector3 normal =(v2 - v1).cross(v3 -v1);
+		normal.normalize();
+		glNormal3fv(normal.data());
+		//hack.  Fix to use more than 3 barycentric coordinates
+		if(changeColor && useBarycentricColors && oj.barycentricCoordinates.rows() > 0){
+		  Eigen::Vector3d color = Eigen::Vector3d::Zero();
+		  for(auto j : range(oj.barycentricCoordinates.cols())){
+			color += oj.barycentricCoordinates(tris(i, 0),j)*drawableColors.row(j);
+		  }
+		  glColor3dv(color.data());
+		  glVertex3fv(v1.data());
+		  color = Eigen::Vector3d::Zero();
+		  for(auto j : range(oj.barycentricCoordinates.cols())){
+			color += oj.barycentricCoordinates(tris(i, 1),j)*drawableColors.row(j);
+		  }
+		  glColor3dv(color.data());
+
+		  glVertex3fv(v2.data());
+
+		  color = Eigen::Vector3d::Zero();
+		  for(auto j : range(oj.barycentricCoordinates.cols())){
+			color += oj.barycentricCoordinates(tris(i, 2),j)*drawableColors.row(j);
+		  }
+		  glColor3dv(color.data());
+		  glVertex3fv(v3.data());
+
+		} else {
+		  glVertex3fv(v1.data());
+		  glVertex3fv(v2.data());
+		  glVertex3fv(v3.data());
 		}
-		glColor3dv(color.data());
-		glVertex3fv(v3.data());
-
-	  } else {
-		glVertex3fv(v1.data());
-		glVertex3fv(v2.data());
-		glVertex3fv(v3.data());
-	  }
-      //	glEnd();
+		//	glEnd();
       
-    }      
+	  }
+	}
   }
   glEnd();
 }

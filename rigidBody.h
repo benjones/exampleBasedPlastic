@@ -43,7 +43,8 @@ class RigidBody{
   enum RBType{
     RB_BOX,
     RB_PLANE,
-	RB_TRIMESH
+	RB_TRIMESH,
+	RB_SPHERE
   };
   
   RBType rbType;
