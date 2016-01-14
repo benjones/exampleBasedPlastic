@@ -10,8 +10,8 @@
 
                         <lookat target="0, 10, 20" origin="70, 50, 60" up="0, 1, 0"/>
                 </transform>
-		<sampler type="sobol">
-			<integer name="sampleCount" value="128"/>
+		<sampler type="ldsampler">
+			<integer name="sampleCount" value="256"/>
 		</sampler>
 
 
@@ -28,27 +28,27 @@
 
 
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="0" y="50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="0" y="-50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="50" y="30" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="-50" y="50" z="0" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="0" y="50" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="0" y="50" z="-50" /> 
 </emitter>
 
@@ -56,32 +56,32 @@
 
 
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="50" y="30" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="-50" y="30" z="50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="50" y="30" z="-50" /> 
 </emitter>
 <emitter type="point" >
- <spectrum name="intensity" value="80" />
+ <spectrum name="intensity" value="8" />
  <point name="position" x="-50" y="30" z="-50" /> 
 </emitter>
 
 
 <emitter type="constant" >
-<spectrum name="radiance" value="0.001" />
+<spectrum name="radiance" value="0" />
 </emitter>
 
 <shape type="sphere" >
-  <emitter type-"area">
-	<spectrum name="radiance" value="#AAFFFF" />
+  <emitter type="area">
+	<spectrum name="radiance" value="80" />
   </emitter>
-  <float name="radius" value="10000" />
-  <point name="center" x="10000" y="11000" z="10000" />
+  <float name="radius" value="20" />
+  <point name="center" x="150" y="180" z="150" />
 
 </shape>

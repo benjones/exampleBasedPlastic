@@ -22,8 +22,9 @@
 
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
-
+<spectrum name=\"specularReflectance\" value=\"0\" />
 <rgb name=\"diffuseReflectance\" value=\"#eeeeee\" />
+
 
 </bsdf>
 </bsdf>
@@ -63,7 +64,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -93,7 +94,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -123,7 +124,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -153,7 +154,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -183,7 +184,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -213,7 +214,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
@@ -243,7 +244,7 @@
 <bsdf type=\"twosided\">
 <bsdf type=\"phong\" >
 
-<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+<rgb name=\"diffuseReflectance\" value=\"#444444\" />
 
 </bsdf>
 </bsdf>
