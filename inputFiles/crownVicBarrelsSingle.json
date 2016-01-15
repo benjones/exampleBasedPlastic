@@ -48,7 +48,7 @@
 
 	"plasticBodies" : [
 		{
-			"directory" : "inputFiles/crownVic/",
+			"directory" : "inputFiles/AdamsCrownVic/",
 			"offset" : [-8,0.75,9],
 			"rotation" : {
 				"angle" : -0.765,

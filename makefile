@@ -24,13 +24,14 @@ OPT = -O2 -g
 #-----------------------------------------
 #-----------------------------------------
 
-TARGETS = fracture impulseTester libdestruction.a
+TARGETS = fracture impulseTester libdestruction.a newImpulseTester
 
 OBJECTS =  world.o jsoncpp.o \
 rigidBody.o  exampleGraph.o \
 plasticPiece.o plasticBody.o
 
 ITOBJECTS = impulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
+NITOBJECTS = newImpulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
 
 #egTraverser.o plasticObject.o
 #fem.o grip.o globalMatrix.o obstacle.o  couplingConstraintSolver.o kdTree.o
@@ -100,6 +101,10 @@ fracture: libdestruction.a main.cpp
 
 impulseTester: $(ITOBJECTS)
 	$(CC) $(LDOPTS) -o impulseTester $(ITOBJECTS) $(LIBS) -framework OpenGL -framework GLUT -lpng
+
+newImpulseTester: $(NITOBJECTS)
+	$(CC) $(LDOPTS) -o newImpulseTester $(NITOBJECTS) $(LIBS) -framework OpenGL -framework GLUT -lpng
+
 
 openglViewer: openglViewer.cpp
 	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp  \

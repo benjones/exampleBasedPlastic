@@ -453,7 +453,9 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 	(1.0 - jacobianAlpha)*jacobianTransposeContribution;
   
   //scale it
-  deltaS = plasticityImpulseScale*impulseAtContact.norm()* (deltaS / deltaS.norm());
+  if(deltaS.norm() > 1e-8){
+	deltaS = plasticityImpulseScale*impulseAtContact.norm()* (deltaS / deltaS.norm());
+  }
   //deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
   return deltaS;
 }
