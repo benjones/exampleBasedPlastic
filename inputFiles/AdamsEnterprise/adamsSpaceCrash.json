@@ -1,0 +1,257 @@
+{
+	"ground" : false,
+	"dt" : 0.0041166666,
+	"gravity" : [0,0,0],
+	"duration" : 10,
+	"singleStep" : true,
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/AdamsEnterprise",
+			"offset" : [0,0,0],
+			"scaleFactor" : 10,
+			"plasticityImpulseScale" : 3000,
+			"plasticityImpulseYield" : 1e-7,
+			"plasticityKernelScale" : 0.35,
+			"plasticityRate" : 0.3,
+			"useFaceNormals" : false,
+			"restitution" : 1,
+			"density" : 500,
+			//"useVolumetricCollisions" : false,
+
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#eeeeee\" />
+
+</bsdf>
+</bsdf>
+",
+
+"emitterPositions" : [
+ [0, 0.9, 3.18],
+ [1.15, 0.9, 0.15],
+ [-1.15, 0.9, 0.15]
+],
+
+"emitterColors" : [
+	"<rgb name=\"radiance\" value=\"#ff0000\" />",
+	"<rgb name=\"radiance\" value=\"#ffff00\" />",
+	"<rgb name=\"radiance\" value=\"#ffff00\" />"
+	
+]
+
+
+		},
+		{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [-30,30,0],
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [30, -30, 10],
+			"constantVelocityFrames" : 3,
+			"breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [-10,30,-50],
+	"rotation" : {
+		"angle" : 1,
+		"axis" : [1, 1, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [5, -30, 30],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter2/",
+			"offset" : [10,10,50],
+	"rotation" : {
+		"angle" : 4,
+		"axis" : [1, 0, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [-10, -30, -36],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter2/",
+			"offset" : [30,15,-20],
+	"rotation" : {
+		"angle" : 4,
+		"axis" : [1, 0, 0.3]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [-20, -30, 15],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter2/",
+			"offset" : [-15,15,70],
+	"rotation" : {
+		"angle" : 2,
+		"axis" : [1, 0.3, 0.3]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [20, -30, -25],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [30,30,40],
+	"rotation" : {
+		"angle" : 1,
+		"axis" : [1, 1, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [-25, -35, -5],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		},
+{
+			"directory" : "inputFiles/tieFighter/",
+			"offset" : [-30,30,40],
+	"rotation" : {
+		"angle" : 1,
+		"axis" : [1, 1, 0]
+	},
+			"scaleFactor" : 0.08,
+			"plasticityImpulseScale" : 5.5e1,
+			"plasticityImpulseYield" : 1e-4,
+			"plasticityKernelScale" : 0.01,
+			"plasticityRate" : 0.05,
+			"useFaceNormals" : false,
+			"restitution" : 0.8,
+			//"useVolumetricCollisions" : false,
+			"constantVelocity" : [25, -35, -5],
+			"constantVelocityFrames" : 3,
+	        "breakingThreshold" : 12000,
+			"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"phong\" >
+
+<rgb name=\"diffuseReflectance\" value=\"#cccccc\" />
+
+</bsdf>
+</bsdf>
+"
+
+		}
+		
+	]
+
+	
+}
