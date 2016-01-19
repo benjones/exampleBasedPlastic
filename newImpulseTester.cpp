@@ -642,10 +642,10 @@ void dumpMitsubaFrame(){
   double angle = acos(std::max(-1.0, std::min(1.0, Eigen::Vector3d(0,1,0).dot(arrow.normalized()))));
   //std::cout << "angle: " << angle << std::endl;
 
-  double scaleValue = 10*getVectorForFrame(impulseInfo.initialImpulse, currentFrame).norm();
+  double scaleValue = 100*getVectorForFrame(impulseInfo.initialImpulse, currentFrame).norm();
   
   outs << "<shape type=\"obj\" ><string name=\"filename\" value=\"arrow.obj\" /><bsdf type=\"diffuse\" >\n"
-	"<rgb name=\"reflectance\" value=\"#ffffff\" /></bsdf>\n"
+	"<rgb name=\"reflectance\" value=\"#ff0000\" /></bsdf>\n"
 	"<transform name=\"toWorld\" >\n"
 	"<scale y=\"" << scaleValue << "\" />\n"
 	"<rotate x=\"" << axis.x() << "\" y=\"" << axis.y() << "\" z=\"" << axis.z() << "\" angle=\""

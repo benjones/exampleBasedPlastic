@@ -433,9 +433,9 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 		jacobianTransposeContribution.norm() > 1e-4 ?
 		jacobianTransposeContribution.normalized() :
 		Eigen::VectorXd::Zero(numNodes));
-
   
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
+  
+  /*Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
 	  Eigen::ComputeThinU | 
 	  Eigen::ComputeThinV);
   
@@ -444,12 +444,13 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 		svd.matrixU().transpose()*
 		impulseAtContact).normalized();
   */
+  
   //std::cout << "sv contrib:\n " << singularVectorContribution << std::endl;
 
 
   //std::cout << "jt: \n" << jacobianTransposeContribution << std::endl;
 
-  double  pinvtoler=1.e-8; // choose your tolerance wisely!
+	/*  double  pinvtoler=1.e-8; // choose your tolerance wisely!
   Eigen::VectorXd invSingVals(svd.singularValues());
   for(auto i : benlib::range(invSingVals.size())){
 	if(fabs(invSingVals(i)) > pinvtoler){
@@ -461,13 +462,14 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 	svd.matrixV()*invSingVals.asDiagonal()*svd.matrixU().transpose();
 
   Eigen::VectorXd deltaS = plasticityImpulseScale*pseudoinverse*impulseAtContact;
-  //  Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
-  //(1.0 - jacobianAlpha)*jacobianTransposeContribution;
+	*/
+  Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
+	(1.0 - jacobianAlpha)*jacobianTransposeContribution;
   
   //scale it
-  /*  if(deltaS.norm() > 1e-8){
-  	deltaS = plasticityImpulseScale*impulseAtContact.norm()* (deltaS / deltaS.norm());
-    }*/
+  if(deltaS.norm() > 1e-8){
+	deltaS = plasticityImpulseScale*impulseAtContact.norm()* (deltaS / deltaS.norm());
+  }
   //deltaS /= std::max(std::fabs(deltaS.maxCoeff()), 1.0);
   return deltaS;
 }
