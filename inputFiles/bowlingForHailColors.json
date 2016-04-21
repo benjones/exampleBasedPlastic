@@ -1,0 +1,348 @@
+{
+  "ground" : true,
+  "dt" : 0.004,
+  "duration" : 10,
+  "bulletObjects" : [
+    {
+    "mass" : 1000, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [-25,1.5,0],
+	"constantForce" : [60, 0.0, 0],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 1000, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [25,1.5,0],
+	"constantForce" : [-60, 0.0, 0],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 1000, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [0,1.25,-50],
+	"constantForce" : [0, 0.0, 60],
+	"constantForceFrames" : 40,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 1000, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [0,1.25,50],
+	"constantForce" : [0, 0.0, -60],
+	"constantForceFrames" : 40,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+
+    {
+    "mass" : 600, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [-70,1.0,-70],
+	"constantForce" : [30, 0.0, 30],
+	"constantForceFrames" :130,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 600, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [70,1.0,70],
+	"constantForce" : [-30, 0.0, -30],
+	"constantForceFrames" : 130,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 600, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [70,1.0,-70],
+	"constantForce" : [-30, 0.0, 30],
+	"constantForceFrames" : 130,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 600, "shape" : "sphere", "radius" : 0.3,
+	"offset" : [-70,1.0,70],
+	"constantForce" : [30, 0.0, -30],
+	"constantForceFrames" : 130,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }/*,
+
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [-120,25.0,0],
+	"constantForce" : [50, 0.0, 0],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [120,25.0,0],
+	"constantForce" : [-50, 0.0, 0],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [0,25.0,-120],
+	"constantForce" : [0, 0.0, 50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [0,25.0,120],
+	"constantForce" : [0, 0.0, -50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [-120,25.0,-120.0],
+	"constantForce" : [50, 0.0, 50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [120,25.0,120],
+	"constantForce" : [-50, 0.0, -50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [120,25.0,-120],
+	"constantForce" : [-50, 0.0, 50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    },
+    {
+    "mass" : 300, "shape" : "sphere", "radius" : 0.1,
+	"offset" : [-120,25.0,120],
+	"constantForce" : [50, 0.0, -50],
+	"constantForceFrames" : 10,
+    "shadingXml" : "
+    <bsdf type=\"twosided\">
+    <bsdf type=\"plastic\" >
+    
+    <rgb name=\"diffuseReflectance\" value=\"#68788C\" />
+    
+    </bsdf>
+    </bsdf>
+    "
+
+    }
+
+*/
+         ],
+
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+	"plasticBodies" : [
+		{
+			"directory" : "inputFiles/BowlingVic1/",
+			"offset" : [0,0.75,0],
+			"scaleFactor" : 1.0,
+			"restitution": 0.25,
+			"plasticityImpulseScale" :100,
+			"plasticityImpulseYield" : 8.0e-3,
+			"plasticityKernelScale" : 0.3,
+			"plasticityRate" : 0.2,
+			"density" : 400,
+			"useVolumetricCollisions" : false,
+ 			"useExampleColors" : true,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		}, {
+			"directory" : "inputFiles/BowlingVic1/",
+			"offset" : [0.0,200.0,2.0],
+			"constantVelocity" : [0.0, 0.0, 0],
+			"constantVelocityFrames" : 10,
+			"scaleFactor" : 1.5,
+			"restitution": 0.75,
+			"plasticityImpulseScale" :25,
+			"plasticityImpulseYield" : 8.0e-3,
+			"plasticityKernelScale" : 0.3,
+			"plasticityRate" : 0.1,
+			"density" : 400,
+			"useVolumetricCollisions" : false,
+
+ 			"useExampleColors" : true,
+
+	"shadingXml" : "
+
+<bsdf type=\"twosided\">
+<bsdf type=\"diffuse\" >
+<texture name=\"reflectance\" type=\"vertexColors\" />
+
+</bsdf>
+</bsdf>
+"
+
+
+		}     	],
+	"groundFriction" : 2.0,
+	"groundShadingXml" : "
+<bsdf type=\"twosided\" >
+
+<bsdf type=\"roughdiffuse\">
+  <float name=\"alpha\" value=\"0.7\" />
+  <rgb name=\"reflectance\" value=\"#444444\" />
+</bsdf>
+</bsdf>
+"
+
+}
+
