@@ -469,9 +469,10 @@ void mouseMove(int x, int y){
 
   eyeToCenter.normalize();
   eyeToCenter = eyeToCenter*dist;
-
+  
 
   camera.eye = camera.center - eyeToCenter;
+  std::cout << "eye is at: " << camera.eye << std::endl;
   glutPostRedisplay();
   
 }
@@ -642,12 +643,14 @@ void dumpMitsubaFrame(){
   double angle = acos(std::max(-1.0, std::min(1.0, Eigen::Vector3d(0,1,0).dot(arrow.normalized()))));
   //std::cout << "angle: " << angle << std::endl;
 
-  double scaleValue = 100*getVectorForFrame(impulseInfo.initialImpulse, currentFrame).norm();
+  double scaleValue = 20*getVectorForFrame(impulseInfo.initialImpulse, currentFrame).norm();
   
   outs << "<shape type=\"obj\" ><string name=\"filename\" value=\"arrow.obj\" /><bsdf type=\"diffuse\" >\n"
 	"<rgb name=\"reflectance\" value=\"#ff0000\" /></bsdf>\n"
 	"<transform name=\"toWorld\" >\n"
-	"<scale y=\"" << scaleValue << "\" />\n"
+	"<scale x=\"" << scaleValue << "\" />\n"
+	"<scale z=\"" << scaleValue << "\" />\n"
+	"<scale y=\"" << 3 << "\" />\n"
 	"<rotate x=\"" << axis.x() << "\" y=\"" << axis.y() << "\" z=\"" << axis.z() << "\" angle=\""
 	   << angle*180.0/M_PI << "\" />\n"
 	"<translate x=\"" << vertexPosition.x() << "\" y=\"" << vertexPosition.y() << "\" z=\""

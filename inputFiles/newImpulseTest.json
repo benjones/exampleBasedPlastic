@@ -50,7 +50,7 @@
 	],*/
 	"plasticBodies" : [
 		{
-			"directory" : "inputFiles/barrel2",
+			"directory" : "inputFiles/barrelForImpulseTester",
 			"offset" : [0,3,0],
 			"scaleFactor" : 0.01,
 			"plasticityImpulseScale" : 4.8e1,
@@ -92,13 +92,13 @@
 ",
 	
 	"testImpulse" : {
-		"vertexIndex" : 1523,//1181,//1275,
+		"vertexIndex" : 1096,
 		"invertNormal" : true,
-		"maxScale" : 0.1,
-				"impulseDirection" : [ 0, 0, -1]
+		"maxScale" : 0.15,
+				"impulseDirection" : [ -0.7, 2, 1.4]
 //				"impulseDirection" : [ -1, -1, 0]
 	}	,
 //y = 50
-	"eye" : [ 0, 50, 160] //90
+	"eye" : [ 140, 70, 70] //90
 	
 }
