@@ -122,7 +122,7 @@ World::World(std::string filename)
 
   bulletWorld->setGravity(gravity);
   for(auto i : range(bulletObjectsIn.size())){
-    std::cout << "adding rb: " << i << std::endl;
+    std::cout << "adding rb: " << i << " "<<bulletObjectsIn[i]["mass"] <<std::endl;
     auto bo = bulletObjectsIn[i];
     rigidBodies.emplace_back();
     auto& RB = rigidBodies.back();
@@ -140,7 +140,7 @@ World::World(std::string filename)
 									bo["constantForce"][1].asDouble(),
 									bo["constantForce"][2].asDouble()};
 	}
-    
+	RB.constantForceFrames = bo.get("constantForceFrames", -1).asInt();
     btVector3 offset(0.0,0.0,0.0); //default to no offset
     auto offsetIn = bo["offset"];
     if(offsetIn.isArray()){
@@ -183,7 +183,7 @@ World::World(std::string filename)
     } else if(shapeTypeIn.asString() == "mesh"){
 	  RB.rbType = RigidBody::RBType::RB_TRIMESH;
 	  RB.loadTrimesh(bo["filename"].asString(), bo.get("scale", 1.0).asDouble());
-
+	  std::cout<<"loading "<<bo["filename"]<<std::endl;
 	}else if (shapeTypeIn.asString() == "plane"){
 
 	  RB.rbType = RigidBody::RBType::RB_PLANE;
@@ -395,6 +395,16 @@ void World::timeStepDynamicSprites(){
 		  }
 		});
   }
+
+  for(auto& rb : rigidBodies){
+	if(rb.rbType == RigidBody::RBType::RB_PLANE) continue;
+	if (rb.constantForceFrames < 0 || rb.constantForceFrames >  currentFrame) {
+	  //rb.bulletBody->applyCentralForce(rb.constantForce);
+	  rb.bulletBody->setLinearVelocity(rb.constantForce);
+	  std::cout<<rb.constantForce<<std::endl;
+	}
+  }
+
   {
 	if(!singleStep){
 	  auto timer = profiler.timeName("bullet step 2");
