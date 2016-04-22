@@ -197,11 +197,13 @@ void RigidBody::loadTrimesh(std::string filename, double scale){
 	  double data;
 	  linestream >> data;
 	  meshVertices.push_back(scale*data);
+	  std::cout<<meshVertices[meshVertices.size()-1]<<std::endl;
 	  linestream >> data;
 	  meshVertices.push_back(scale*data);
+	  std::cout<<meshVertices[meshVertices.size()-1]<<std::endl;
 	  linestream >> data;
 	  meshVertices.push_back(scale*data);
-
+	  std::cout<<meshVertices[meshVertices.size()-1]<<std::endl;
 	} else if(lineType == "f"){
 	  auto numSlashes = std::count(begin(line), end(line), '/');
 	  if(numSlashes == 0){
