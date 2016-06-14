@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
       //insert the min_sphere
       vtkSmartPointer<vtkSphere> sphereDistance = vtkSmartPointer<vtkSphere>::New();
       //negate the radius, account for OFFSET before inserting
-      min_sphere.radius = (1.0+OFFSET)*min_sphere.radius;
+      min_sphere.radius = -(1.0+OFFSET)*min_sphere.radius;
       spheres.push_back(min_sphere);
 
       sphereDistance->SetRadius(-1.0*min_sphere.radius);
