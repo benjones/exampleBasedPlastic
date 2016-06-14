@@ -40,15 +40,15 @@ int main(int argc, char *argv[]) {
 	
 	std::ofstream timingOut("timingInfo.txt");
 
-	//world.dumpFrame();
-	world.currentFrame++;
+	world.dumpFrame();
+	//world.currentFrame++;
 	double nextFrameTime = 0;
 	int frameCount = 0;
 	while (time < world.duration){
 	  time += world.dt;
 	  if(time > nextFrameTime){
-		//world.dumpFrame();
-		++world.currentFrame;
+		world.dumpFrame();
+		//++world.currentFrame;
 
 		//world.profiler.dump<std::chrono::milliseconds>(timingOut);
 		//		world.profiler.clear();
