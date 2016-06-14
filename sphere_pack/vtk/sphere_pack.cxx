@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
          spheres_out << spheres[i].center[0] << " ";
          spheres_out << spheres[i].center[1] << " ";
          spheres_out << spheres[i].center[2] << " ";
-         spheres_out << spheres[i].radius << std::endl;
+         spheres_out << -spheres[i].radius << std::endl;
       }
 
       spheres_out.close();
