@@ -10,20 +10,31 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <vector>
+#include <fstream>
 
-using namespace std;
 
+struct Sphere {
+   double center[3];
+   double radius;
+};
 
 int main(int argc, char** argv) {
-   if (argc != 4) {
-      cerr << "Usage: " << argv[0] << " [grid_res] [in.vtp] [out.vti]" << endl;
+   if (argc != 6) {
+      std::cerr << "Usage: " << argv[0] << " [grid_res] [min_radius] [in.obj] [spheres.txt] [signed_dist.vti]" << std::endl;
+      std::cerr << "[grid_res] is an integer dictating the number of voxels along the minimum dimension of the bounding box of the input" << std::endl;
+      std::cerr << "[min_radius] is a scale parameter for the radius of the minimum sphere used, scaled by side length of a voxel, 1.0 = side of voxel, <1.0 might be dangerous, >1.0 uses larger spheres, recommended is 2.0" << std::endl;
+      std::cerr << "[in.obj] is the input obj file" << std::endl;
+      std::cerr << "[spheres.txt] is the name of the output spheres file" << std::endl;
+      std::cerr << "[signed_dist.vti] is the name of VTK image file that stores the signed distance field" << std::endl;
+
       exit(1);
    }
 
 
    //reader in input
    vtkSmartPointer<vtkOBJReader> reader = vtkSmartPointer<vtkOBJReader>::New();
-   reader->SetFileName(argv[2]);
+   reader->SetFileName(argv[3]);
    reader->Update();
 
    //create implicitDistance filter
@@ -105,9 +116,19 @@ int main(int argc, char** argv) {
 
 
    //compute the distance to the surface
-   //also store the minimum
-   double min_distance = 0;
-   double min_pos[3];
+   //also compute the first sphere to pack
+   std::cout << "Input model is: " << argv[3] << std::endl;
+   std::cout << "  Enlarged Bounding box dimensions: " << stretch[0] << " x " << stretch[1] << " x " << stretch[2] << std::endl;
+   std::cout << "  Using grid resolution: " << grid_res[0] << " x " << grid_res[1] << " x " << grid_res[2] << std::endl;
+   std::cout << std::endl;
+
+   std::cout << "Building the signed distance field" << std::endl;
+
+   Sphere min_sphere;
+   min_sphere.radius = 0;
+   min_sphere.center[0] = 0;
+   min_sphere.center[1] = 0;
+   min_sphere.center[2] = 0;
    for (int i=0; i<positions->GetNumberOfPoints(); i++) {
       double pos[3];
       positions->GetPoint(i, pos);
@@ -115,43 +136,57 @@ int main(int argc, char** argv) {
 
       signed_distance->SetValue(i,v);
 
-      if (v < min_distance) {
-         min_distance = v;
-         min_pos[0] = pos[0];
-         min_pos[1] = pos[1];
-         min_pos[2] = pos[2];
+      if (v < min_sphere.radius) {
+         min_sphere.radius = v;
+         min_sphere.center[0] = pos[0];
+         min_sphere.center[1] = pos[1];
+         min_sphere.center[2] = pos[2];
       }
    }
 
    //attach the data to the image
    image->GetPointData()->SetScalars(signed_distance);
 
-   //write the image
+   //write the signed distance field image
+   std::cout << "Writing the signed distance field to: " << argv[5] << std::endl;
+   std::cout << std::endl;
+
    vtkSmartPointer<vtkXMLImageDataWriter> writer = vtkSmartPointer<vtkXMLImageDataWriter>::New();
-   writer->SetFileName(argv[3]);
+   writer->SetFileName(argv[5]);
    writer->SetInputData(image);
    writer->Update();
 
+   std::cout << "Computing the sphere packing" << std::endl;
 
    //finally, do the sphere packing
    //use a negative threshold to only work with inside
-   double THRESHOLD = -1.0*min_spacing;
+   double THRESHOLD = -1.0 * atof(argv[2]) * min_spacing;
    //OFFSET = 0 will just place the spheres based on input data
    //OFFSET > 0 will push them out based on radius, and cover parts of
    //the exterior
-   double OFFSET = 0.1;
+   double OFFSET = 0.0;
    int count = 0;
-   while (min_distance < THRESHOLD) {
-      //insert the sphere at min_distance
-      vtkSmartPointer<vtkSphere> sphereDistance = vtkSmartPointer<vtkSphere>::New();
-      //negate the radius before inserting
-      sphereDistance->SetRadius(-(1.0+OFFSET)*min_distance);
-      sphereDistance->SetCenter(min_pos);
 
-      cout << "Sphere #" << count << ": " << min_pos[0] << " " << min_pos[1] << " " << min_pos[2] << " " << -min_distance << endl; 
+   std::vector<Sphere> spheres;
+
+   while (min_sphere.radius < THRESHOLD) {
+      //insert the min_sphere
+      vtkSmartPointer<vtkSphere> sphereDistance = vtkSmartPointer<vtkSphere>::New();
+      //negate the radius, account for OFFSET before inserting
+      min_sphere.radius = (1.0+OFFSET)*min_sphere.radius;
+      spheres.push_back(min_sphere);
+
+      sphereDistance->SetRadius(-1.0*min_sphere.radius);
+      sphereDistance->SetCenter(min_sphere.center);
+
+
+      //std::cout << "Sphere #" << count << ": " << min_sphere.center[0] << " " << min_sphere.center[1] << " " << min_sphere.center[2] << " " << -min_sphere.radius << std::endl; 
 
       //go through each point do a min subtract
-      min_distance = 0;
+      min_sphere.radius = 0;
+      min_sphere.center[0] = 0;
+      min_sphere.center[1] = 0;
+      min_sphere.center[2] = 0;
       for (int i=0; i<positions->GetNumberOfPoints(); i++) {
          double pos[3];
          positions->GetPoint(i, pos);
@@ -161,7 +196,7 @@ int main(int argc, char** argv) {
 
          if (s_v <= 0) {
             //inside sphere, zero out
-            signed_distance->SetValue(i,2);
+            signed_distance->SetValue(i,0);
          } else if (v >= 0) {
             //skip, outside
          } else {
@@ -169,27 +204,44 @@ int main(int argc, char** argv) {
             signed_distance->SetValue(i,std::min(v,s_v));
          }
 
-         if (signed_distance->GetValue(i) < min_distance) {
-            min_distance = v;
-            min_pos[0] = pos[0];
-            min_pos[1] = pos[1];
-            min_pos[2] = pos[2];
+         if (signed_distance->GetValue(i) < min_sphere.radius) {
+            min_sphere.radius = signed_distance->GetValue(i);
+            min_sphere.center[0] = pos[0];
+            min_sphere.center[1] = pos[1];
+            min_sphere.center[2] = pos[2];
          }
+
       }
 
       //attach the data to the image
       image->GetPointData()->SetScalars(signed_distance);
 
-      //write the image
-      vtkSmartPointer<vtkXMLImageDataWriter> writer = vtkSmartPointer<vtkXMLImageDataWriter>::New();
-      char filename[1024];
-      sprintf(filename, "sphere.%04d.vti", count);
-      writer->SetFileName(filename);
-      writer->SetInputData(image);
-      writer->Update();
+      //write the intermediate images
+//       vtkSmartPointer<vtkXMLImageDataWriter> writer = vtkSmartPointer<vtkXMLImageDataWriter>::New();
+//       char filename[1024];
+//       sprintf(filename, "sphere.%04d.vti", count);
+//       writer->SetFileName(filename);
+//       writer->SetInputData(image);
+//       writer->Update();
       count++;
 
    }
+
+   std::cout << "Writing out the sphere file: " << argv[4] << " with " << spheres.size() << " spheres." << std::endl;
+
+   //write out the spheres
+   ofstream spheres_out;
+   spheres_out.open(argv[4]);
+
+   spheres_out << spheres.size() << std::endl;
+   for (int i=0; i<spheres.size(); i++) {
+      spheres_out << spheres[i].center[0] << " ";
+      spheres_out << spheres[i].center[1] << " ";
+      spheres_out << spheres[i].center[2] << " ";
+      spheres_out << spheres[i].radius << std::endl;
+   }
+
+   spheres_out.close();
 
    return 0;
 }
