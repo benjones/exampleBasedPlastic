@@ -7,6 +7,8 @@
 #include <vtkPointData.h>
 #include <vtkDoubleArray.h>
 #include <vtkXMLImageDataWriter.h>
+#include <vtkCommand.h>
+#include <vtkCallbackCommand.h>
 
 #include <iostream>
 #include <cstdlib>
@@ -20,6 +22,17 @@ struct Sphere {
    double radius;
 };
 
+
+
+
+void errorCallbackFunc ( vtkObject* caller, long unsigned int eventId, void* clientData, void* callData )
+{
+  std::cerr << "An error occurred in the vtkOBJReader: " << std::endl;
+  std::cerr << reinterpret_cast<char *>(callData) << std::endl;
+ 
+  exit(2);
+}
+
 int main(int argc, char** argv) {
    if (argc != 2) {
       std::cerr << "Usage: " << argv[0] << " config.json" << std::endl;
@@ -27,19 +40,29 @@ int main(int argc, char** argv) {
       exit(1);
    }
 
-
+   //parse the input parameters
    json_info info;
    parse_json(argv[1], info);
 
-   //reader in input
+   //create the reader for the obj_file
    vtkSmartPointer<vtkOBJReader> reader = vtkSmartPointer<vtkOBJReader>::New();
+   if (info.verbosity > 0) {
+      std::cout << "Input model is: " << info.obj_file << std::endl;
+   }
    reader->SetFileName(info.obj_file.c_str());
+   //set up error handling in case the obj file is bad
+   vtkSmartPointer<vtkCallbackCommand> errorCallback = vtkSmartPointer<vtkCallbackCommand>::New();
+   errorCallback->SetCallback ( errorCallbackFunc );
+   reader->AddObserver ( vtkCommand::ErrorEvent, errorCallback );
+
+   //read the obj_file
    reader->Update();
 
    //create implicitDistance filter
    vtkSmartPointer<vtkImplicitPolyDataDistance> implicitDistance = vtkSmartPointer<vtkImplicitPolyDataDistance>::New();
    vtkSmartPointer<vtkPolyData> poly_data = reader->GetOutput();
    implicitDistance->SetInput(poly_data);
+
 
 
    //First, generate a list of positions
@@ -116,8 +139,7 @@ int main(int argc, char** argv) {
 
    //compute the distance to the surface
    //also compute the first sphere to pack
-   if (info.verbosity > 1) {
-      std::cout << "Input model is: " << info.obj_file << std::endl;
+   if (info.verbosity > 0) {
       std::cout << "  Enlarged Bounding box dimensions: " << stretch[0] << " x " << stretch[1] << " x " << stretch[2] << std::endl;
       std::cout << "  Using grid resolution: " << grid_res[0] << " x " << grid_res[1] << " x " << grid_res[2] << std::endl;
       std::cout << std::endl;
@@ -150,7 +172,7 @@ int main(int argc, char** argv) {
 
    //write the signed distance field image
    if (info.vti_file.length() > 0) {
-      if (info.verbosity > 1) {
+      if (info.verbosity > 0) {
          std::cout << "Writing the signed distance field to: " << info.vti_file << std::endl;
          std::cout << std::endl;
       }
@@ -161,7 +183,7 @@ int main(int argc, char** argv) {
       writer->Update();
    }
 
-   if (info.verbosity > 1) {
+   if (info.verbosity > 0) {
       std::cout << "Computing the sphere packing" << std::endl;
    }
 
@@ -251,12 +273,12 @@ int main(int argc, char** argv) {
          spheres_out << spheres[i].center[0] << " ";
          spheres_out << spheres[i].center[1] << " ";
          spheres_out << spheres[i].center[2] << " ";
-         spheres_out << spheres[i].radius << std::endl;
+         spheres_out << -spheres[i].radius << std::endl;
       }
 
       spheres_out.close();
    } else {
-      if (info.verbosity > 1) {
+      if (info.verbosity > 0) {
          std::cout << "No spheres filename was specified, but we packed: " << spheres.size() << " spheres" << std::endl;
       }
    }
