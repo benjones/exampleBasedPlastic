@@ -6,7 +6,7 @@ PROJECT(sphere_pack)
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
+add_executable(${PROJECT_NAME} ${PROJECT_NAME} jsoncpp.cpp parse_json)
 
 if(VTK_LIBRARIES)
    target_link_libraries(${PROJECT_NAME} ${VTK_LIBRARIES})
