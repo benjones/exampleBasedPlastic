@@ -226,8 +226,6 @@ int main(int argc, char** argv) {
          vtkSmartPointer<vtkSphereSource> sphere_source = vtkSmartPointer<vtkSphereSource>::New();
          sphere_source->SetRadius(min_sphere.radius);
          sphere_source->SetCenter(min_sphere.center);
-//         sphere_source->SetThetaResolution(10);
-//         sphere_source->SetPhiResolution(10);
          sphere_source->Update();
          vtkSmartPointer<vtkPolyData> sphere_poly = vtkSmartPointer<vtkPolyData>::New();
          sphere_poly->ShallowCopy(sphere_source->GetOutput());
