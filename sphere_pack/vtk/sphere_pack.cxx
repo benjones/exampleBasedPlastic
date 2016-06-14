@@ -1,5 +1,7 @@
 #include <vtkImplicitPolyDataDistance.h>
 #include <vtkSphere.h>
+#include <vtkSphereSource.h>
+#include <vtkAppendPolyData.h>
 #include <vtkOBJReader.h>
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -7,6 +9,7 @@
 #include <vtkPointData.h>
 #include <vtkDoubleArray.h>
 #include <vtkXMLImageDataWriter.h>
+#include <vtkXMLPolyDataWriter.h>
 #include <vtkCommand.h>
 #include <vtkCallbackCommand.h>
 
@@ -159,8 +162,9 @@ int main(int argc, char** argv) {
 
       signed_distance->SetValue(i,v);
 
-      if (v < min_sphere.radius) {
-         min_sphere.radius = v;
+      //looking largest negative value, so invert
+      if (min_sphere.radius < -v) {
+         min_sphere.radius = -v;
          min_sphere.center[0] = pos[0];
          min_sphere.center[1] = pos[1];
          min_sphere.center[2] = pos[2];
@@ -190,12 +194,13 @@ int main(int argc, char** argv) {
    //finally, do the sphere packing
    //use a negative threshold to only work with inside
    //scale by input parameter to adjust fewest number of spheres
-   double THRESHOLD = -1.0 * info.min_radius_scale * min_spacing;
+   double THRESHOLD = info.min_radius_scale * min_spacing;
    int count = 0;
 
    std::vector<Sphere> spheres;
+   vtkSmartPointer<vtkAppendPolyData> sphere_poly_list = vtkSmartPointer<vtkAppendPolyData>::New();
 
-   while (min_sphere.radius < THRESHOLD && count < info.max_spheres) {
+   while (min_sphere.radius > THRESHOLD && count < info.max_spheres) {
       //insert the min_sphere
       vtkSmartPointer<vtkSphere> sphereDistance = vtkSmartPointer<vtkSphere>::New();
       //negate the radius, account for OFFSET before inserting
@@ -203,12 +208,33 @@ int main(int argc, char** argv) {
       min_sphere.radius = (1.0+info.offset)*min_sphere.radius;
       spheres.push_back(min_sphere);
 
-      sphereDistance->SetRadius(-1.0*min_sphere.radius);
+      sphereDistance->SetRadius(min_sphere.radius);
       sphereDistance->SetCenter(min_sphere.center);
 
-
+      //print the sphere stats to standard out
       if (info.verbosity > 1) {
-        std::cout << "Sphere #" << count << ": " << min_sphere.center[0] << " " << min_sphere.center[1] << " " << min_sphere.center[2] << " " << -min_sphere.radius << std::endl; 
+        std::cout << "Sphere #" << count << ": " << min_sphere.center[0] << " " << min_sphere.center[1] << " " << min_sphere.center[2] << " " << min_sphere.radius << std::endl; 
+      }
+
+      //write the intermediate spheres
+      if (info.verbosity > 2) {
+         vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+         char filename[1024];
+         sprintf(filename, "sphere.%04d.vtp", count);
+         writer->SetFileName(filename);
+
+         vtkSmartPointer<vtkSphereSource> sphere_source = vtkSmartPointer<vtkSphereSource>::New();
+         sphere_source->SetRadius(min_sphere.radius);
+         sphere_source->SetCenter(min_sphere.center);
+//         sphere_source->SetThetaResolution(10);
+//         sphere_source->SetPhiResolution(10);
+         sphere_source->Update();
+         vtkSmartPointer<vtkPolyData> sphere_poly = vtkSmartPointer<vtkPolyData>::New();
+         sphere_poly->ShallowCopy(sphere_source->GetOutput());
+         sphere_poly_list->AddInputData(sphere_poly);
+         sphere_poly_list->Update();
+         writer->SetInputData(sphere_poly_list->GetOutput());
+         writer->Update();
       }
 
       //go through each point do a min subtract
@@ -233,8 +259,8 @@ int main(int argc, char** argv) {
             signed_distance->SetValue(i,std::min(v,s_v));
          }
 
-         if (signed_distance->GetValue(i) < min_sphere.radius) {
-            min_sphere.radius = signed_distance->GetValue(i);
+         if (min_sphere.radius < -signed_distance->GetValue(i) ) {
+            min_sphere.radius = -signed_distance->GetValue(i);
             min_sphere.center[0] = pos[0];
             min_sphere.center[1] = pos[1];
             min_sphere.center[2] = pos[2];
@@ -242,18 +268,7 @@ int main(int argc, char** argv) {
 
       }
 
-      //attach the data to the image
-      image->GetPointData()->SetScalars(signed_distance);
 
-      //write the intermediate images
-      if (info.verbosity > 2) {
-         vtkSmartPointer<vtkXMLImageDataWriter> writer = vtkSmartPointer<vtkXMLImageDataWriter>::New();
-         char filename[1024];
-         sprintf(filename, "sphere.%04d.vti", count);
-         writer->SetFileName(filename);
-         writer->SetInputData(image);
-         writer->Update();
-      }
       count++;
 
    }
