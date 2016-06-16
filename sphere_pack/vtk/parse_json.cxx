@@ -20,6 +20,7 @@ void parse_json(char* filename, json_info& info) {
 
    info.grid_res = root.get("grid_res", 10).asInt();
    info.min_radius_scale = root.get("min_radius_scale", 2.0).asDouble();
+   info.max_radius_scale = root.get("max_radius_scale", 100.0).asDouble();
    info.offset = root.get("offset", 0.0).asDouble();
    info.max_spheres = root.get("max_spheres", INT_MAX).asInt();
 

@@ -177,7 +177,7 @@ int main(int argc, char** argv) {
    //write the signed distance field image
    if (info.vti_file.length() > 0) {
       if (info.verbosity > 0) {
-         std::cout << "Writing the signed distance field to: " << info.vti_file << std::endl;
+         std::cout << "  Writing the signed distance field to: " << info.vti_file << std::endl;
          std::cout << std::endl;
       }
 
@@ -194,18 +194,29 @@ int main(int argc, char** argv) {
    //finally, do the sphere packing
    //use a negative threshold to only work with inside
    //scale by input parameter to adjust fewest number of spheres
-   double THRESHOLD = info.min_radius_scale * min_spacing;
+   double MIN_THRESHOLD = info.min_radius_scale * min_spacing;
+   double MAX_THRESHOLD = info.max_radius_scale * min_spacing;
+
+   if (info.verbosity > 0) {
+      std::cout << "  Using minimum radius threshold: " << MIN_THRESHOLD << std::endl;
+      std::cout << "  Using maximum radius threshold: " << MAX_THRESHOLD << std::endl;
+      std::cout << std::endl;
+   }
+
    int count = 0;
 
    std::vector<Sphere> spheres;
    vtkSmartPointer<vtkAppendPolyData> sphere_poly_list = vtkSmartPointer<vtkAppendPolyData>::New();
 
-   while (min_sphere.radius > THRESHOLD && count < info.max_spheres) {
+   while (min_sphere.radius > MIN_THRESHOLD && count < info.max_spheres) {
       //insert the min_sphere
       vtkSmartPointer<vtkSphere> sphereDistance = vtkSmartPointer<vtkSphere>::New();
       //negate the radius, account for OFFSET before inserting
       //default info.offset is 0, which does no extra scaling
       min_sphere.radius = (1.0+info.offset)*min_sphere.radius;
+      if (min_sphere.radius > MAX_THRESHOLD) {
+         min_sphere.radius = MAX_THRESHOLD;
+      }
       spheres.push_back(min_sphere);
 
       sphereDistance->SetRadius(min_sphere.radius);
