@@ -132,7 +132,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 
 
 
-  //setup CL stuff
+  /*  //setup CL stuff
   hostTranslations.resize(3*exampleGraph.nodes.size()*numBoneTips);
   hostRotations.resize(4*exampleGraph.nodes.size()*numBoneTips);
   for(auto j : range(numBoneTips)){
@@ -177,7 +177,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   deviceUnskinnedPositions = cl::Buffer(world.queue,
 	  hostUnskinnedPositions.begin(), hostUnskinnedPositions.end(), true);
   
-
+  */
   bool plinkoObject = poi.get("plinkoObject", false).asBool();
 
   //read in tets in each piece
@@ -212,16 +212,16 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   mass = std::accumulate(
 	  plasticPieces.begin(), plasticPieces.end(),
 	  0.0, 
-	  [](double acc, const PlasticPiece& piece){
+	  [](double acc, const PlasticPieceSpheres& piece){
 		return acc + piece.mass;
 	  });
-		
+  /*
   Eigen::Vector3d com =
 	std::accumulate(plasticPieces.begin(),
 		plasticPieces.end(),
 		Eigen::Vector3d::Zero().eval(),
 		[](const Eigen::Vector3d& acc,
-			const PlasticPiece& piece){
+			const PlasticPieceSpheres& piece){
 		  return 
 		  (acc + 
 			  (piece.tetmeshVertexMasses.asDiagonal()*
@@ -230,28 +230,32 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 			  /piece.mass).eval();
 		});
   
+  mass = plasticPieces[0].mass;
+  
   offset -= quatRotate(rotation, eigenToBullet(com));
+  */
+
   
   //set inertia stuff, collision stuff, and add to world
   for(auto& piece : plasticPieces){
-	piece.inertiaAligningTransform.setIdentity();
-	piece.worldTransform = btTransform{rotation, offset};
-	piece.bulletBody->setCenterOfMassTransform(piece.worldTransform);
-	piece.saveBulletSnapshot();
-	piece.updateBulletProperties();
-	piece.saveBulletSnapshot();
-	piece.updateAabbs();//bulletShape->updateBound();
+	//piece.inertiaAligningTransform.setIdentity();
+	//piece.worldTransform = 
+	piece.bulletBody->setCenterOfMassTransform(btTransform{rotation, offset});
+
+	//piece.updateAabbs();//bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
 	bulletWorld->addRigidBody(piece.bulletBody.get());
   }
   //setup constraint stuff
-  computeConstraints();
+  /*
+    computeConstraints();
   std::cout << "num constraints: " << constraints.size() << std::endl;
   updateConstraints(); //compute the correct positions
   for(auto& c : constraints){
 	bulletWorld->addConstraint(std::get<3>(c).get(), true);
-  }
+	}
+*/
   
 }
 
@@ -274,21 +278,9 @@ void PlasticBody::computeBoneIndices(const std::string& boneFile){
   
 }
 
-
-void PlasticBody::saveBulletSnapshots(){
-  for(auto& piece : plasticPieces){
-	piece.saveBulletSnapshot();
-  }
-}
-void PlasticBody::restoreBulletSnapshots(){
-  for(auto& piece: plasticPieces){
-	piece.restoreBulletSnapshot();
-  }
-}
-
-
+#if 0
 Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
-	const PlasticPiece& piece,
+	const PlasticPieceSpheres& piece,
 	const btManifoldPoint& manPoint,
 	double dt,
 	bool isObject0) const{
@@ -299,8 +291,8 @@ Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
   btVector3 displacementGlobal = impulseGlobal*dt/mass;
   if(!isObject0){displacementGlobal *= -1;}
 
-  const auto currentRotation = piece.bulletBody->getCenterOfMassTransform().getRotation()*
-	piece.inertiaAligningTransform.getRotation().inverse();
+  const auto currentRotation = piece.bulletBody->getCenterOfMassTransform().getRotation();
+  // *piece.inertiaAligningTransform.getRotation().inverse();
   const btVector3 displacementLocal = 
 	quatRotate(currentRotation.inverse(), displacementGlobal);
   
@@ -317,7 +309,7 @@ Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
 }
 
 Eigen::VectorXd PlasticBody::projectSingleImpulse(
-	const PlasticPiece& piece,
+	const PlasticPieceSpheres& piece,
 	const Eigen::Vector3d& impulseAtContact,
 	int vInd) const{
   Eigen::MatrixXd jacobian(3, numNodes);
@@ -489,7 +481,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	
 	//find out which piece it is
 	auto it = std::find_if(plasticPieces.begin(), plasticPieces.end(),
-		[body](const PlasticPiece& piece){
+		[body](const PlasticPieceSpheres& piece){
 		  return piece.bulletBody.get() == body;
 		});
 	assert(it != plasticPieces.end());
@@ -549,7 +541,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
   }
 
 }
-
+#endif
 void PlasticBody::computeGeodesicDistances(size_t pieceIndex, size_t vInd, double radius){
 
   auto& mainPiece = plasticPieces[pieceIndex];
@@ -599,6 +591,7 @@ void PlasticBody::computeGeodesicDistances(size_t pieceIndex, size_t vInd, doubl
 }
 
 void PlasticBody::computeConstraints(){
+  /*
   constraints.clear(); //just in case
   std::vector<size_t> sharedVertices;
   for(auto i : range(plasticPieces.size())){
@@ -622,10 +615,11 @@ void PlasticBody::computeConstraints(){
 			  );});
 	}
   }
-  
+  */
 }
 
 void PlasticBody::updateConstraints(){
+  /*
   for(auto& c : constraints){
 	size_t p1, p2, vInd;
 	btPoint2PointConstraint* bcon = std::get<3>(c).get();
@@ -640,6 +634,7 @@ void PlasticBody::updateConstraints(){
 
 	}
   }
+  */
 }
 
 
@@ -656,14 +651,17 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 	++objectStart;
 
 	std::string start = base + objectIndexStream.str();
-	std::cout << "writing " << start + '.' + currentFrameString + ".ply" << std::endl;
-	piece.dumpPly(start + '.' + currentFrameString + ".ply");
+	//	std::cout << "writing " << start + '.' + currentFrameString + ".ply" << std::endl;
+	//	piece.dumpPly(start + '.' + currentFrameString + ".ply");
+	std::cout << "writing " << start + '.' + currentFrameString + ".sph" << std::endl;
+	piece.dumpSpheres(start + '.' + currentFrameString + ".sph");
 	piece.dumpBcc(start + '.' + currentFrameString + ".bcs");
   }
   return objectStart;
 }
 
 void PlasticBody::skinAndUpdate(){
+  /*
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshVaryingBarycentricCoords(boneWeights,
@@ -673,10 +671,11 @@ void PlasticBody::skinAndUpdate(){
 	}
 	piece.framesToSkin--;
   }
+  */
 }
 
 void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
-
+  /*
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshOpenCL(world, *this, clKernel);
@@ -684,10 +683,10 @@ void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
 	}
 	piece.framesToSkin--;
   }
-  
+  */
 
 }
-
+/*
 void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
   const std::string directory = poi["directory"].asString();
   std::cout << "reading from directory: " << directory << std::endl;
@@ -742,3 +741,4 @@ void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
 	);
 
 }
+*/

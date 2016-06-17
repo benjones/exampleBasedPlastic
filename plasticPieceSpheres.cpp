@@ -169,17 +169,18 @@ void PlasticPieceSpheres::initialize(const std::string& directory,
 
 	double x, y, z, r;
 	double pi4_3 = M_PI*4/3;
+	mass = 0;
 	while(bulletSpheres.size() < nSpheres){
 	  spheresIn >> x >> y >> z >> r;
 
 	  bulletSpheres.emplace_back(scaleFactor*r);
 	  sphereMasses.push_back(pi4_3*pow(scaleFactor*r, 3));
-	  
+	  mass += sphereMasses.back();
 	  transform.setOrigin(
 		  btVector3{scaleFactor*x, scaleFactor*y, scaleFactor*z});
 	  bulletShape->addChildShape(transform, &(bulletSpheres.back()));
 	}
-
+	
   }
   
 
@@ -205,7 +206,7 @@ void PlasticPieceSpheres::initialize(const std::string& directory,
 					motionState.get(),
 					bulletShape.get()}};
 
-  computeMassesAndVolume(parent.density);
+  //computeMassesAndVolume(parent.density);
   //set moment of inertia, etc
   updateBulletProperties();
 

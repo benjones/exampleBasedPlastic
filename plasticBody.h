@@ -2,8 +2,9 @@
 
 #include <random>
 
-#include "plasticPiece.h"
+#include "plasticPieceSpheres.h"
 #include "exampleGraph.h"
+#include "cl.hpp"
 
 #include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
 
@@ -17,6 +18,8 @@
 namespace Json{ class Value;}
 
 class World;
+class btManifoldPoint;
+
 class PlasticBody{
 
 public:
@@ -33,24 +36,22 @@ public:
 	  World& world,
 	int objectIndex);
   
-  void loadFromJsonNoDynamics(const Json::Value& poi);
+  //void loadFromJsonNoDynamics(const Json::Value& poi);
 
-  void projectImpulsesOntoExampleManifoldLocally(double dt);
+  /*  void projectImpulsesOntoExampleManifoldLocally(double dt);
   Eigen::VectorXd projectSingleImpulse( 
-	  const PlasticPiece& piece, const Eigen::Vector3d& impulseAtContact, int vInd) const;
+	  const PlasticPieceSpheres& piece, const Eigen::Vector3d& impulseAtContact, int vInd) const;
   Eigen::Vector3d getDeformationVectorFromImpulse(
-	  const PlasticPiece& piece,
+	  const PlasticPieceSpheres& piece,
 	  const btManifoldPoint& manPoint,
 	  double dt,
 	  bool isObject0) const;
-  
-  std::vector<PlasticPiece> plasticPieces;
+  */
+  std::vector<PlasticPieceSpheres> plasticPieces;
   
   //return objectStart + numPiecesWritten
   int dump(int currentFrame, int objectStart) const;
   
-  void saveBulletSnapshots();
-  void restoreBulletSnapshots();
   
   void computeBoneIndices(const std::string& boneFile);
   std::vector<int> boneIndices;
@@ -92,7 +93,8 @@ public:
 
   void skinAndUpdateCL(World& world, cl::Kernel& clKernel);
 
-  //CL stuff
+  /*
+//CL stuff
   std::vector<float> hostTranslations;
   std::vector<float> hostRotations;
   std::vector<float> hostBoneWeights;
@@ -100,7 +102,7 @@ public:
 
   cl::Buffer deviceTranslations, deviceRotations, 
 	deviceBoneWeights, deviceBoneIndices, deviceUnskinnedPositions;
-
+  */
 
   std::mt19937 randGen;
   
