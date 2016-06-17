@@ -7,6 +7,7 @@ class json_info {
    public:
       int grid_res;
       double min_radius_scale;
+      double max_radius_scale;
       double offset;
       int max_spheres;
       int verbosity;
