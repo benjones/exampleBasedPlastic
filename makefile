@@ -28,7 +28,8 @@ TARGETS = fracture impulseTester libdestruction.a newImpulseTester
 
 OBJECTS =  world.o jsoncpp.o \
 rigidBody.o  exampleGraph.o \
-plasticPiece.o plasticBody.o
+plasticPiece.o plasticBody.o \
+plasticPieceSpheres.o
 
 ITOBJECTS = impulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
 NITOBJECTS = newImpulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
