@@ -121,6 +121,19 @@ void PlasticPieceSpheres::dumpBcc(const std::string& filename) const{
   
 }
 
+void PlasticPieceSpheres::dumpSpheres(const std::string& filename) const {
+  std::ofstream outs(filename);
+  auto numSpheres = bulletShape->getNumChildShapes();
+  auto worldTransform = bulletBody->getCenterOfMassTransform();
+  outs << numSpheres << std::endl;
+  for(auto i : range(numSpheres)){
+	auto position = (worldTransform*
+		bulletShape->getChildTransform(i)).getOrigin();
+	outs << position.x() << ' ' << position.y() << ' ' << position.z() << ' '
+		 << bulletSpheres[i].getRadius() << std::endl;
+	
+  }
+}
 
 
 

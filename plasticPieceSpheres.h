@@ -41,16 +41,9 @@ public:
 
   void updateBulletProperties();
 
-  int getNearestVertex(const Eigen::Vector3d& localPoint) const;
 
-  void saveBulletSnapshot();
-  void restoreBulletSnapshot();
+  //  int getNearestVertex(const Eigen::Vector3d& localPoint) const;
 
-  void skinMeshVaryingBarycentricCoords(
-	  const Eigen::MatrixXd& boneWeights,
-	  const std::vector<int>& boneIndices,
-	  const ExampleGraph& exampleGraph);
-  
   //  void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
 
   //  RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;
@@ -128,8 +121,7 @@ public:
   //  void dumpPly(const std::string& filename) const;
   //void dumpImpulses(const std::string& filename) const; //skip for now
   void dumpBcc(const std::string& filename) const;
-
-  void dumpColoredShapeOnly(const std::string& filename) const;
+  void dumpSpheres(const std::string& filename) const;
 
   void updateAabbs();
   /*
