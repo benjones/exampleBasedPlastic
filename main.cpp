@@ -50,13 +50,14 @@ int main(int argc, char *argv[]) {
 		world.dumpFrame();
 		//++world.currentFrame;
 
-		world.profiler.dump<std::chrono::milliseconds>(timingOut);
-		world.profiler.clear();
+		//world.profiler.dump<std::chrono::milliseconds>(timingOut);
+		//		world.profiler.clear();
 
 		nextFrameTime += framerate;
 		std::cout << "done with frame: " << ++frameCount << std::endl;
 	  }
 	  world.timeStepDynamicSprites();
+	  
 	}
 	world.profiler.dump<std::chrono::milliseconds>(std::cout);
 	std::cout << world.profiler.totalTime<std::chrono::milliseconds>() << std::endl;

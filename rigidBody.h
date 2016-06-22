@@ -9,9 +9,10 @@
 #include <vector>
 #include "Eigen/Dense"
 #include <BulletCollision/CollisionShapes/btStaticPlaneShape.h>
+#include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 
 class btCollisionShape;
-class btTriangleIndexVertexArray;
+
 class btRigidBody;
 class btMotionState;
 
@@ -30,7 +31,7 @@ class RigidBody{
   std::unique_ptr<btMotionState> motionState;
   std::unique_ptr<btCollisionShape> shape;
 
-
+  
   std::unique_ptr<btTriangleIndexVertexArray> triMesh; //only used for trimesh shapes
   void loadTrimesh(std::string filename, double scale);
   std::vector<double> meshVertices;
@@ -48,7 +49,7 @@ class RigidBody{
   };
   
   RBType rbType;
-
+  int constantForceFrames;
   btVector3 constantForce; //apply this force each frame
 };
 

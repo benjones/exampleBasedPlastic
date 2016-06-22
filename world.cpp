@@ -318,15 +318,12 @@ void World::timeStepDynamicSprites(){
   return;*/
 
 
-  {
-	auto timer = profiler.timeName("save snapshots");
-	for(auto& po : plasticBodies){
-	  po.saveBulletSnapshots();
-	  if(currentFrame > 5){
-		for(auto& constraint: po.constraints){
-		  std::get<3>(constraint)->setBreakingImpulseThreshold(
-			  po.breakingThreshold);
-		}
+  
+  if(currentFrame > 5){
+	for(auto & po : plasticBodies){
+	  for(auto& constraint: po.constraints){
+		std::get<3>(constraint)->setBreakingImpulseThreshold(
+			po.breakingThreshold);
 	  }
 	}
   }
@@ -354,19 +351,13 @@ void World::timeStepDynamicSprites(){
 		  for(auto i = r.begin(); i != r.end(); ++i){
 			
 			auto& po = plasticBodies[i];
-			if(singleStep){
-			  po.saveBulletSnapshots(); //so the update uses the NEW position/velocity
-			}
-			po.projectImpulsesOntoExampleManifoldLocally(dt);
+			//po.projectImpulsesOntoExampleManifoldLocally(dt);
 			
 			//po.skinAndUpdate(); //skin pieces and update bullet props
-			po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
+			//po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
 
-			po.updateConstraints(); //make sure the point2point constraints are right
+			//po.updateConstraints(); //make sure the point2point constraints are right
 			
-			if(!singleStep){
-			  po.restoreBulletSnapshots();
-			}
 			if(po.hasConstantVelocity && currentFrame < po.constantVelocityFrames){
 			  for(auto& pp : po.plasticPieces){
 				pp.bulletBody->setLinearVelocity(po.constantVelocity);
@@ -375,7 +366,7 @@ void World::timeStepDynamicSprites(){
 			
 			for(auto& pp : po.plasticPieces){
 			  double avgBcNorm = 
-				pp.deltaBarycentricCoordinates.norm()/pp.activeVertices.size();
+				pp.deltaBarycentricCoordinates.norm()/pp.numPhysicsVertices;
 			  
 			  //auto f1 = [](double a){ return 1 - 100*a;};
 			  auto f2 = [&po](double a){ return exp(-po.restitutionExponent*a);};
@@ -405,12 +396,6 @@ void World::timeStepDynamicSprites(){
 	}
   }
 
-  {
-	if(!singleStep){
-	  auto timer = profiler.timeName("bullet step 2");
-	  bulletWorld->stepSimulation(dt, 10, dt);
-	}
-  }
   {
 	auto timer = profiler.timeName("restitution and constant velocity");
 	for(auto& po: plasticBodies){

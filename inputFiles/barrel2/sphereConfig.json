@@ -1,0 +1,5 @@
+{
+	"obj_file" : "mesh.obj",
+	"spheres_file" : "spheres.sph",
+	"grid_res" : 20
+}

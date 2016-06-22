@@ -1,0 +1,160 @@
+#pragma once
+
+#include "eigenTypedefs.h"
+#include <vector>
+#include "Quat.h"
+
+
+#include <LinearMath/btTransform.h>
+#include <LinearMath/btDefaultMotionState.h>
+#include <BulletDynamics/Dynamics/btRigidBody.h>
+#include <BulletCollision/CollisionShapes/btCompoundShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
+
+
+class ExampleGraph;
+class PlasticBody;
+class World;
+
+class PlasticPieceSpheres{
+public:
+
+  //move only type because of the unique_ptrs
+  //also, we should never actually need to copy them
+
+  
+  PlasticPieceSpheres(){}
+  ~PlasticPieceSpheres() = default;
+  PlasticPieceSpheres(PlasticPieceSpheres&&) = default;
+  PlasticPieceSpheres& operator=(PlasticPieceSpheres&&) = default;
+  PlasticPieceSpheres(const PlasticPieceSpheres&) = delete;
+  PlasticPieceSpheres& operator=(const PlasticPieceSpheres&) = delete;
+  
+  void initialize(const std::string& directory,
+	  const PlasticBody& parent,
+	  const RMMatrix3d& verticesIn,
+	  World& world,
+	  int pieceNumber);
+
+
+  void computeMassesAndVolume(double density);
+
+  void updateBulletProperties();
+
+
+  //  int getNearestVertex(const Eigen::Vector3d& localPoint) const;
+
+  //  void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
+
+  //  RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;
+  //  RMMatrix3i computeTriangleFaces(const std::vector<size_t>& tetIndices) const;
+
+  //neighbors within this piece.  
+  //We can just union with vertices
+  //in other pieces starting at vertices with the same index
+  void computeVertexNeighbors();
+
+  //propogate out from the seed points
+  //there can be more than one if the real seed is in a different piece
+  void geodesicDistancesPropogate(
+	  const std::vector<size_t>& seeds,
+	  double radius);
+  
+
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  barycentricCoordinates; //per vertex
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  deltaBarycentricCoordinates;
+
+
+  //std::vector<Eigen::Vector3d> perVertexTranslations; 
+  //std::vector<Quat> perVertexRotations;
+  //should call world.removeRigidBody....
+  std::unique_ptr<btRigidBody> bulletBody;
+
+  std::unique_ptr<btCompoundShape> bulletShape;
+  std::vector<btSphereShape> bulletSpheres;
+  std::unique_ptr<btDefaultMotionState> motionState;
+
+
+  RMMatrix3d tetmeshVertices;
+  RMMatrix4i tetmeshTets;
+  RMMatrix3i tetmeshTriangles; 
+  Eigen::VectorXd tetmeshVertexMasses;  //for computing inertia tensor, etc
+  std::vector<double> sphereMasses;
+  
+  int numPhysicsVertices; //include the ones that aren't actually part of any
+  //tets in this piece
+
+
+
+  //  RMMatrix3f localOffsets;
+
+
+
+  
+  double mass, volume, scaleFactor;
+
+  std::vector<std::vector<size_t>> vertexNeighbors;
+  std::vector<std::vector<double>> neighborDistances;
+  std::vector<double> geodesicDistances; //to a given point
+
+  /*  void computeActiveVertices();
+  std::vector<size_t> activeVertices; //vertices that are actually part of tets
+  void computeCollisionTetIndices();
+  std::vector<size_t> cutTets; //read from slicer output file
+  std::vector<size_t> collisionTetIndices; 
+
+  //indices of the vertices in the containing tet,
+  //and the corresponding barycentric coordinates
+  void computeClippingPlaneTetInfo();
+  std::vector<std::tuple<Eigen::Vector4i,Eigen::Vector4d>> clippingPlaneTetInfo;
+  
+
+
+  RMMatrix3d splittingPlaneVertices;
+  RMMatrix3d currentBulletSplittingPlaneVertices;
+  RMMatrix3i splittingPlaneTriangles;
+
+  */
+  
+  //  void dumpPly(const std::string& filename) const;
+  //void dumpImpulses(const std::string& filename) const; //skip for now
+  void dumpBcc(const std::string& filename) const;
+  void dumpSpheres(const std::string& filename) const;
+
+  void updateAabbs();
+  /*
+  //maybe should go in plasticBody, but whatever
+  struct Plane{
+	Plane(Eigen::Vector3d n, double o)
+	  :normal{std::move(n)}, offset{o}
+	{}
+
+	Eigen::Vector3d normal;
+	double offset;
+  };
+  std::vector<Plane> planes;
+  Eigen::Vector3d intersectPlane(size_t ind1, size_t ind2, const Plane& plane) const;
+
+  void computeCutTetGeometry();
+  RMMatrix3d cutGeomVertices;
+  RMMatrix3i cutGeomIndices;
+  */
+  //Eigen::VectorXf texU, texV;
+
+  //CL stuff
+  /*
+  std::vector<float> hostBarycentricCoordinates;
+  std::vector<float> hostSkinnedPositions;
+  //  std::vector<float> hostPerVertexTranslations;
+  //  std::vector<float> hostPerVertexRotations;
+
+  cl::Buffer deviceBarycentricCoordinates, deviceSkinnedPositions;
+  //devicePerVertexTranslations, devicePerVertexRotations;
+  */
+  int framesToSkin;
+
+  bool plinkoObject;
+
+};

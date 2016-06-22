@@ -28,7 +28,8 @@ TARGETS = fracture impulseTester libdestruction.a newImpulseTester
 
 OBJECTS =  world.o jsoncpp.o \
 rigidBody.o  exampleGraph.o \
-plasticPiece.o plasticBody.o
+plasticPiece.o plasticBody.o \
+plasticPieceSpheres.o
 
 ITOBJECTS = impulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
 NITOBJECTS = newImpulseTester.o jsoncpp.o exampleGraph.o plasticPiece.o plasticBody.o
@@ -83,7 +84,7 @@ LDOPTS = $(OPT)
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS) openglViewer 
+default: $(TARGETS) openglViewer sphereViewer
 #decomposeLaplacian
 
 
@@ -109,7 +110,13 @@ newImpulseTester: $(NITOBJECTS)
 openglViewer: openglViewer.cpp
 	$(CC) $(CCOPTS) -o openglViewer openglViewer.cpp  \
 -framework OpenGL -framework GLUT
-#-I./Common -L./Common -lslCommon 
+#-I./Common -L./Common -lslCommon
+
+sphereViewer: sphereViewer.cpp
+	$(CC) $(CCOPTS) -o sphereViewer sphereViewer.cpp  \
+-framework OpenGL -framework GLUT
+
+
 decomposeLaplacian: decomposeLaplacian.cpp
 	$(cc) $(CCOPTS) -o decomposeLaplacian decomposeLaplacian.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
 

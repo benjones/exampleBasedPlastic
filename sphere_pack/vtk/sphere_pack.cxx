@@ -214,9 +214,11 @@ int main(int argc, char** argv) {
       //negate the radius, account for OFFSET before inserting
       //default info.offset is 0, which does no extra scaling
       min_sphere.radius = (1.0+info.offset)*min_sphere.radius;
+
       if (min_sphere.radius > MAX_THRESHOLD) {
          min_sphere.radius = MAX_THRESHOLD;
       }
+
       spheres.push_back(min_sphere);
 
       sphereDistance->SetRadius(min_sphere.radius);
