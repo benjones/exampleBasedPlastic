@@ -1,0 +1,11 @@
+
+
+Ardbeg:/tmp/Test>~/Code/Projects/boneOptimizer/makeVolumePly ~/Code/Projects/destruction/inputFiles/AdamsCrownVic3/mesh.mesh ~/Code/Projects/destruction/inputFiles/AdamsCrownVic3/coarseWeights.dmat                                           
+Ardbeg:/tmp/Test>~/Code/Projects/boneOptimizer/boneOptimizer volumeMesh.ply surfaceWeights.dmat -e ~/Code/Projects/destruction/inputFiles/AdamsCrownVic3/exampleGraph.txt 2
+Ardbeg:/tmp/Test>~/Code/Projects/destruction/sphere_pack/skinSpheres/skinSpheres ~/Code/Projects/destruction/sphere_pack/vtk/build/spheres.txt ~/Code/Projects/destruction/inputFiles/AdamsCrownVic3/mesh.mesh ./volumeMesh.ply exampleSpheres.txt
+Ardbeg:/tmp/Test>~/Code/Projects/destruction/sphere_pack/acg/acg ./exampleSpheres.txt examplePose.ply stats.txt
+
+============================
+boxwidth = 0.005
+bin(x,width)=width*floor(x/width) + boxwidth/2.0
+plot '/tmp/Test/stats.txt' using (bin($1,boxwidth)):(1.0) smooth freq with boxes
