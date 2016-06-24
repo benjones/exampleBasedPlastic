@@ -22,11 +22,13 @@ void readSphereFile(char *fname, std::vector<std::pair<SlVector3, double> > &sph
 
 int main(int argc, char *argv[]) {
   std::vector<std::pair<SlVector3, double> > spheres;
-  //std::vector<SlVector3> vertices;
-  //std::vector<SlTri> triangles;
   std::vector<double> distances;
   double mind;
 
+  if (argc != 4) {
+	std::cout<<"usage: acg sphere_file mesh_file output"<<std::endl;
+	exit(0);
+  }
   readSphereFile(argv[1], spheres);
 
   RMMatrix3f vertices;
