@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
    //write out the spheres
    ofstream spheres_out;
-   spheres_out.open(argv[4]);
+   spheres_out.open(argv[3]);
    spheres_out << spheres.size() << std::endl;
    for (int i=0; i<spheres.size(); i++) {
 	 spheres_out << spheres[i].center[0] << " ";
