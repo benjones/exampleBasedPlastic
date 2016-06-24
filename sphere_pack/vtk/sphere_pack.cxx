@@ -267,7 +267,9 @@ int main(int argc, char** argv) {
             //skip, outside
          } else {
             //replace with minimum
-            signed_distance->SetValue(i,std::min(v,s_v));
+            //JAL both of these are bad options
+            //signed_distance->SetValue(i,std::min(v,s_v));
+            //signed_distance->SetValue(i,std::max(v,-s_v));
          }
 
          if (min_sphere.radius < -signed_distance->GetValue(i) ) {
@@ -278,7 +280,6 @@ int main(int argc, char** argv) {
          }
 
       }
-
 
       count++;
 
