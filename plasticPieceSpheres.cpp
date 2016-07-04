@@ -162,24 +162,26 @@ void PlasticPieceSpheres::initialize(const std::string& directory,
   //load spheres
   {
 	std::ifstream spheresIn(directory + "/spheres.sph");
-	size_t nSpheres;
-	spheresIn >> nSpheres;
-	bulletSpheres.reserve(nSpheres);
-	sphereMasses.reserve(nSpheres);
+	spheresIn >> numSpheres;
+	bulletSpheres.reserve(numSpheres);
+	sphereMasses.reserve(numSpheres);
 
 	double x, y, z, r;
 	double pi4_3 = M_PI*4/3;
 	mass = 0;
-	while(bulletSpheres.size() < nSpheres){
+	while(bulletSpheres.size() < numSpheres){
 	  spheresIn >> x >> y >> z >> r;
-
+	  
+	  originalSpherePositions.emplace_back(x, y, z);
 	  bulletSpheres.emplace_back(scaleFactor*r);
 	  sphereMasses.push_back(pi4_3*pow(scaleFactor*r, 3));
 	  mass += sphereMasses.back();
+	  
 	  transform.setOrigin(
 		  btVector3{scaleFactor*x, scaleFactor*y, scaleFactor*z});
 	  bulletShape->addChildShape(transform, &(bulletSpheres.back()));
 	}
+	computeSphereToVertexMap();
 	
   }
   
@@ -214,3 +216,31 @@ void PlasticPieceSpheres::initialize(const std::string& directory,
 
 }
 
+size_t PlasticPieceSpheres::getNearestSphere(
+	const btVector3& localPoint) const{
+
+  const auto r= benlib::range(numSpheres);
+  const auto comTransform = bulletBody->getCenterOfMassTransform();
+  return *min_element(r.begin(), r.end(),
+	  [this, &localPoint, &comTransform](size_t a, size_t b){
+		return (localPoint - comTransform*(bulletShape->getChildTransform(a)).getOrigin()).length2()
+		  < (localPoint - comTransform*(bulletShape->getChildTransform(b)).getOrigin()).length2();
+	  });
+  
+
+}
+
+void PlasticPieceSpheres::computeSphereToVertexMap(){
+  sphereToVertexMap.clear();
+  sphereToVertexMap.reserve(numSpheres);
+  for(const auto& s : originalSpherePositions){
+	const auto r = range(tetmeshVertices.rows());
+	sphereToVertexMap.push_back(
+		*std::min_element(r.begin(), r.end(),
+			[this, &s](size_t a, size_t b){
+			  return (s - tetmeshVertices.row(a).transpose()).squaredNorm()
+				< (s - tetmeshVertices.row(b).transpose()).squaredNorm();
+			}));
+
+  }
+}

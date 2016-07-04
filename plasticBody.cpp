@@ -212,7 +212,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   mass = std::accumulate(
 	  plasticPieces.begin(), plasticPieces.end(),
 	  0.0, 
-	  [](double acc, const PlasticPieceSpheres& piece){
+	  [](double acc, const PlasticPiece& piece){
 		return acc + piece.mass;
 	  });
   /*
@@ -278,9 +278,9 @@ void PlasticBody::computeBoneIndices(const std::string& boneFile){
   
 }
 
-#if 0
+
 Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
-	const PlasticPieceSpheres& piece,
+	const PlasticPiece& piece,
 	const btManifoldPoint& manPoint,
 	double dt,
 	bool isObject0) const{
@@ -309,7 +309,7 @@ Eigen::Vector3d PlasticBody::getDeformationVectorFromImpulse (
 }
 
 Eigen::VectorXd PlasticBody::projectSingleImpulse(
-	const PlasticPieceSpheres& piece,
+	const PlasticPiece& piece,
 	const Eigen::Vector3d& impulseAtContact,
 	int vInd) const{
   Eigen::MatrixXd jacobian(3, numNodes);
@@ -374,46 +374,6 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
   }
 
 
-  /*
-  for(auto nodeIndex : range(numNodes)){
-	auto& node = exampleGraph.nodes[nodeIndex];
-	for(auto boneIndex : range(numBoneTips)){
-	  auto weightIndex = boneIndices[boneIndex];//bones[boneIndex]->get_wi();
-	  Eigen::AngleAxis<double> nodeRotation{node.transformations[weightIndex].rotation};
-	  auto kRange = range(numNodes);
-	  Eigen::Vector4d currentRotationCoeffs  =
-		std::accumulate(kRange.begin(), kRange.end(),
-			Eigen::Vector4d::Zero().eval(),
-			[this, vInd,boneIndex,&piece](const Eigen::Vector4d& acc, size_t k){
-				return acc + piece.barycentricCoordinates(vInd, k)*
-				exampleGraph.nodes[k].transformations[boneIndex].rotation.coeffs();
-			});
-	  Quat currentRotationQuat(currentRotationCoeffs);
-	  currentRotationQuat.normalize();
-	  Eigen::AngleAxis<double> currentRotation{currentRotationQuat};
-	  //Eigen::AngleAxis<double> currentRotation{piece.perVertexRotations[nodeIndex*numRealBones +
-	  //	  weightIndex]};
-	  
-	  jacobian.col(nodeIndex) += 
-		boneWeights(vInd, weightIndex)*
-		(node.transformations[boneIndex].translation +
-			  nodeRotation.angle()*
-			nodeRotation.axis().cross(
-				//currentRotation.axis().cross(
-				currentRotation*
-				piece.tetmeshVertices.row(vInd).transpose()));
-	}
-	
-  }
-  */
-  //std::cout << "jacobian:\n " << jacobian << std::endl;
-	
-  //scale columns --actually don't...
-  /*  for(auto i : range(jacobian.cols())){
-	if(jacobian.col(i).norm() > 1){
-	  jacobian.col(i) /= jacobian.col(i).norm();
-	}
-	}*/
 
   Eigen::VectorXd jacobianTransposeContribution = 
 	jacobian.transpose()*impulseAtContact;
@@ -426,35 +386,7 @@ Eigen::VectorXd PlasticBody::projectSingleImpulse(
 		jacobianTransposeContribution.normalized() :
 		Eigen::VectorXd::Zero(numNodes));
   
-  
-  /*Eigen::JacobiSVD<Eigen::MatrixXd> svd(jacobian, 
-	  Eigen::ComputeThinU | 
-	  Eigen::ComputeThinV);
-  
-  /*Eigen::VectorXd singularVectorContribution = 
-	svd.matrixV()*impulseAtContact.norm()*(svd.singularValues().asDiagonal()*
-		svd.matrixU().transpose()*
-		impulseAtContact).normalized();
-  */
-  
-  //std::cout << "sv contrib:\n " << singularVectorContribution << std::endl;
 
-
-  //std::cout << "jt: \n" << jacobianTransposeContribution << std::endl;
-
-	/*  double  pinvtoler=1.e-8; // choose your tolerance wisely!
-  Eigen::VectorXd invSingVals(svd.singularValues());
-  for(auto i : benlib::range(invSingVals.size())){
-	if(fabs(invSingVals(i)) > pinvtoler){
-	  invSingVals(i) = 1/invSingVals(i);
-	}
-  }
-  
-  Eigen::MatrixXd pseudoinverse =
-	svd.matrixV()*invSingVals.asDiagonal()*svd.matrixU().transpose();
-
-  Eigen::VectorXd deltaS = plasticityImpulseScale*pseudoinverse*impulseAtContact;
-	*/
   Eigen::VectorXd deltaS = jacobianAlpha*singularVectorContribution +
 	(1.0 - jacobianAlpha)*jacobianTransposeContribution;
   
@@ -481,7 +413,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	
 	//find out which piece it is
 	auto it = std::find_if(plasticPieces.begin(), plasticPieces.end(),
-		[body](const PlasticPieceSpheres& piece){
+		[body](const PlasticPiece& piece){
 		  return piece.bulletBody.get() == body;
 		});
 	assert(it != plasticPieces.end());
@@ -490,10 +422,16 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 
 	auto& localPoint = 
 	  isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
-	auto vInd = piece.getNearestVertex(bulletToEigen(localPoint));
+	
+	auto sInd = piece.getNearestSphere(localPoint);
+	auto vInd = piece.sphereToVertexMap[sInd];
+	
+	//auto vInd = piece.getNearestVertex(bulletToEigen(localPoint));
 	
 	auto impulseAtContact = 
 	  getDeformationVectorFromImpulse(piece, manPoint, dt, isObject0);
+
+	
 	if(impulseAtContact.squaredNorm() <= 0){continue;} //ignore 0 impulses
 
 	auto deltaS = projectSingleImpulse(piece, impulseAtContact, vInd);
@@ -507,12 +445,12 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	  //distribute this to evereyone else
 	  for(auto& pp : plasticPieces){
 		pp.framesToSkin = 1.0/plasticityRate;
-		for(auto i : pp.activeVertices){
+		for(auto i : range(pp.tetmeshVertices.rows())){
 		  auto scale = 
 			Kernels::simpleCubic(plasticityKernelScale*pp.geodesicDistances[i]);
 		  pp.deltaBarycentricCoordinates.row(i) += scale*deltaS.transpose();
 
-		  pp.localOffsets.row(i) += localDeformationScale*normalDist(randGen)*scale*impulseAtContact;
+		  //pp.localOffsets.row(i) += localDeformationScale*normalDist(randGen)*scale*impulseAtContact;
 		  
 		}
 	  }
@@ -526,7 +464,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 
   
 	//clamp and rescale:
-	for(auto i : pp.activeVertices){
+	for(auto i : range(pp.tetmeshVertices.rows())){
 	  for(auto j : range(numNodes)){
 		pp.barycentricCoordinates(i, j) = 
 		  std::max(pp.barycentricCoordinates(i,j), 0.0);
@@ -541,7 +479,7 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
   }
 
 }
-#endif
+
 void PlasticBody::computeGeodesicDistances(size_t pieceIndex, size_t vInd, double radius){
 
   auto& mainPiece = plasticPieces[pieceIndex];
@@ -651,8 +589,8 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 	++objectStart;
 
 	std::string start = base + objectIndexStream.str();
-	//	std::cout << "writing " << start + '.' + currentFrameString + ".ply" << std::endl;
-	//	piece.dumpPly(start + '.' + currentFrameString + ".ply");
+	std::cout << "writing " << start + '.' + currentFrameString + ".ply" << std::endl;
+	piece.dumpPly(start + '.' + currentFrameString + ".ply");
 	std::cout << "writing " << start + '.' + currentFrameString + ".sph" << std::endl;
 	piece.dumpSpheres(start + '.' + currentFrameString + ".sph");
 	piece.dumpBcc(start + '.' + currentFrameString + ".bcs");
@@ -661,32 +599,34 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 }
 
 void PlasticBody::skinAndUpdate(){
-  /*
+  
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshVaryingBarycentricCoords(boneWeights,
 		  boneIndices,
 		  exampleGraph);
+	  piece.skinSpheres();
 	  piece.updateBulletProperties();
 	}
 	piece.framesToSkin--;
   }
-  */
+  
 }
 
 void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
-  /*
+  
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshOpenCL(world, *this, clKernel);
+	  piece.skinSpheres();
 	  piece.updateBulletProperties();
 	}
 	piece.framesToSkin--;
   }
-  */
+  
 
 }
-/*
+
 void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
   const std::string directory = poi["directory"].asString();
   std::cout << "reading from directory: " << directory << std::endl;
@@ -741,4 +681,4 @@ void PlasticBody::loadFromJsonNoDynamics(const Json::Value& poi){
 	);
 
 }
-*/
+

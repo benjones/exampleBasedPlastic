@@ -158,55 +158,54 @@ void readFrame(const std::string &directory, size_t frameNumber){
   globalObjs.emplace_back();
   for( auto i = 0; ; i++){
 
-    sprintf(filename, plyTemplate.c_str(), i, frameNumber);
-    std::ifstream test(filename);
-	//	std::cout << "trying " << filename << std::endl;
-    if(test.good()){
-	  
-	  //	  std::cout << "read " << filename << std::endl;
-	  
+
+	sprintf(filename, sphereTemplate.c_str(), i, frameNumber);
+	std::ifstream sphTest(filename);
+	//	  std::cout << "trying: " << filename << std::endl;
+	if(sphTest.good()){
+	  //		std::cout << "reading: " << filename << std::endl;
 	  globalObjs.back().emplace_back();
-	  auto& oj = globalObjs.back().back();
-	  oj.isMesh = true;
-	  readPLY(test, oj.pts, oj.tris);
 	  
-	  //SlVector3 uc, lc;
-	  //objStruct oj;
-	  //readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
-	  //	  std::cout << "num tris: " << oj.tris.rows() << std::endl;
-
-
-	  if(useBarycentricColors){
-		sprintf(filename, barycentricFormat.c_str(), i, frameNumber);
-		oj.barycentricCoordinates = readMatrixBinary(filename);
+	  auto& oj = globalObjs.back().back();
+	  oj.isMesh = false;
+	  size_t numSpheres;
+	  Eigen::Vector3f center;
+	  float radius;
+	  
+	  sphTest >> numSpheres;
+	  while(oj.spheres.size() < numSpheres){
+		sphTest >> center.x() >> center.y() >> center.z()
+				>> radius;
+		oj.spheres.push_back(Sphere{center, radius});
+		
 	  }
-
-	} else{ //try reading .sph file
-	  sprintf(filename, sphereTemplate.c_str(), i, frameNumber);
-	  std::ifstream sphTest(filename);
-	  //	  std::cout << "trying: " << filename << std::endl;
-	  if(sphTest.good()){
-		//		std::cout << "reading: " << filename << std::endl;
+	} else {
+	
+	  sprintf(filename, plyTemplate.c_str(), i, frameNumber);
+	  std::ifstream test(filename);
+	  //	std::cout << "trying " << filename << std::endl;
+	  if(test.good()){
+		
+		//	  std::cout << "read " << filename << std::endl;
+		
 		globalObjs.back().emplace_back();
-
 		auto& oj = globalObjs.back().back();
-		oj.isMesh = false;
-		size_t numSpheres;
-		Eigen::Vector3f center;
-		float radius;
-
-		sphTest >> numSpheres;
-		while(oj.spheres.size() < numSpheres){
-		  sphTest >> center.x() >> center.y() >> center.z()
-				  >> radius;
-		  oj.spheres.push_back(Sphere{center, radius});
-
+		oj.isMesh = true;
+		readPLY(test, oj.pts, oj.tris);
+		
+		//SlVector3 uc, lc;
+		//objStruct oj;
+		//readObjFile(objName.c_str(), oj.pts, oj.tris, uc, lc);
+		//	  std::cout << "num tris: " << oj.tris.rows() << std::endl;
+		
+		
+		if(useBarycentricColors){
+		  sprintf(filename, barycentricFormat.c_str(), i, frameNumber);
+		  oj.barycentricCoordinates = readMatrixBinary(filename);
 		}
 		
+	  } else{ //try reading .sph file
 		
-		
-		
-	  } else{ //try reading single sphere file
 		sprintf(filename, sphereTemplate2.c_str(), i, frameNumber);
 		//		std::cout << "trying: " << filename << std::endl;
 		std::ifstream sphereIns(filename);
@@ -240,7 +239,7 @@ void readFrame(const std::string &directory, size_t frameNumber){
   std::cout << globalObjs.back().size() << " objs this frame " << std::endl;
 }
 
-				  
+
 
 
 void drawTriangles(bool changeColor){

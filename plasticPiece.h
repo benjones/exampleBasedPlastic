@@ -13,6 +13,7 @@
 #include <BulletCollision/CollisionShapes/btTriangleIndexVertexArray.h>
 #include <BulletCollision/CollisionShapes/btCompoundShape.h>
 #include <BulletCollision/CollisionShapes/btTetrahedronShape.h>
+#include <BulletCollision/CollisionShapes/btSphereShape.h>
 
 using TetrahedronShape = btBU_Simplex1to4;
 
@@ -50,7 +51,9 @@ public:
   void updateBulletProperties();
 
   int getNearestVertex(const Eigen::Vector3d& localPoint) const;
+  size_t getNearestSphere(const btVector3& localPoint) const;
 
+  
   void saveBulletSnapshot();
   void restoreBulletSnapshot();
 
@@ -60,6 +63,9 @@ public:
   
   void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
 
+  void skinSpheres();
+
+  
   RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;
   RMMatrix3i computeTriangleFaces(const std::vector<size_t>& tetIndices) const;
 
@@ -102,8 +108,19 @@ public:
   bool useVolumetricCollisions;
   std::unique_ptr<btTriangleIndexVertexArray> bulkTriMesh;
   std::unique_ptr<btGImpactMeshShape> bulkMesh;
-  
 
+  size_t numSpheres;
+  std::vector<double> sphereMasses;
+  std::vector<btSphereShape> bulletSpheres;
+  //which tetmesh vertex is closest to the sphere center?
+  std::vector<size_t> sphereToVertexMap;
+  std::vector<Eigen::Vector3d> originalSpherePositions;
+
+  std::vector<std::vector<Eigen::Vector3d> > deformedSpherePositions;
+  std::vector<std::vector<double> > deformedSphereRadii;
+  
+  void computeSphereToVertexMap();
+  
 
   RMMatrix3d tetmeshVertices;
   RMMatrix4i tetmeshTets;
@@ -152,7 +169,8 @@ public:
   void dumpPly(const std::string& filename) const;
   //void dumpImpulses(const std::string& filename) const; //skip for now
   void dumpBcc(const std::string& filename) const;
-
+  void dumpSpheres(const std::string& filename) const;
+  
   void dumpColoredShapeOnly(const std::string& filename) const;
 
   void updateAabbs();

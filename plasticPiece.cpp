@@ -22,8 +22,8 @@ using benlib::enumerate;
 
 void PlasticPiece::computeMassesAndVolume(double density){
 
-  volume = 0;
-  mass = 0;
+  //volume = 0;
+  //mass = 0;
   
   tetmeshVertexMasses.resize(numPhysicsVertices);
   tetmeshVertexMasses.setZero();
@@ -52,9 +52,9 @@ void PlasticPiece::computeMassesAndVolume(double density){
 	  tetVolume /= 2; //this tet is cut, distribute it's mass to both pieces
 	}
 
-	volume += tetVolume;
+	//volume += tetVolume;
 	double nodeMass = 0.25*tetVolume*density;
-	mass += 4*nodeMass;
+	//mass += 4*nodeMass;
 	for(auto j : {0,1,2,3}){
 	  tetmeshVertexMasses(tetmeshTets(tetInd,j)) += nodeMass;
 	}
@@ -63,15 +63,45 @@ void PlasticPiece::computeMassesAndVolume(double density){
 }
 
 void PlasticPiece::updateBulletProperties(){
-  //the world part of the transform before we do this
-  worldTransform = 
-	bulletSnapshot.comTransform;
 
-  Eigen::Vector3d centerOfMass = 
+
+  auto originalCOMTransform = bulletBody->getCenterOfMassTransform();
+  //do transform bullshit
+  btTransform principal;
+  btVector3 momentOfInertia;
+  bulletShape->calculatePrincipalAxisTransform(
+	  sphereMasses.data(), principal, momentOfInertia);
+
+  auto pInv = principal.inverse();
+  for(auto i : range(bulletShape->getNumChildShapes())){
+	btTransform newTransform =
+	  pInv*bulletShape->getChildTransform(i);
+	bulletShape->updateChildTransform(i, newTransform);
+  }
+
+  bulletBody->setCenterOfMassTransform(originalCOMTransform*principal);
+  
+  bulletBody->setMassProps(mass, momentOfInertia);
+
+  bulletBody->updateInertiaTensor(); //rotate it
+  bulletBody->setDamping(0, 0.01);  
+  bulletBody->setActivationState(DISABLE_DEACTIVATION);
+
+
+
+
+  
+  //the world part of the transform before we do this
+  //  worldTransform = 
+  //	bulletSnapshot.comTransform;
+
+  /*Eigen::Vector3d centerOfMass = 
 	(tetmeshVertexMasses.asDiagonal()*
 	 currentBulletVertexPositions).colwise().sum().transpose()/
 	mass;
 
+
+  
   inertiaTensor.setZero();
   
   for(auto i : activeVertices){
@@ -90,21 +120,32 @@ void PlasticPiece::updateBulletProperties(){
 	//make it a rotation, not a refelction
 	evecs.col(2) *= -1;
   }
-
+  */
 
   //translate and then rotate each vertex so that
   //the object is centered at the origin and aligned with the 
   //princial moments of inertia
 
+
+  //multiply by the inverse of the sphere based PIT
   for(auto i : activeVertices){
+
+	Eigen::Vector3d ev = currentBulletVertexPositions.row(i);
 	
-	currentBulletVertexPositions.row(i) = 
+	currentBulletVertexPositions.row(i) =
+	  bulletToEigen(pInv*eigenToBullet(ev));
+	/*
+	currentBulletVertexPositions.row(i) =
+	  
+	  
 	  (evecs.transpose()*
 	   (currentBulletVertexPositions.row(i).transpose() - 
 		centerOfMass)
 	   ).transpose();
-	
+	*/	
   }
+
+  /*
   //update the spliting plane vertices too
   for(auto i : range(splittingPlaneVertices.rows())){
 	currentBulletSplittingPlaneVertices.row(i) =
@@ -117,12 +158,13 @@ void PlasticPiece::updateBulletProperties(){
 				<< currentBulletSplittingPlaneVertices.row(i) << std::endl;
 	  exit(1);
 	}
-  }
+	}*/
   
 
 
 
   //update the tet vertices
+  /*
   if(useVolumetricCollisions){
 	for(auto&& pr : enumerate(bulletTets)){
 	  for(auto i : range(4)){
@@ -142,6 +184,7 @@ void PlasticPiece::updateBulletProperties(){
 	fractureMesh->postUpdate();
 	fractureMesh->updateBound();
   }
+  
   updateAabbs();
   
 
@@ -156,6 +199,7 @@ void PlasticPiece::updateBulletProperties(){
   bulletBody->setMassProps(mass, eigenToBullet(evals));
   bulletBody->updateInertiaTensor(); //rotate it
   bulletBody->setDamping(0, 0.01);
+  */
 }
 
 int PlasticPiece::getNearestVertex(const Eigen::Vector3d& localPoint) const {
@@ -555,6 +599,21 @@ void PlasticPiece::dumpBcc(const std::string& filename) const{
   
 }
 
+void PlasticPiece::dumpSpheres(const std::string& filename) const {
+  std::ofstream outs(filename);
+  auto numSpheres = bulletShape->getNumChildShapes();
+  auto worldTransform = bulletBody->getCenterOfMassTransform();
+  outs << numSpheres << std::endl;
+  for(auto i : range(numSpheres)){
+	auto position = (worldTransform*
+		bulletShape->getChildTransform(i)).getOrigin();
+	outs << position.x() << ' ' << position.y() << ' ' << position.z() << ' '
+		 << bulletSpheres[i].getRadius() << std::endl;
+	
+  }
+}
+
+
 void PlasticPiece::updateAabbs(){
 
   btTransform id;
@@ -700,7 +759,40 @@ void PlasticPiece::initialize(const std::string& directory,
   //setup rigid bodies
   bulletShape = std::unique_ptr<btCompoundShape>{
 	new btCompoundShape{true}};
-  auto idTransform = btTransform{};  
+
+
+
+  //load spheres
+  {
+	std::ifstream spheresIn(directory + "/spheres.sph");
+	spheresIn >> numSpheres;
+	bulletSpheres.reserve(numSpheres);
+	sphereMasses.reserve(numSpheres);
+
+	double x, y, z, r;
+	double pi4_3 = M_PI*4/3;
+	mass = 0;
+	auto transform = btTransform{};
+	
+	while(bulletSpheres.size() < numSpheres){
+	  spheresIn >> x >> y >> z >> r;
+	  
+	  originalSpherePositions.emplace_back(x, y, z);
+	  bulletSpheres.emplace_back(scaleFactor*r);
+	  sphereMasses.push_back(pi4_3*pow(scaleFactor*r, 3));
+	  mass += sphereMasses.back();
+	  
+	  transform.setOrigin(
+		  btVector3{scaleFactor*x, scaleFactor*y, scaleFactor*z});
+	  bulletShape->addChildShape(transform, &(bulletSpheres.back()));
+	}
+	computeSphereToVertexMap();
+	
+  }
+
+
+
+  /*  
   if(useVolumetricCollisions){
   
 	bulletTets.resize(collisionTetIndices.size());
@@ -768,7 +860,7 @@ void PlasticPiece::initialize(const std::string& directory,
 	  std::cout << "object has no clipping triangles" << std::endl;
 	}
   }
-
+  
   if(splittingPlaneVertices.rows() > 0){
 	btTriMesh = std::unique_ptr<btTriangleIndexVertexArray>{
 	  new btTriangleIndexVertexArray{
@@ -788,7 +880,7 @@ void PlasticPiece::initialize(const std::string& directory,
 	computeClippingPlaneTetInfo();
 	std::cout << "added fracture mesh" << std::endl;
   } 
-
+  */
 
   //initialize other stuff
   barycentricCoordinates.resize(numPhysicsVertices,
@@ -818,7 +910,8 @@ void PlasticPiece::initialize(const std::string& directory,
 					motionState.get(),
 					bulletShape.get()}};
 
-  computeMassesAndVolume(parent.density);
+  //already done with spheres
+  //  computeMassesAndVolume(parent.density);
 
 
   //put stuff on the GPU
@@ -1129,7 +1222,7 @@ void PlasticPiece::computeCutTetGeometry(){
 
 
 void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel){
-  /*
+  
   const auto numRealBones = parent.boneWeights.cols();
   const auto numBoneTips = parent.boneIndices.size();
   const auto numNodes = parent.exampleGraph.nodes.size();
@@ -1186,7 +1279,72 @@ void PlasticPiece::skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel&
 	  bcs(2)*currentBulletVertexPositions.row(inds(2)) +
 	  bcs(3)*currentBulletVertexPositions.row(inds(3));
   }
-  */
+
 
 }
 
+
+size_t PlasticPiece::getNearestSphere(
+	const btVector3& localPoint) const{
+
+  const auto r= benlib::range(numSpheres);
+  const auto comTransform = bulletBody->getCenterOfMassTransform();
+  return *min_element(r.begin(), r.end(),
+	  [this, &localPoint, &comTransform](size_t a, size_t b){
+		return (localPoint - comTransform*(bulletShape->getChildTransform(a)).getOrigin()).length2()
+		  < (localPoint - comTransform*(bulletShape->getChildTransform(b)).getOrigin()).length2();
+	  });
+  
+
+}
+
+void PlasticPiece::computeSphereToVertexMap(){
+  sphereToVertexMap.clear();
+  sphereToVertexMap.reserve(numSpheres);
+  for(const auto& s : originalSpherePositions){
+	const auto r = range(tetmeshVertices.rows());
+	sphereToVertexMap.push_back(
+		*std::min_element(r.begin(), r.end(),
+			[this, &s](size_t a, size_t b){
+			  return (s - tetmeshVertices.row(a).transpose()).squaredNorm()
+				< (s - tetmeshVertices.row(b).transpose()).squaredNorm();
+			}));
+
+  }
+}
+
+
+
+void PlasticPiece::skinSpheres(){
+
+
+  auto transform = btTransform{};
+  for(auto i : range(numSpheres)){
+
+	auto correspondingVertex = sphereToVertexMap[i];
+	
+	Eigen::Vector3d deformedPosition = Eigen::Vector3d::Zero();
+	double deformedRadius = 0;
+	
+	for(auto j : range(barycentricCoordinates.cols())){
+	  deformedPosition +=
+		barycentricCoordinates(correspondingVertex, j)*
+		deformedSpherePositions[i][j];
+	  deformedRadius +=
+		barycentricCoordinates(correspondingVertex, j)*
+		deformedSphereRadii[i][j];
+	}
+	transform.setOrigin(
+		btVector3{scaleFactor*deformedPosition.x(),
+			scaleFactor*deformedPosition.y(),
+			scaleFactor*deformedPosition.z()});
+	bulletShape->updateChildTransform(i, transform);
+	bulletSpheres[i].setUnscaledRadius(deformedRadius);
+		
+	
+
+  }
+
+  
+
+}
