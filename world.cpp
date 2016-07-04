@@ -351,7 +351,7 @@ void World::timeStepDynamicSprites(){
 		  for(auto i = r.begin(); i != r.end(); ++i){
 			
 			auto& po = plasticBodies[i];
-			//po.projectImpulsesOntoExampleManifoldLocally(dt);
+			po.projectImpulsesOntoExampleManifoldLocally(dt);
 			
 			//po.skinAndUpdate(); //skin pieces and update bullet props
 			//po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
@@ -431,6 +431,7 @@ void World::collectImpulses(){
 	  if(rb1 && rb1->getUserIndex() >= 0){
 		plasticBodies[rb1->getUserIndex()].manifoldPoints.emplace_back(
 			rb1, manPoint, true);
+		
 	  }
 	  if(rb2 && rb2->getUserIndex() >= 0){
 		plasticBodies[rb2->getUserIndex()].manifoldPoints.emplace_back(

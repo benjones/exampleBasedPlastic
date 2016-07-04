@@ -42,7 +42,7 @@ public:
   void updateBulletProperties();
 
 
-  //  int getNearestVertex(const Eigen::Vector3d& localPoint) const;
+  size_t getNearestSphere(const btVector3& localPoint) const;
 
   //  void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
 
@@ -73,7 +73,14 @@ public:
   std::unique_ptr<btRigidBody> bulletBody;
 
   std::unique_ptr<btCompoundShape> bulletShape;
+  size_t numSpheres;
   std::vector<btSphereShape> bulletSpheres;
+
+  //which tetmesh vertex is closest to the sphere center?
+  std::vector<size_t> sphereToVertexMap;
+  std::vector<Eigen::Vector3d> originalSpherePositions;
+  void computeSphereToVertexMap();
+  
   std::unique_ptr<btDefaultMotionState> motionState;
 
 

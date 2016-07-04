@@ -2,7 +2,7 @@
 
 #include <random>
 
-#include "plasticPieceSpheres.h"
+#include "plasticPiece.h"
 #include "exampleGraph.h"
 #include "cl.hpp"
 
@@ -36,18 +36,21 @@ public:
 	  World& world,
 	int objectIndex);
   
-  //void loadFromJsonNoDynamics(const Json::Value& poi);
+  void loadFromJsonNoDynamics(const Json::Value& poi);
 
-  /*  void projectImpulsesOntoExampleManifoldLocally(double dt);
+  void projectImpulsesOntoExampleManifoldLocally(double dt);
+
   Eigen::VectorXd projectSingleImpulse( 
-	  const PlasticPieceSpheres& piece, const Eigen::Vector3d& impulseAtContact, int vInd) const;
+	  const PlasticPiece& piece,
+	  const Eigen::Vector3d& impulseAtContact,
+	  int vInd) const;
   Eigen::Vector3d getDeformationVectorFromImpulse(
-	  const PlasticPieceSpheres& piece,
+	  const PlasticPiece& piece,
 	  const btManifoldPoint& manPoint,
 	  double dt,
 	  bool isObject0) const;
-  */
-  std::vector<PlasticPieceSpheres> plasticPieces;
+  
+  std::vector<PlasticPiece> plasticPieces;
   
   //return objectStart + numPiecesWritten
   int dump(int currentFrame, int objectStart) const;
@@ -93,8 +96,8 @@ public:
 
   void skinAndUpdateCL(World& world, cl::Kernel& clKernel);
 
-  /*
-//CL stuff
+  
+  //CL stuff
   std::vector<float> hostTranslations;
   std::vector<float> hostRotations;
   std::vector<float> hostBoneWeights;
@@ -102,7 +105,7 @@ public:
 
   cl::Buffer deviceTranslations, deviceRotations, 
 	deviceBoneWeights, deviceBoneIndices, deviceUnskinnedPositions;
-  */
+  
 
   std::mt19937 randGen;
   
