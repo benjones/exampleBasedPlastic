@@ -71,10 +71,16 @@ int main(int argc, char *argv[]) {
 
    std::vector<Sphere> spheres;
    readSphereFile(argv[2], spheres);
+
+   double maxr = 0;
+   for (unsigned int i=0; i< spheres.size(); i++) {
+	 maxr = std::max<double>(maxr, spheres[i].radius);
+   }
+
    for (int i=0; i<spheres.size(); i++) {
 	 double d = implicitDistance->EvaluateFunction(spheres[i].center);
 	 std::cout<<spheres[i].radius<<" "<<d<<std::endl;
-	 spheres[i].radius = d;
+	 spheres[i].radius = std::min<double>(d,maxr);
    }
 
    //write out the spheres
