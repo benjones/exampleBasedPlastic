@@ -132,7 +132,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 
 
 
-  /*  //setup CL stuff
+    //setup CL stuff
   hostTranslations.resize(3*exampleGraph.nodes.size()*numBoneTips);
   hostRotations.resize(4*exampleGraph.nodes.size()*numBoneTips);
   for(auto j : range(numBoneTips)){
@@ -177,7 +177,7 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   deviceUnskinnedPositions = cl::Buffer(world.queue,
 	  hostUnskinnedPositions.begin(), hostUnskinnedPositions.end(), true);
   
-  */
+  
   bool plinkoObject = poi.get("plinkoObject", false).asBool();
 
   //read in tets in each piece
@@ -240,8 +240,18 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
   for(auto& piece : plasticPieces){
 	//piece.inertiaAligningTransform.setIdentity();
 	//piece.worldTransform = 
-	piece.bulletBody->setCenterOfMassTransform(btTransform{rotation, offset});
+	piece.bulletBody->setCenterOfMassTransform(btTransform{rotation, offset}*
+		piece.bulletBody->getCenterOfMassTransform());
 
+	std::cout << "transform: " << piece.bulletBody->getCenterOfMassTransform() << std::endl;
+	for(auto i : range(std::min(10, piece.bulletShape->getNumChildShapes()))){
+	  std::cout << "sphere " << i << " in load from json " <<
+		(piece.bulletBody->getCenterOfMassTransform()*piece.bulletShape->getChildTransform(i)).getOrigin()
+				<< std::endl;
+	}
+		  
+
+	
 	//piece.updateAabbs();//bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
@@ -606,6 +616,7 @@ void PlasticBody::skinAndUpdate(){
 		  boneIndices,
 		  exampleGraph);
 	  piece.skinSpheres();
+	  
 	  piece.updateBulletProperties();
 	}
 	piece.framesToSkin--;

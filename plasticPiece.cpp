@@ -65,43 +65,117 @@ void PlasticPiece::computeMassesAndVolume(double density){
 void PlasticPiece::updateBulletProperties(){
 
 
-  auto originalCOMTransform = bulletBody->getCenterOfMassTransform();
+  auto originalCOMTransform =
+	bulletBody->getCenterOfMassTransform()*inertiaAligningTransform.inverse();
+
+
   //do transform bullshit
+  auto r = range(numSpheres);
+  Eigen::Vector3d sphereCOM =
+	std::inner_product(sphereMasses.begin(), sphereMasses.end(),
+		r.begin(), Eigen::Vector3d::Zero().eval(),
+		std::plus<Eigen::Vector3d>{},
+		[this](double m, size_t i){
+		  return bulletToEigen(m* bulletShape->getChildTransform(i).getOrigin());
+		})/mass;
+
+  Eigen::Matrix3d identityMatrix = Eigen::Matrix3d::Identity();
+  Eigen::Matrix3d inertiaTensor =
+	std::inner_product(sphereMasses.begin(), sphereMasses.end(),
+		r.begin(), Eigen::Matrix3d::Zero().eval(),
+		std::plus<Eigen::Matrix3d>{},
+		[this, &sphereCOM, &identityMatrix](double m, size_t i){
+		  Eigen::Vector3d r =
+		  bulletToEigen(bulletShape->getChildTransform(i).getOrigin()) -
+		  sphereCOM;
+		  
+		  return m*( r.squaredNorm()*identityMatrix
+			  - r * r.transpose());
+		});
+
+
+  
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(inertiaTensor);
+  Eigen::Matrix3d evecs = solver.eigenvectors();
+  Eigen::Vector3d evals = solver.eigenvalues();
+  if(evecs.determinant() < 0){
+	//make it a rotation, not a refelction
+	evecs.col(2) *= -1;
+	//assert(false && "shit");
+  }
+		
+		
+  /*
   btTransform principal;
   btVector3 momentOfInertia;
   bulletShape->calculatePrincipalAxisTransform(
 	  sphereMasses.data(), principal, momentOfInertia);
 
+
+
+
+  
   auto pInv = principal.inverse();
+  */
+
+  //std::vector<btVector3> befores(numSpheres);
+
+
+  
   for(auto i : range(bulletShape->getNumChildShapes())){
-	btTransform newTransform =
-	  pInv*bulletShape->getChildTransform(i);
+
+	//befores[i] = 
+	// (originalCOMTransform*bulletShape->getChildTransform(i)).getOrigin();
+	
+	btTransform newTransform;
+	Eigen::Vector3d oldR =
+	  bulletToEigen(bulletShape->getChildTransform(i).getOrigin()) -
+	  sphereCOM;
+	
+	Eigen::Vector3d newR = evecs.transpose()*oldR;
+	newTransform.setOrigin(eigenToBullet(newR));
 	bulletShape->updateChildTransform(i, newTransform);
+	
   }
 
-  bulletBody->setCenterOfMassTransform(originalCOMTransform*principal);
   
-  bulletBody->setMassProps(mass, momentOfInertia);
+  
+  inertiaAligningTransform = btTransform{ eigenToBullet(evecs), eigenToBullet(sphereCOM)};
+
+  
+  bulletBody->setCenterOfMassTransform(originalCOMTransform*inertiaAligningTransform);
+
+  
+  bulletBody->setMassProps(mass, eigenToBullet(evals));
 
   bulletBody->updateInertiaTensor(); //rotate it
+  
   bulletBody->setDamping(0, 0.01);  
   bulletBody->setActivationState(DISABLE_DEACTIVATION);
 
+  /*  std::vector<btVector3> afters(numSpheres);
+  for(auto i : range(bulletShape->getNumChildShapes())){
+	afters[i] =
+	  (bulletBody->getCenterOfMassTransform()*
+		  bulletShape->getChildTransform(i)).getOrigin();
 
-
-
+	std::cout << "befores i - afters " << i << " " << befores[i] - afters[i] << std::endl;
+	}*/
+  
   
   //the world part of the transform before we do this
   //  worldTransform = 
   //	bulletSnapshot.comTransform;
 
   /*Eigen::Vector3d centerOfMass = 
-	(tetmeshVertexMasses.asDiagonal()*
+	(//tetmeshVertexMasses.asDiagonal()*
 	 currentBulletVertexPositions).colwise().sum().transpose()/
 	mass;
 
+  std::cout << "com: " << centerOfMass << std::endl;
+  */
 
-  
+  /*
   inertiaTensor.setZero();
   
   for(auto i : activeVertices){
@@ -130,19 +204,19 @@ void PlasticPiece::updateBulletProperties(){
   //multiply by the inverse of the sphere based PIT
   for(auto i : activeVertices){
 
-	Eigen::Vector3d ev = currentBulletVertexPositions.row(i);
+	//Eigen::Vector3d ev = currentBulletVertexPositions.row(i);
 	
-	currentBulletVertexPositions.row(i) =
-	  bulletToEigen(pInv*eigenToBullet(ev));
-	/*
+	//currentBulletVertexPositions.row(i) =
+	//  bulletToEigen(pInv*eigenToBullet(ev));
+	
 	currentBulletVertexPositions.row(i) =
 	  
 	  
 	  (evecs.transpose()*
 	   (currentBulletVertexPositions.row(i).transpose() - 
-		centerOfMass)
+		sphereCOM)
 	   ).transpose();
-	*/	
+		
   }
 
   /*
@@ -601,7 +675,6 @@ void PlasticPiece::dumpBcc(const std::string& filename) const{
 
 void PlasticPiece::dumpSpheres(const std::string& filename) const {
   std::ofstream outs(filename);
-  auto numSpheres = bulletShape->getNumChildShapes();
   auto worldTransform = bulletBody->getCenterOfMassTransform();
   outs << numSpheres << std::endl;
   for(auto i : range(numSpheres)){
@@ -764,13 +837,13 @@ void PlasticPiece::initialize(const std::string& directory,
 
   //load spheres
   {
-	std::ifstream spheresIn(directory + "/spheres.sph");
+	std::ifstream spheresIn(directory + "/spheres.txt");
 	spheresIn >> numSpheres;
 	bulletSpheres.reserve(numSpheres);
 	sphereMasses.reserve(numSpheres);
 
 	double x, y, z, r;
-	double pi4_3 = M_PI*4/3;
+	double pi4_3 = M_PI*4.0/3.0;
 	mass = 0;
 	auto transform = btTransform{};
 	
@@ -786,7 +859,11 @@ void PlasticPiece::initialize(const std::string& directory,
 		  btVector3{scaleFactor*x, scaleFactor*y, scaleFactor*z});
 	  bulletShape->addChildShape(transform, &(bulletSpheres.back()));
 	}
+
+	
 	computeSphereToVertexMap();
+
+
 	
   }
 
@@ -891,28 +968,34 @@ void PlasticPiece::initialize(const std::string& directory,
   deltaBarycentricCoordinates.resize(numPhysicsVertices,
 	  parent.numNodes);
   deltaBarycentricCoordinates.setZero();
-  
+
+
+  std::ifstream allSpheresIn(directory + "/allSpheres.txt");
+  loadDeformedSpheres(allSpheresIn);
+
   skinMeshVaryingBarycentricCoords(
 	  parent.boneWeights,
 	  parent.boneIndices, 
 	  parent.exampleGraph);
   
-
-
+  skinSpheres();
 
   motionState = 
 	std::unique_ptr<btDefaultMotionState>{
 	new btDefaultMotionState{}};
 	
-  mass = 1; //worked before...?
+  //  mass = 1; //worked before...?
   bulletBody = std::unique_ptr<btRigidBody>{
 	new btRigidBody{mass,
 					motionState.get(),
 					bulletShape.get()}};
-
+  //bulletBody->setCenterOfMassTransform(btTransform{});
+  inertiaAligningTransform.setIdentity();
+  updateBulletProperties();
   //already done with spheres
   //  computeMassesAndVolume(parent.density);
 
+  
 
   //put stuff on the GPU
   hostBarycentricCoordinates.resize(
@@ -1334,12 +1417,14 @@ void PlasticPiece::skinSpheres(){
 		barycentricCoordinates(correspondingVertex, j)*
 		deformedSphereRadii[i][j];
 	}
+	assert(deformedPosition.allFinite());
 	transform.setOrigin(
-		btVector3{scaleFactor*deformedPosition.x(),
+		btVector3{
+		  scaleFactor*deformedPosition.x(),
 			scaleFactor*deformedPosition.y(),
 			scaleFactor*deformedPosition.z()});
 	bulletShape->updateChildTransform(i, transform);
-	bulletSpheres[i].setUnscaledRadius(deformedRadius);
+	bulletSpheres[i].setUnscaledRadius(deformedRadius*scaleFactor);
 		
 	
 
@@ -1347,4 +1432,28 @@ void PlasticPiece::skinSpheres(){
 
   
 
+}
+
+void PlasticPiece::loadDeformedSpheres(std::ifstream& ins){
+
+  size_t nExamples, nSpheres;
+  ins >> nExamples >> nSpheres;
+  std::cout << "bccols: " << barycentricCoordinates.cols() << std::endl;
+  assert(nExamples == barycentricCoordinates.cols());
+
+  std::cout << "numSpheres: " << numSpheres << " n spheres: " << nSpheres << std::endl;
+  assert(nSpheres == numSpheres);
+
+  deformedSpherePositions.assign(numSpheres, std::vector<Eigen::Vector3d>(nExamples));
+  deformedSphereRadii.assign(numSpheres, std::vector<double>(nExamples));
+  
+  for(auto i : range(nExamples)){
+	for(auto j : range(numSpheres)){
+	  ins >> deformedSpherePositions[j][i].x()
+		  >> deformedSpherePositions[j][i].y()
+		  >> deformedSpherePositions[j][i].z()
+		  >> deformedSphereRadii[j][i];
+	}
+  }
+  
 }

@@ -120,8 +120,8 @@ public:
   std::vector<std::vector<double> > deformedSphereRadii;
   
   void computeSphereToVertexMap();
+  void loadDeformedSpheres(std::ifstream& ins);
   
-
   RMMatrix3d tetmeshVertices;
   RMMatrix4i tetmeshTets;
   RMMatrix3i tetmeshTriangles; 

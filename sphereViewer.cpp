@@ -257,8 +257,9 @@ void drawTriangles(bool changeColor){
   glBegin(GL_TRIANGLES);
   for(auto&& e : enumerate(globalObjs[currentFrame])){
 	auto& oj = e.second;
+	double greenChannel = 1.0;
 	if(changeColor){
-	  auto greenChannel = static_cast<double>(e.first)/globalObjs[currentFrame].size();
+	  greenChannel = static_cast<double>(e.first)/globalObjs[currentFrame].size();
 		
 	  glColor4d(.5,greenChannel,.5,1);
 	}
@@ -267,8 +268,10 @@ void drawTriangles(bool changeColor){
 	  glEnd(); //GL_TRIANGLES
 
 	  glMatrixMode(GL_MODELVIEW);
+	  float redChannel = 0;
 	  for(auto &s : oj.spheres){
-		
+		redChannel += 1.0/oj.spheres.size();
+		glColor4d(redChannel,greenChannel,.5,1);
 		glPushMatrix();
 		glTranslatef(s.center.x(), s.center.y(), s.center.z());
 	  
