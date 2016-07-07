@@ -353,8 +353,8 @@ void World::timeStepDynamicSprites(){
 			auto& po = plasticBodies[i];
 			po.projectImpulsesOntoExampleManifoldLocally(dt);
 			
-			po.skinAndUpdate(); //skin pieces and update bullet props
-			//po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
+			//po.skinAndUpdate(); //skin pieces and update bullet props
+			po.skinAndUpdateCL(*this, clKernel); //same, but use the opencl skinning code
 
 			//po.updateConstraints(); //make sure the point2point constraints are right
 			
