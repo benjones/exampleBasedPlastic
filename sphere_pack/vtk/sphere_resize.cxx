@@ -78,9 +78,10 @@ int main(int argc, char *argv[]) {
    }
 
    for (int i=0; i<spheres.size(); i++) {
-	 double d = implicitDistance->EvaluateFunction(spheres[i].center);
-	 std::cout<<spheres[i].radius<<" "<<d<<std::endl;
-	 spheres[i].radius = std::min<double>(d,maxr);
+	 double d = -implicitDistance->EvaluateFunction(spheres[i].center);
+	 if (d < 0.0) std::cerr<<"bad radius "<<d<<std::endl;
+	 //std::cout<<spheres[i].radius<<" "<<d<<std::endl;
+	 spheres[i].radius = std::min<double>(std::max<double>(d, 0.0), maxr);
    }
 
    //write out the spheres
@@ -91,7 +92,7 @@ int main(int argc, char *argv[]) {
 	 spheres_out << spheres[i].center[0] << " ";
 	 spheres_out << spheres[i].center[1] << " ";
 	 spheres_out << spheres[i].center[2] << " ";
-	 spheres_out << -spheres[i].radius << std::endl;
+	 spheres_out << spheres[i].radius << std::endl;
    }
 
    spheres_out.close();
