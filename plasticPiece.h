@@ -114,8 +114,12 @@ public:
   std::vector<btSphereShape> bulletSpheres;
   //which tetmesh vertex is closest to the sphere center?
   std::vector<size_t> sphereToVertexMap;
-  std::vector<Eigen::Vector3d> originalSpherePositions;
+  std::vector<Eigen::Vector3d> originalSpherePositions, skinnedSpherePositions;
+  std::vector<double> skinnedSphereRadii;
 
+
+
+  
   std::vector<std::vector<Eigen::Vector3d> > deformedSpherePositions;
   std::vector<std::vector<double> > deformedSphereRadii;
   
@@ -207,4 +211,6 @@ public:
 
   bool plinkoObject;
 
+  void computeAndPrintExtents() const;
+  
 };

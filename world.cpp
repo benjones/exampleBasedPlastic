@@ -419,7 +419,8 @@ void World::collectImpulses(){
   for(auto& po : plasticBodies){
 	po.manifoldPoints.clear();
   }
-  
+
+
   for(auto i : range(dispatcher->getNumManifolds())){
 	auto* man = dispatcher->getManifoldByIndexInternal(i);
 
@@ -456,11 +457,11 @@ void World::makeBarrelPyramid(){
   
   std::cout << "making " << barrelCount << " barrels" << std::endl;
   
-  double startHeight = 0.39;
+  double startHeight = 0.173;
   double currentHeight = startHeight;
-  double deltaHeight = 0.77;
+  double deltaHeight = 0.705;
 
-  double barrelRadius = 0.34;
+  double barrelRadius = 0.31;
   double startX = -3.0, startZ = 0;
 
   //set up most stuff here...

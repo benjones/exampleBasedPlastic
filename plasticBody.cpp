@@ -244,18 +244,15 @@ void PlasticBody::loadFromJson(const Json::Value& poi,
 		piece.bulletBody->getCenterOfMassTransform());
 
 	std::cout << "transform: " << piece.bulletBody->getCenterOfMassTransform() << std::endl;
-	for(auto i : range(std::min(10, piece.bulletShape->getNumChildShapes()))){
-	  std::cout << "sphere " << i << " in load from json " <<
-		(piece.bulletBody->getCenterOfMassTransform()*piece.bulletShape->getChildTransform(i)).getOrigin()
-				<< std::endl;
-	}
-		  
 
 	
 	//piece.updateAabbs();//bulletShape->updateBound();
 	piece.bulletBody->setRestitution(restitution);
 	piece.bulletBody->setUserIndex(objectIndex);
 	bulletWorld->addRigidBody(piece.bulletBody.get());
+
+	std::cout << "extents end of load json" << std::endl;
+	piece.computeAndPrintExtents();
   }
   //setup constraint stuff
   /*
@@ -429,7 +426,11 @@ void PlasticBody::projectImpulsesOntoExampleManifoldLocally(double dt){
 	assert(it != plasticPieces.end());
 	auto& piece = *it;
 	const auto pieceIndex = std::distance(plasticPieces.begin(), it);
-
+	/*	if(manPoint.m_appliedImpulse > 0){
+	  std::cout << "applied impulse: " << manPoint.m_appliedImpulse << std::endl;
+	  std::cout << "world point a: " << manPoint.getPositionWorldOnA() << std::endl;
+	  std::cout << "world point b: " << manPoint.getPositionWorldOnB() << std::endl;
+	  }*/
 	auto& localPoint = 
 	  isObject0 ? manPoint.m_localPointA : manPoint.m_localPointB;
 	

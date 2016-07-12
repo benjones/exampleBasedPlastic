@@ -90,7 +90,6 @@ void btConvexPlaneCollisionAlgorithm::collideSingleContact (const btQuaternion& 
 	}
 }
 
-
 void btConvexPlaneCollisionAlgorithm::processCollision (const btCollisionObjectWrapper* body0Wrap,const btCollisionObjectWrapper* body1Wrap,const btDispatcherInfo& dispatchInfo,btManifoldResult* resultOut)
 {
 	(void)dispatchInfo;
@@ -126,6 +125,7 @@ void btConvexPlaneCollisionAlgorithm::processCollision (const btCollisionObjectW
 		btVector3 normalOnSurfaceB = planeObjWrap->getWorldTransform().getBasis() * planeNormal;
 		btVector3 pOnB = vtxInPlaneWorld;
 		resultOut->addContactPoint(normalOnSurfaceB,pOnB,distance);
+
 	}
 
 	//the perturbation algorithm doesn't work well with implicit surfaces such as spheres, cylinder and cones:

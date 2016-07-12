@@ -23,6 +23,8 @@ subject to the following restrictions:
 #include "btManifoldResult.h"
 #include "BulletCollision/CollisionDispatch/btCollisionObjectWrapper.h"
 
+
+
 btShapePairCallback gCompoundChildShapePairCallback = 0;
 
 btCompoundCollisionAlgorithm::btCompoundCollisionAlgorithm( const btCollisionAlgorithmConstructionInfo& ci,const btCollisionObjectWrapper* body0Wrap,const btCollisionObjectWrapper* body1Wrap,bool isSwapped)
@@ -138,6 +140,8 @@ public:
 				return;
 		}
 
+
+		
 		if (TestAabbAgainstAabb2(aabbMin0,aabbMax0,aabbMin1,aabbMax1))
 		{
 
@@ -166,6 +170,7 @@ public:
 
 
 			m_childCollisionAlgorithms[index]->processCollision(&compoundWrap,m_otherObjWrap,m_dispatchInfo,m_resultOut);
+
 
 #if 0
 			if (m_dispatchInfo.m_debugDraw && (m_dispatchInfo.m_debugDraw->getDebugMode() & btIDebugDraw::DBG_DrawAabb))

@@ -64,30 +64,27 @@ void PlasticPiece::computeMassesAndVolume(double density){
 
 void PlasticPiece::updateBulletProperties(){
 
-
   auto originalCOMTransform =
 	bulletBody->getCenterOfMassTransform()*inertiaAligningTransform.inverse();
 
 
   //do transform bullshit
-  auto r = range(numSpheres);
   Eigen::Vector3d sphereCOM =
 	std::inner_product(sphereMasses.begin(), sphereMasses.end(),
-		r.begin(), Eigen::Vector3d::Zero().eval(),
+		skinnedSpherePositions.begin(), Eigen::Vector3d::Zero().eval(),
 		std::plus<Eigen::Vector3d>{},
-		[this](double m, size_t i){
-		  return bulletToEigen(m* bulletShape->getChildTransform(i).getOrigin());
+		[](double m, const Eigen::Vector3d p){
+		  return m*p;
 		})/mass;
 
   Eigen::Matrix3d identityMatrix = Eigen::Matrix3d::Identity();
   Eigen::Matrix3d inertiaTensor =
 	std::inner_product(sphereMasses.begin(), sphereMasses.end(),
-		r.begin(), Eigen::Matrix3d::Zero().eval(),
+		skinnedSpherePositions.begin(), Eigen::Matrix3d::Zero().eval(),
 		std::plus<Eigen::Matrix3d>{},
-		[this, &sphereCOM, &identityMatrix](double m, size_t i){
-		  Eigen::Vector3d r =
-		  bulletToEigen(bulletShape->getChildTransform(i).getOrigin()) -
-		  sphereCOM;
+		[&sphereCOM, &identityMatrix](double m, const Eigen::Vector3d& p){
+		  Eigen::Vector3d r = p - sphereCOM;
+		  //bulletToEigen(bulletShape->getChildTransform(i).getOrigin()) - sphereCOM;
 		  
 		  return m*( r.squaredNorm()*identityMatrix
 			  - r * r.transpose());
@@ -121,23 +118,29 @@ void PlasticPiece::updateBulletProperties(){
   //std::vector<btVector3> befores(numSpheres);
 
 
+  assert( numSpheres == bulletShape->getNumChildShapes());
+
+  for(auto i : range(numSpheres)){
+	bulletShape->removeChildShape(&bulletSpheres[i]);
+  }
   
-  for(auto i : range(bulletShape->getNumChildShapes())){
+  
+  for(auto i : range(numSpheres)){
 
 	//befores[i] = 
 	// (originalCOMTransform*bulletShape->getChildTransform(i)).getOrigin();
 	
 	btTransform newTransform;
-	Eigen::Vector3d oldR =
-	  bulletToEigen(bulletShape->getChildTransform(i).getOrigin()) -
-	  sphereCOM;
+	Eigen::Vector3d oldR = skinnedSpherePositions[i] - sphereCOM;
 	
 	Eigen::Vector3d newR = evecs.transpose()*oldR;
 	newTransform.setOrigin(eigenToBullet(newR));
-	bulletShape->updateChildTransform(i, newTransform);
-	
+	//bulletShape->updateChildTransform(i, newTransform);
+	bulletSpheres[i].setUnscaledRadius(skinnedSphereRadii[i]);
+	bulletShape->addChildShape(newTransform, &bulletSpheres[i]);
   }
 
+  bulletShape->recalculateLocalAabb();
   
   
   inertiaAligningTransform = btTransform{ eigenToBullet(evecs), eigenToBullet(sphereCOM)};
@@ -676,14 +679,20 @@ void PlasticPiece::dumpBcc(const std::string& filename) const{
 void PlasticPiece::dumpSpheres(const std::string& filename) const {
   std::ofstream outs(filename);
   auto worldTransform = bulletBody->getCenterOfMassTransform();
-  outs << numSpheres << std::endl;
+
+
+
+  
+  outs << numSpheres << '\n';
   for(auto i : range(numSpheres)){
 	auto position = (worldTransform*
 		bulletShape->getChildTransform(i)).getOrigin();
 	outs << position.x() << ' ' << position.y() << ' ' << position.z() << ' '
-		 << bulletSpheres[i].getRadius() << std::endl;
+		 << bulletSpheres[i].getRadius() << '\n';
+	
 	
   }
+
 }
 
 
@@ -712,6 +721,31 @@ void PlasticPiece::updateAabbs(){
   
 }
 
+
+void PlasticPiece::computeAndPrintExtents() const {
+  Eigen::Vector3d minExtent{
+	std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max()};
+  Eigen::Vector3d maxExtent{
+	std::numeric_limits<double>::min(),std::numeric_limits<double>::min(),std::numeric_limits<double>::min()};
+
+  auto worldTransform = bulletBody->getCenterOfMassTransform();
+  for(auto i : range(numSpheres)){
+	auto position = (worldTransform*
+		bulletShape->getChildTransform(i)).getOrigin();
+	minExtent = minExtent.cwiseMin(
+		Eigen::Vector3d{position.x(), position.y(), position.z()} -
+		Eigen::Vector3d{bulletSpheres[i].getRadius(),bulletSpheres[i].getRadius(),bulletSpheres[i].getRadius()});
+	
+	
+	maxExtent = maxExtent.cwiseMax(
+		Eigen::Vector3d{position.x(), position.y(), position.z()} +
+		Eigen::Vector3d{bulletSpheres[i].getRadius(),bulletSpheres[i].getRadius(),bulletSpheres[i].getRadius()});
+	
+	
+  }
+  std::cout << "minExtent: " << minExtent << "\nmaxExtent: " << maxExtent << std::endl;
+  
+}
 
 
 void PlasticPiece::initializeNoDynamics(const std::string& directory, 
@@ -846,20 +880,33 @@ void PlasticPiece::initialize(const std::string& directory,
 	double pi4_3 = M_PI*4.0/3.0;
 	mass = 0;
 	auto transform = btTransform{};
+
+	Eigen::Vector3d minExtent{std::numeric_limits<double>::max(),std::numeric_limits<double>::max(),std::numeric_limits<double>::max()};
+	Eigen::Vector3d maxExtent{std::numeric_limits<double>::min(),std::numeric_limits<double>::min(),std::numeric_limits<double>::min()};
+
+
 	
 	while(bulletSpheres.size() < numSpheres){
 	  spheresIn >> x >> y >> z >> r;
-	  
+	  r = std::abs(r);
 	  originalSpherePositions.emplace_back(x, y, z);
 	  bulletSpheres.emplace_back(scaleFactor*r);
-	  sphereMasses.push_back(pi4_3*pow(scaleFactor*r, 3));
+	  sphereMasses.push_back(parent.density*pi4_3*pow(scaleFactor*r, 3));
 	  mass += sphereMasses.back();
+
+	  minExtent = minExtent.cwiseMin(
+		  scaleFactor*Eigen::Vector3d{x, y, z} -
+		  Eigen::Vector3d{scaleFactor*r, scaleFactor*r, scaleFactor*r});
+	  maxExtent = maxExtent.cwiseMax(
+		  scaleFactor*Eigen::Vector3d{x, y, z} +
+		  Eigen::Vector3d{scaleFactor*r, scaleFactor*r, scaleFactor*r});
 	  
 	  transform.setOrigin(
 		  btVector3{scaleFactor*x, scaleFactor*y, scaleFactor*z});
 	  bulletShape->addChildShape(transform, &(bulletSpheres.back()));
 	}
-
+	std::cout << "minExtent: " << minExtent << std::endl;
+	std::cout << "maxExtent: " << maxExtent << std::endl;
 	
 	computeSphereToVertexMap();
 
@@ -1020,7 +1067,8 @@ void PlasticPiece::initialize(const std::string& directory,
   //  CL_MEM_WRITE_ONLY,
   //  hostPerVertexRotations.size()*sizeof(float));
 
-
+  std::cout << "extents at end of init" << std::endl;
+  computeAndPrintExtents();
 
 
 }
@@ -1401,31 +1449,37 @@ void PlasticPiece::computeSphereToVertexMap(){
 void PlasticPiece::skinSpheres(){
 
 
-  auto transform = btTransform{};
+  //  auto transform = btTransform{};
+  skinnedSpherePositions.assign(numSpheres, Eigen::Vector3d::Zero());
+  skinnedSphereRadii.assign(numSpheres, 0);
   for(auto i : range(numSpheres)){
 
 	auto correspondingVertex = sphereToVertexMap[i];
 	
-	Eigen::Vector3d deformedPosition = Eigen::Vector3d::Zero();
-	double deformedRadius = 0;
+	//Eigen::Vector3d deformedPosition = Eigen::Vector3d::Zero();
+	//double deformedRadius = 0;
 	
 	for(auto j : range(barycentricCoordinates.cols())){
-	  deformedPosition +=
+	  skinnedSpherePositions[i] +=
 		barycentricCoordinates(correspondingVertex, j)*
 		deformedSpherePositions[i][j];
-	  deformedRadius +=
+	  skinnedSphereRadii[i] +=
 		barycentricCoordinates(correspondingVertex, j)*
 		deformedSphereRadii[i][j];
 	}
-	assert(deformedPosition.allFinite());
-	transform.setOrigin(
+	skinnedSpherePositions[i] *= scaleFactor;
+	skinnedSphereRadii[i] *= scaleFactor;
+	assert(skinnedSpherePositions[i].allFinite());
+	/*	transform.setOrigin(
 		btVector3{
 		  scaleFactor*deformedPosition.x(),
 			scaleFactor*deformedPosition.y(),
 			scaleFactor*deformedPosition.z()});
 	bulletShape->updateChildTransform(i, transform);
+	assert(deformedRadius > 0);
 	bulletSpheres[i].setUnscaledRadius(deformedRadius*scaleFactor);
-		
+	*/
+	
 	
 
   }
