@@ -10,7 +10,7 @@
                 <float name="nearClip" value="2.41421"/>
                 <transform name="toWorld">
 
-                        <lookat target="0, 5, 0" origin="-25, 4, -12" up="0, 1, 0"/>
+                        <lookat target="0, 5, 0" origin="-35, 5, 8" up="0, 1, 0"/>
                 </transform>
 		<sampler type="sobol">
 			<integer name="sampleCount" value="512"/>
