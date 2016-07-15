@@ -1,0 +1,20 @@
+//DEFAULTS
+//  grid_res          10
+//  min_radius_scale  2.0
+//  max_radius_scale  100.0
+//  offset            0.0
+//  max_spheres       INT_MAX
+//  verbosity         1 (0 means run quiet, >1 means noisy, >2 writes sphere files)
+//  obj_file          REQUIRED
+//  spheres_file      if left blank, will not write
+//  vti_file          if left blank, will not write
+
+{
+   "grid_res" : 28,
+   "min_radius_scale" : 2.0,
+   "max_radius_scale" : 11.0,
+   //"verbosity" : 2,
+
+   "obj_file" : "mesh.obj",
+   "spheres_file" : "spheres.txt"
+}
