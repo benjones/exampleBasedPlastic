@@ -63,7 +63,7 @@ public:
   
   void skinMeshOpenCL(World& world, PlasticBody& parent, cl::Kernel& clKernel);
 
-  void skinSpheres();
+  void skinSpheres(World& world);
 
   
   RMMatrix3i computeAllTriangles(const std::vector<size_t>& tetIndices) const;

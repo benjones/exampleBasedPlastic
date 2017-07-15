@@ -1,0 +1,7 @@
+{
+	"obj_file" : "mesh.obj",
+	"spheres_file" : "spheres.txt",
+	"grid_res" : 60,
+	"min_radius_scale": 2.0,
+	"max_radius_scale" : 15
+}

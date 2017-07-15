@@ -610,7 +610,8 @@ int PlasticBody::dump(int currentFrame, int objectStart) const{
 }
 
 void PlasticBody::skinAndUpdate(){
-  
+  throw 5;
+  /*
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshVaryingBarycentricCoords(boneWeights,
@@ -622,6 +623,7 @@ void PlasticBody::skinAndUpdate(){
 	}
 	piece.framesToSkin--;
   }
+  */
   
 }
 
@@ -630,7 +632,7 @@ void PlasticBody::skinAndUpdateCL(World& world, cl::Kernel& clKernel){
   for(auto& piece : plasticPieces){
 	if(piece.framesToSkin > 0){
 	  piece.skinMeshOpenCL(world, *this, clKernel);
-	  piece.skinSpheres();
+	  piece.skinSpheres(world);
 	  piece.updateBulletProperties();
 	}
 	piece.framesToSkin--;

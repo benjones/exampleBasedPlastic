@@ -459,7 +459,7 @@ void World::makeBarrelPyramid(){
   
   double startHeight = 0.173;
   double currentHeight = startHeight;
-  double deltaHeight = 0.705;
+  double deltaHeight = 0.7055;
 
   double barrelRadius = 0.31;
   double startX = -3.0, startZ = 0;

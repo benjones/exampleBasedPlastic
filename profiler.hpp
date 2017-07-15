@@ -4,6 +4,7 @@
 #include <ostream>
 #include <vector>
 #include <numeric>
+#include <mutex>
 
 namespace benlib{
 
@@ -32,6 +33,7 @@ namespace benlib{
 	};
 	
 	ScopeTimer timeName(const std::string& name){
+	  std::lock_guard<std::mutex> lock{mutex};
 	  auto it = std::find(nameMap.begin(), nameMap.end(), name);
 	  size_t index;
 	  if(it == nameMap.end()){
@@ -75,10 +77,11 @@ namespace benlib{
 
   private:
 	void addTime(size_t index, duration<double> diff){
+	  std::lock_guard<std::mutex> lock{mutex};
 	  counts[index] += diff;
 	}
-	
-	std::vector<duration<double>> counts;
+	mutable std::mutex mutex;
+	std::vector<duration<double> > counts;
 	std::vector<std::string> nameMap; //use a vector since the # of strings is probs small
 	
   };

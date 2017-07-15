@@ -83,7 +83,7 @@ LDOPTS = $(OPT)
 #-----------------------------------------
 #-----------------------------------------
 
-default: $(TARGETS) openglViewer sphereViewer
+default: $(TARGETS) openglViewer sphereViewer errorView
 #decomposeLaplacian
 
 
@@ -121,6 +121,13 @@ decomposeLaplacian: decomposeLaplacian.cpp
 
 remakeObjs: remakeObjs.cpp
 	$(CC) $(CCOPTS) -o remakeObjs remakeObjs.cpp $(EIGEN_INCLUDE) $(IGL_INCLUDE)
+
+oneMeshViewer: oneMeshViewer.cpp
+	$(CC) $(CCOPTS) -o oneMeshViewer oneMeshViewer.cpp  \
+-framework OpenGL -framework GLUT
+
+errorView: errorView.cpp
+	$(CC) $(CCOPTS) -o errorView errorView.cpp $(EIGEN_INCLUDE)
 
 
 #-----------------------------------------

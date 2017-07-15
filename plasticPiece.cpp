@@ -1025,7 +1025,7 @@ void PlasticPiece::initialize(const std::string& directory,
 	  parent.boneIndices, 
 	  parent.exampleGraph);
   
-  skinSpheres();
+  skinSpheres(world);
 
   motionState = 
 	std::unique_ptr<btDefaultMotionState>{
@@ -1446,8 +1446,8 @@ void PlasticPiece::computeSphereToVertexMap(){
 
 
 
-void PlasticPiece::skinSpheres(){
-
+void PlasticPiece::skinSpheres(World& world){
+  auto timer = world.profiler.timeName("skinSpheres");
 
   //  auto transform = btTransform{};
   skinnedSpherePositions.assign(numSpheres, Eigen::Vector3d::Zero());
