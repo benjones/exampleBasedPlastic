@@ -10,9 +10,9 @@
 //  vti_file          if left blank, will not write
 
 {
-   "grid_res" : 18,
-   "min_radius_scale" : 2.0,
-   "max_radius_scale" : 8.0,
+   "grid_res" : 40,
+   "min_radius_scale" : 5.0,
+   "max_radius_scale" : 10.0,
    //"verbosity" : 2,
 
    "obj_file" : "mesh.obj",

@@ -1,5 +1,7 @@
 #include "plyIO.hpp"
 #include "utils.h"
+#include <unordered_map>
+#include <unordered_set>
 
 using RMMatrix3d = Eigen::Matrix<double,Eigen::Dynamic, 3, Eigen::RowMajor>;
 using RMMatrix3f = Eigen::Matrix<float ,Eigen::Dynamic, 3, Eigen::RowMajor>;
@@ -51,6 +53,11 @@ int main(int argc, char** argv){
 	"<float name=\"alpha\" value=\"0.7\" />"
 	"<rgb name=\"reflectance\" value=\"#aaaaaa\" />"
 	"</bsdf></bsdf></shape>";
+
+
+  std::unordered_map<int, std::ofstream> errorOuts;
+
+  std::unordered_set<int> surfaceVertices;
   
   for(int frame = 0; ; ++frame){
 	bool found = false;
@@ -89,6 +96,9 @@ int main(int argc, char** argv){
 	  RMMatrix3i plyTriangles;
 	  readPLY(plyIn, plyVertices, plyTriangles);
 
+	  
+
+	  
 	  sprintf(sphereName, sphereFormat.c_str(), i, frame);
 	  std::ifstream sphereIn(sphereName);
 	  std::cout << "reading spheres: " << sphereName << std::endl;
@@ -111,6 +121,22 @@ int main(int argc, char** argv){
 		}
 		std::cout << "has " << spheres.size() << " spheres" << std::endl;
 
+		if(surfaceVertices.empty()){
+		  for(auto row = 0; row < plyTriangles.rows(); ++row){
+			for(auto col = 0; col < 3; ++col){
+			  surfaceVertices.insert(plyTriangles(row,col));
+			}
+		  }
+		  
+		  
+		}
+		
+
+		if(errorOuts.find(i) == errorOuts.end()){
+		  errorOuts[i] = std::ofstream(outputPath + "object" + std::to_string(i) + "error.txt");
+		}
+		std::ofstream& textOuts = errorOuts[i];
+		
 		RMMatrix3f colors = RMMatrix3f::Constant(plyVertices.rows(), 3, 1.0f);
 		for(auto row = 0; row < plyVertices.rows(); ++row){
 		  Vector3 v = plyVertices.row(row);
@@ -135,8 +161,11 @@ int main(int argc, char** argv){
 			colors(row, 2) -= diff;
 			
 		  }
-		  
+		  if(surfaceVertices.find(row) != surfaceVertices.end()){
+			textOuts << std::abs(dist) << ' ';
+		  }
 		}
+		textOuts << std::endl;
 		std::cout << "writing " << outName  << " with colors" << std::endl;
 		sprintf(meshNameOnly, meshOnlyFormat.c_str(), i, frame);
 		writePLYWithColor(plyOut, plyVertices, colors, plyTriangles);
